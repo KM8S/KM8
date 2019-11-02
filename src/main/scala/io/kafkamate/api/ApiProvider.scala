@@ -39,24 +39,19 @@ object ApiProvider {
       Ok(Message("Hello", "World"))
     }
 
-    private def kafka: Endpoint[KIO, List[Message]] = get("kafka") {
+    private def kafka: Endpoint[KIO, List[Message]] = get("kafka" :: path[String]) { topic: String =>
       val res: KIO[Output[List[Message]]] =
-        ZIO.accessM[Env](_.kafkaConsumer.consume).map { lst =>
+        ZIO.accessM[Env](_.kafkaConsumer.consume(topic)).map { lst =>
           Ok(lst.map(v => Message(v._1, v._2)))
         }
       res
     }
 
-    private def hello: Endpoint[KIO, Message] = get("hello" :: path[String]) { s: String =>
-      Ok(Message("Hello", s))
-    }
-
-    private def bind: Endpoint[KIO, Message :+: Message :+: CNil] = helloWorld :+: hello
+    private def bind: Endpoint[KIO, Message :+: List[Message] :+: CNil] = helloWorld :+: kafka
 
     def api: FinchService[Request, Response] = Bootstrap
       .serve[Text.Plain](healthcheck)
       .serve[Application.Json](bind)
-      .serve[Application.Json](kafka)
       .toService
 
   }
