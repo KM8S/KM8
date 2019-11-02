@@ -14,6 +14,7 @@ libraryDependencies ++= Seq(
   "io.circe"                        %% "circe-generic"                      % "0.12.2",
   "com.github.finagle"              %% "finchx-core"                        % FinchVersion,
   "com.github.finagle"              %% "finchx-circe"                       % FinchVersion,
+  "com.github.mlangc"               %% "slf4zio"                            % "0.3.0",
   "net.logstash.logback"            %  "logstash-logback-encoder"           % "5.0",
   "ch.qos.logback"                  %  "logback-classic"                    % "1.2.3"
 )

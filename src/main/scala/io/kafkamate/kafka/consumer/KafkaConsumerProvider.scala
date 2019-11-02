@@ -5,6 +5,7 @@ package consumer
 import java.util.UUID
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import com.github.mlangc.slf4zio.api._
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
@@ -25,7 +26,7 @@ object KafkaConsumerProvider {
     def consume(topic: String): RIO[Env, List[(String, String)]]
   }
 
-  trait LiveConsumer extends KafkaConsumerProvider {
+  trait LiveConsumer extends KafkaConsumerProvider with LoggingSupport {
 
     private def consumerSettings = ConsumerSettings(
       bootstrapServers          = List(s"localhost:9092"),
@@ -46,7 +47,7 @@ object KafkaConsumerProvider {
           for {
             _ <- c.subscribe(Subscription.Topics(Set(topic)))
             endOffsets <- c.assignment.repeat(Schedule.doUntil(_.nonEmpty)).flatMap(c.endOffsets(_, timeout))
-            _ <- Task(println(s"----> End offsets: $endOffsets"))
+            _ <- logger.infoIO( s"End offsets: $endOffsets")
             stream = c
               .plainStream(Serde.string, Serde.string)
               .flattenChunks

@@ -3,6 +3,7 @@ package api
 
 import com.twitter.finagle.{Service => FinchService}
 import com.twitter.finagle.http.{Request, Response}
+import com.github.mlangc.slf4zio.api._
 import kafka.consumer.KafkaConsumerProvider
 import io.finch._
 import io.finch.circe._
@@ -25,7 +26,7 @@ object ApiProvider {
     def api: FinchService[Request, Response]
   }
 
-  trait LiveApi extends Service {
+  trait LiveApi extends Service with LoggingSupport {
 
     implicit val runtime: Runtime[Env]
 
