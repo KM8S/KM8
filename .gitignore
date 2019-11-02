@@ -24,6 +24,9 @@ data/*
 .idea_modules/*
 projectFilesBackup/
 
+# VS Code
+.metals
+
 revision.txt
 
 .DS_Store
