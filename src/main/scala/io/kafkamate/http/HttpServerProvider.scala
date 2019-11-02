@@ -15,20 +15,25 @@ object HttpServerProvider {
   trait Env extends ApiProvider
 
   trait Service {
-    def server: ZManaged[Env, Throwable, ListeningServer]
+    def start: URIO[Env, Fiber[Throwable, Unit]]
   }
 
   trait LiveHttpServer extends HttpServerProvider {
     def httpServer: Service = new Service {
-      def server: ZManaged[Env, Throwable, ListeningServer] = {
+
+      def start: URIO[Env, Fiber[Throwable, Unit]] = {
         val acquire =
-          ZIO.access[Env](_.apiProvider.api) >>= (s => ZIO(Http.server.serve(":8081", s)))
+          for {
+            api <- ZIO.access[Env](_.apiProvider.api)
+            server <- ZIO(Http.server.serve(":8081", api))
+          } yield server
+
         def release(s: ListeningServer): UIO[Unit] =
-          ZIO
-            .fromFuture(_ => s.close())
-            .catchAll((e: Throwable) => UIO(println(e.getMessage)))
-        ZManaged.make(acquire)(release)
+          ZIO.fromFuture(_ => s.close()).orDie
+
+        ZManaged.make(acquire)(release).use(_ => ZIO.never.unit).fork
       }
+
     }
   }
 
