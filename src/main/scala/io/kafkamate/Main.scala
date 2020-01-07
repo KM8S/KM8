@@ -7,10 +7,8 @@ import zio._
 object Main extends App with LoggingSupport {
 
   val liveApp: URIO[LiveEnv, Int] = {
-    val app: RIO[LiveEnv, Int] = for {
-      fiber <- ZIO.accessM[LiveEnv](_.httpServer.start)
-      _ <- fiber.join
-    } yield 0
+    val app: RIO[LiveEnv, Int] =
+      ZIO.accessM[LiveEnv](_.httpServer.start).as(0)
     app.catchAll((e: Throwable) => logger.errorIO(s"Main error: ${e.getMessage}")).as(1)
   }
 

@@ -3,7 +3,7 @@ package http
 
 import api.ApiProvider
 import com.twitter.finagle.{Http, ListeningServer}
-import util.implicits._
+import zio.interop.twitter._
 import zio._
 
 trait HttpServerProvider {
@@ -15,13 +15,12 @@ object HttpServerProvider {
   trait Env extends ApiProvider
 
   trait Service {
-    def start: URIO[Env, Fiber[Throwable, Unit]]
+    def start: RIO[Env, Unit]
   }
 
   trait LiveHttpServer extends HttpServerProvider {
     def httpServer: Service = new Service {
-
-      def start: URIO[Env, Fiber[Throwable, Unit]] = {
+      def start: RIO[Env, Unit] = {
         val acquire =
           for {
             api <- ZIO.access[Env](_.apiProvider.api)
@@ -29,11 +28,10 @@ object HttpServerProvider {
           } yield server
 
         def release(s: ListeningServer): UIO[Unit] =
-          ZIO.fromFuture(_ => s.close()).orDie
+          Task.fromTwitterFuture(Task(s.close())).orDie
 
-        ZManaged.make(acquire)(release).use(_ => ZIO.never.unit).fork
+        ZManaged.make(acquire)(release).useForever.interruptible
       }
-
     }
   }
 
