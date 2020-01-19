@@ -19,13 +19,13 @@ object LiveEnv {
 
   def Live(rtm: Runtime[ZEnv]): LiveEnv = new LiveEnv { self =>
     val ApiEnv: ApiProvider.Env = new ApiProvider.Env {
-      val clock: Clock.Service[Any] = rtm.Environment.clock
-      val blocking: Blocking.Service[Any] = rtm.Environment.blocking
+      val clock: Clock.Service[Any] = rtm.environment.clock
+      val blocking: Blocking.Service[Any] = rtm.environment.blocking
       def kafkaConsumer: KafkaConsumerProvider.Service = self.kafkaConsumer
       def kafkaProducer: KafkaProducerProvider.Service = self.kafkaProducer
     }
     def apiProvider: ApiProvider.Service = new ApiProvider.LiveApi {
-      val runtime: Runtime[ApiProvider.Env] = Runtime(ApiEnv, rtm.Platform)
+      val runtime: Runtime[ApiProvider.Env] = Runtime(ApiEnv, rtm.platform)
     }
   }
 

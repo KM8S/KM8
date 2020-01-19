@@ -13,6 +13,7 @@ import io.finch.circe._
 import io.circe.generic.auto._
 import shapeless.{:+:, CNil}
 import zio._
+import zio.clock.Clock
 import zio.stream.ZSink
 import zio.interop.catz._
 
@@ -22,9 +23,9 @@ trait ApiProvider {
 
 object ApiProvider {
 
-  trait Env extends KafkaConsumerProvider.Env with KafkaConsumerProvider with KafkaProducerProvider.Env with KafkaProducerProvider
+  trait Env extends KafkaConsumerProvider.Env with KafkaConsumerProvider with KafkaProducerProvider.Env with KafkaProducerProvider with Clock
 
-  case class Message(key:String, value: String)
+  case class Message(key: String, value: String)
 
   type KIO[A] = RIO[Env, A]
 
@@ -50,34 +51,28 @@ object ApiProvider {
 
     private def foreverStream: Endpoint[KIO, Stream[KIO, Message]] = get("forever") {
       import scala.concurrent.duration._
-      def res2: KIO[Output[Stream[KIO, Message]]] =
+      val res2: KIO[Output[Stream[KIO, Message]]] =
         ZIO(Ok(
           Stream
-            .bracket(ZIO((java.util.UUID.randomUUID().toString, "test")): KIO[(String, String)])(_ => logger.debugIO("for ever release "))
+            .bracket(ZIO(Message(java.util.UUID.randomUUID().toString, "test")): KIO[Message])(_ => logger.debugIO("for ever release "))
             .delayBy(1.second)
             .repeat
-            .map(v => Message(v._1, v._2))
-        ))
-      res2.catchAll {
-        e: Throwable => logger.debugIO("catch err - " + e.getMessage) *> ZIO(Ok(Stream.empty: Stream[KIO, Message]))
-      }: KIO[Output[Stream[KIO, Message]]]
+            .onFinalize(logger.debugIO("fs2 forever interruption, working"))
+        )).onInterrupt(logger.debugIO("zio forever interruption, not working"))
+      res2
     }
 
     private def consumeAll: Endpoint[KIO, List[Message]] = get("consume" :: "all" :: path[String]) { topic: String =>
       val res: KIO[Output[List[Message]]] =
         ZIO.accessM[Env](_.kafkaConsumer.consumeAll(topic)).map { lst =>
           Ok(lst.map(v => Message(v._1, v._2)))
-        }
+        }.onInterrupt(logger.debugIO("consumer all interruption, working"))
       res
     }
 
     private def consumeStream: Endpoint[KIO, Stream[KIO, Message]] = get("consume" :: "stream" :: path[String]) { topic: String =>
       val res: KIO[Output[Stream[KIO, Message]]] =
-        ZIO.accessM[Env](_.kafkaConsumer.consumeStream(topic))
-          .map(Ok)
-          .catchAll { e: Throwable =>
-            logger.debugIO("catch err - " + e.getMessage) *> ZIO(BadRequest(new Exception("big failure")))
-          }
+        ZIO.accessM[Env](_.kafkaConsumer.consumeStream(topic)).map(Ok).onInterrupt(logger.debugIO("consumeStream interruption, not working"))
       res
     }
 

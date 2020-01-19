@@ -7,11 +7,11 @@ scalaVersion := "2.12.9"
 lazy val FinchVersion = "0.31.0"
 
 libraryDependencies ++= Seq(
-  "dev.zio"                         %% "zio"                                % "1.0.0-RC16",
-  "dev.zio"                         %% "zio-kafka"                          % "0.3.2",
-  "dev.zio"                         %% "zio-interop-cats"                   % "2.0.0.0-RC7",
-  "dev.zio"                         %% "zio-interop-twitter"                % "19.10.0.0-RC3",
-  "dev.zio"                         %% "zio-interop-reactivestreams"        % "1.0.3.5-RC1",
+  "dev.zio"                         %% "zio"                                % "1.0.0-RC17",
+  "dev.zio"                         %% "zio-kafka"                          % "0.5.0",
+  "dev.zio"                         %% "zio-interop-cats"                   % "2.0.0.0-RC10",
+  "dev.zio"                         %% "zio-interop-twitter"                % "19.12.0.0-RC1",
+  "dev.zio"                         %% "zio-interop-reactivestreams"        % "1.0.3.5-RC2",
   "com.github.finagle"              %% "finchx-core"                        % FinchVersion,
   "com.github.finagle"              %% "finchx-circe"                       % FinchVersion,
   "com.github.finagle"              %% "finchx-fs2"                         % FinchVersion,

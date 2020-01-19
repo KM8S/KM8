@@ -78,93 +78,57 @@ object KafkaConsumerProvider {
       }
 
       override def consumeStream(topic: String): KIO[Stream[KIO, Message]] =
-        wip2(topic)
+        ok3(topic)
 
-      private def ok1(topic: String): Stream[KIO, Message] = {
+      private def ok1(topic: String): Stream[KIO, Message] =
         for {
-          q <- Stream.eval[KIO, SQueue[KIO, Either[Throwable, Message]]](SQueue.unbounded[KIO, Either[Throwable, Message]])
-          _ <- Stream.eval[KIO, Unit] {
-            Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string) { (k, v) =>
-                q.enqueue1(Right(Message(k, v))).orDie *>
-                  logger.debugIO(s"--> tap: $k")
-              }.fork.unit.interruptible
-          }
-          r <- q.dequeue.rethrow
-        } yield r
-      }
-
-      private def ok02(topic: String): Stream[KIO, Message] = {
-        for {
-          d <- Stream.eval(Deferred[KIO, Either[Throwable, Unit]])
           q <- Stream.eval(SQueue.noneTerminated[KIO, Message])
-          f <- Stream.bracket[KIO, Fiber[Throwable, Unit]] {
-            Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string) { (k, v) =>
-              q.enqueue1(Some(Message(k, v)))
-                .foldM(e => logger.errorIO(s"--> err: ${e.getMessage}"), _ => logger.debugIO(s"--> processed: $v"))
-            }.fork.interruptible
-          }(f => logger.debugIO("--> b1") *> f.interrupt.unit)
-          //r <- q.dequeue.interruptWhen(d)
-          r <- q.dequeue.onFinalize(logger.debugIO("--> suka"))
+          _ <- Stream.bracket[KIO, Fiber[Throwable, Unit]](
+            Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string)((k, v) =>
+              q.enqueue1(Some(Message(k, v))).foldM(
+                e => logger.errorIO(s"Err: ${e.getMessage}"),
+                _ => logger.debugIO(s"Pushed: $k")
+              )
+            ).fork.interruptible
+          )(f => f.interrupt *> logger.debugIO("Fork interruption"))
+          r <- q.dequeue.onFinalize(logger.debugIO("Stream terminated!"))
         } yield r
-      }
 
-      private def ok01(topic: String): KIO[Stream[KIO, Message]] = {
+      private def ok2(topic: String): KIO[Stream[KIO, Message]] =
         for {
-          q <- SQueue.unbounded[KIO, Either[Throwable, Message]]
-          _ <- Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string) { (k, v) =>
-              q.enqueue1(Right(Message(k, v))).orDie *>
-                logger.debugIO(s"--> processed: $v")
-            }.fork
-        } yield q.dequeue.rethrow
-      }
-
-      private def wip3(topic: String): KIO[Stream[KIO, Message]] = {
-        val program = for {
-          _ <- logger.debugIO("--> starting")
-          d <- Deferred[KIO, Either[Throwable, Unit]]
           q <- SQueue.noneTerminated[KIO, Message]
-          fc <- Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string) { (k, v) =>
-            q.enqueue1(Some(Message(k, v)))
-              .foldM(e => logger.errorIO(s"--> err: ${e.getMessage}"), _ => logger.debugIO(s"--> processed: $v"))
-          }.fork.interruptible
-          s <- ZIO(q.dequeue.interruptWhen(d))
-        } yield (s, fc, d)
-        val z =
-          ZManaged.make(program) { case (_, fc, d) =>
-            (//fc.interrupt.flatMap(_.foldM(e => logger.errorIO(s"--> interrupt err: ${e.prettyPrint}"), _ => ZIO.unit))
-              //*> fc.interrupt
-              //*> d.complete(Left(new Error("closing stream")))
-              logger.debugIO(s"--> killing from managed")).orDie
-          }
-          .use { case (s, _, _) =>
-            //logger.debugIO("--> in use...") *> ZIO.runtime[ApiProvider.Env].map(_.unsafeRunSync(fs.join))
-            logger.debugIO("--> in use...") *> UIO(s)
-          }
-        //z.flatMap(_.compile.toChunk.map(Stream.chunk[KIO, Message]))
-        program.map(_._1).onInterrupt(logger.debugIO(s"--> killing program"))
-      }
+          fc <- Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string)((k, v) =>
+            q.enqueue1(Some(Message(k, v))).foldM(
+              e => logger.errorIO(s"Error pushing message: ${e.getMessage}"),
+              _ => logger.debugIO(s"Pushed: $k")
+            )
+          ).fork.interruptible
+          finalizeStream = fc.interrupt *> logger.debugIO("Consumer interrupted!")
+          s = q.dequeue.onFinalize(finalizeStream: KIO[Unit])
+        } yield s
 
-      private def wip2(topic: String): KIO[Stream[KIO, Message]] =
-        Consumer.make(consumerSettings).use {
-          _.subscribeAnd(Subscription.Topics(Set(topic)))
-            .plainStream(Serde.string, Serde.string)
-            .flattenChunks
-            .tap { cr =>
-              logger.debugIO(s"--> Tap: ${cr.record}")
-            }
-            .map(v => Message(v.record.key, v.record.value))
-            .runStream
-            //.flatMap(_.compile.to(fs2.Chunk).map(Stream.chunk[KIO, Message]))
-        }
+      private def ok3(topic: String): KIO[Stream[KIO, Message]] =
+        ZStream
+          .managed(Consumer.make(consumerSettings))
+          .flatMap {
+            _.subscribeAnd(Subscription.Topics(Set(topic)))
+              .plainStream(Serde.string, Serde.string)
+              .flattenChunks
+              .tap(cr => logger.debugIO(s"Tap: ${cr.record}"))
+              .map(v => Message(v.record.key, v.record.value))
+          }
+          .unsafeRunToStream
+          .map(_.onFinalize(logger.debugIO("ok3 fs2 interruption, working after another item is pushed")))
 
-      implicit private class ZIOStreamToStream[R, E <: Throwable, A](private val stream: ZStream[ApiProvider.Env, E, A]) {
+      implicit private class ZStreamToFStream[R, E <: Throwable, A](private val stream: ZStream[R, E, A]) {
         import zio.interop.reactiveStreams._
         import fs2.interop.reactivestreams.fromPublisher
-        def runStream[R1 <: R, E1 >: E, A0, A1 >: A, B]: ZIO[ApiProvider.Env, E1, Stream[KIO, A]] =
-          ZIO.runtime[ApiProvider.Env].map { implicit r =>
+        type RIO_[A_] = RIO[R, A_]
+        def unsafeRunToStream: ZIO[R, E, Stream[RIO_, A]] =
+          ZIO.runtime[R].map { implicit r =>
             r.unsafeRun(
               stream.toPublisher >>= { publisher =>
-                UIO(fromPublisher[KIO, A](publisher))
+                UIO(fromPublisher[RIO_, A](publisher))
               }
             )
           }
