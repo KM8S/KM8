@@ -8,9 +8,8 @@ import api.ApiProvider
 import ApiProvider._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import com.github.mlangc.slf4zio.api._
-import cats.effect.concurrent.Deferred
-import fs2.{Pull, Pure, Stream}
-import fs2.concurrent.{Queue => SQueue}
+import fs2.Stream
+import fs2.concurrent.{Queue => SQueue, NoneTerminatedQueue}
 import org.apache.kafka.common.TopicPartition
 import zio._
 import zio.blocking.Blocking
@@ -73,39 +72,38 @@ object KafkaConsumerProvider {
         }
 
       private def untilExists(endOffsets: Map[TopicPartition, Long],
-                              cr: CommittableRecord[String, String]): Boolean = {
+                              cr: CommittableRecord[String, String]): Boolean =
         endOffsets.exists(o => o._1 == cr.offset.topicPartition && o._2 == 1 + cr.offset.offset)
-      }
 
       override def consumeStream(topic: String): KIO[Stream[KIO, Message]] =
-        ok3(topic)
+        ok1(topic)
 
-      private def ok1(topic: String): Stream[KIO, Message] =
-        for {
+      private def ok1(topic: String): KIO[Stream[KIO, Message]] =
+        ZIO(for {
           q <- Stream.eval(SQueue.noneTerminated[KIO, Message])
           _ <- Stream.bracket[KIO, Fiber[Throwable, Unit]](
-            Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string)((k, v) =>
-              q.enqueue1(Some(Message(k, v))).foldM(
-                e => logger.errorIO(s"Err: ${e.getMessage}"),
-                _ => logger.debugIO(s"Pushed: $k")
-              )
-            ).fork.interruptible
-          )(f => f.interrupt *> logger.debugIO("Fork interruption"))
+            Consumer
+              .consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string)(enqueue(q))
+              .fork
+          )(f => f.interrupt *> logger.debugIO("Consumer fiber interrupted!"))
           r <- q.dequeue.onFinalize(logger.debugIO("Stream terminated!"))
-        } yield r
+        } yield r)
 
       private def ok2(topic: String): KIO[Stream[KIO, Message]] =
         for {
           q <- SQueue.noneTerminated[KIO, Message]
-          fc <- Consumer.consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string)((k, v) =>
-            q.enqueue1(Some(Message(k, v))).foldM(
-              e => logger.errorIO(s"Error pushing message: ${e.getMessage}"),
-              _ => logger.debugIO(s"Pushed: $k")
-            )
-          ).fork.interruptible
-          finalizeStream = fc.interrupt *> logger.debugIO("Consumer interrupted!")
+          fc <- Consumer
+            .consumeWith(consumerSettings, Subscription.Topics(Set(topic)), Serde.string, Serde.string)(enqueue(q))
+            .fork
+          finalizeStream = fc.interrupt *> logger.debugIO("Consumer fiber interrupted and stream terminated!")
           s = q.dequeue.onFinalize(finalizeStream: KIO[Unit])
         } yield s
+
+      private def enqueue(q: NoneTerminatedQueue[KIO, Message])(k: String, v: String): ZIO[ApiProvider.Env, Nothing, Unit] =
+        q.enqueue1(Some(Message(k, v))).foldM(
+          e => logger.errorIO(s"Error pushing message: ${e.getMessage}"),
+          _ => logger.debugIO(s"Pushed: $k")
+        )
 
       private def ok3(topic: String): KIO[Stream[KIO, Message]] =
         ZStream
@@ -114,7 +112,7 @@ object KafkaConsumerProvider {
             _.subscribeAnd(Subscription.Topics(Set(topic)))
               .plainStream(Serde.string, Serde.string)
               .flattenChunks
-              .tap(cr => logger.debugIO(s"Tap: ${cr.record}"))
+              .tap(cr => logger.debugIO(s"Msg: ${cr.record.key}"))
               .map(v => Message(v.record.key, v.record.value))
           }
           .unsafeRunToStream
