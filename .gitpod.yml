@@ -1,7 +1,9 @@
 image: openjdk:8
 tasks:
-  - command: source ./.setup_bloop.sh
+  - init: source ./gitpod_init.sh
+  - command: source ./gitpod_command.sh
 vscode:
   extensions:
-    - scala-lang.scala@0.3.8:wQBBM+lKILHBqOqlqW60xA==
-    - scalameta.metals@1.6.0:Yi5jjDJjIyozrOuZIWFt/g==
+    - scalameta.metals@1.8.0:COLt/susY54OcSJMqJKofQ==
+    - scala-lang.scala@0.3.9:kklqw+c/dNRmtTU8B5repw==
+    - k--kato.intellij-idea-keybindings@0.2.37:vz3hpwf8WGtALEI7zq/EXA==

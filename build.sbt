@@ -32,4 +32,4 @@ libraryDependencies ++= Seq(
 
 testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 
-//bloopExportJarClassifiers in Global := Some(Set("sources"))
+bloopExportJarClassifiers in Global := Some(Set("sources"))

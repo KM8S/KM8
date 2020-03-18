@@ -31,6 +31,7 @@ projectFilesBackup/
 
 # VS Code
 .metals
+.vscode
 
 revision.txt
 
