@@ -10,6 +10,11 @@ project/boot/
 project/plugins/project/
 project/activator-sbt*
 
+# Bloop
+.bloop
+out
+project/metals.sbt
+
 # Sublime specific
 sublime.sbt
 *.sublime

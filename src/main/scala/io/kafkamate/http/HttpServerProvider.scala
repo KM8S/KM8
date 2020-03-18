@@ -24,13 +24,13 @@ object HttpServerProvider {
         val acquire =
           for {
             api <- ZIO.access[Env](_.apiProvider.api)
-            server <- ZIO(Http.server.serve(":8081", api))
+            server <- ZIO(Http.server.withHttp2.serve(":8081", api))
           } yield server
 
         def release(s: ListeningServer): UIO[Unit] =
           Task.fromTwitterFuture(Task(s.close())).orDie
 
-        ZManaged.make(acquire)(release).useForever.interruptible
+        ZManaged.make(acquire)(release).useForever
       }
     }
   }
