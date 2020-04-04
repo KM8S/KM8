@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 export PATH=$PATH:/usr/local/openjdk-8/bin
 

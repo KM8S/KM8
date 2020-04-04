@@ -1,3 +1,0 @@
--sbt-dir ./.metals/sbt
--sbt-boot ./.metals/sbt/boot
--ivy ./.metals/.ivy2

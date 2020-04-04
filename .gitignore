@@ -1,6 +1,7 @@
 .class
 .history
 .env
+.jvmopts
 
 # sbt specific
 target
@@ -9,6 +10,7 @@ src_managed/
 project/boot/
 project/plugins/project/
 project/activator-sbt*
+.sbtopts
 
 # Bloop
 .bloop

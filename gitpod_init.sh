@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 CURRENT_DIR="${pwd}"
 export PATH=$PATH:/usr/local/openjdk-8/bin
