@@ -14,10 +14,12 @@ package object config {
       def config: Task[Config]
     }
 
-    val live: ULayer[ConfigProvider] =
+    private lazy val rawConfig = Right(Config("8081", List("localhost:9092")))
+
+    val liveLayer: ULayer[ConfigProvider] =
       ZLayer.succeed {
         new Service {
-          override def config: Task[Config] = Task(Config("8081", List("localhost:9092")))
+          override def config: Task[Config] = Task.fromEither(rawConfig)
         }
       }
   }

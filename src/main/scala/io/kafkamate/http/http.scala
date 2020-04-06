@@ -18,7 +18,7 @@ package object http {
     def startServer: RIO[HttpServerProvider, Int] =
       ZIO.accessM[HttpServerProvider](_.get.start)
 
-    private[http] val httpLayer: URLayer[ApiProvider with ConfigProvider, HttpServerProvider] =
+    private [http] val httpLayer: URLayer[ApiProvider with ConfigProvider, HttpServerProvider] =
       ZLayer.fromServices[ApiProvider.Service, ConfigProvider.Service, HttpServerProvider.Service] { (apiProvider, configProvider) =>
         new Service {
           def start: Task[Int] = {
@@ -37,6 +37,6 @@ package object http {
       }
 
     val liveLayer: URLayer[RuntimeProvider, HttpServerProvider] =
-      ApiProvider.liveLayer ++ ConfigProvider.live >>> httpLayer
+      ApiProvider.liveLayer ++ ConfigProvider.liveLayer >>> httpLayer
   }
 }
