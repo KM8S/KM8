@@ -14,7 +14,7 @@ import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration._
-import zio.stream.{Take, ZSink, ZStream}
+import zio.stream.ZStream
 import zio.interop.catz._
 import zio.kafka.consumer._
 import zio.kafka.consumer.Consumer._
@@ -60,17 +60,17 @@ package object consumer {
               .withCloseTimeout(30.seconds)
           }
 
-        private def consumerLayer(consumerSettings: ConsumerSettings) =
-          clockLayer ++ blockingLayer ++ ((clockLayer ++ blockingLayer) >>> Consumer.make(consumerSettings, Deserializer.string, Deserializer.string).orDie)
+        private def consumerLayer(consumerSettings: ConsumerSettings): ULayer[Clock with Blocking with Consumer] =
+          clockLayer ++ blockingLayer >+> Consumer.make(consumerSettings).orDie
 
         def consumeAll(topic: String): Task[List[(String, String)]] = {
-          val consumer: RIO[Clock with Blocking with Consumer[Any, String, String], List[(String, String)]] =
+          val consumer: RIO[Clock with Blocking with Consumer, List[(String, String)]] =
             for {
-              _ <- Consumer.subscribe[Any, String, String](Subscription.Topics(Set(topic)))
-              endOffsets <- Consumer.assignment[Any, String, String].repeat(Schedule.doUntil(_.nonEmpty)).flatMap(Consumer.endOffsets[Any, String, String](_, timeout))
+              _ <- Consumer.subscribe(Subscription.Topics(Set(topic)))
+              endOffsets <- Consumer.assignment.repeat(Schedule.doUntil(_.nonEmpty)).flatMap(Consumer.endOffsets(_, timeout))
               _ <- logger.infoIO( s"End offsets: $endOffsets")
               stream = Consumer
-                .plainStream[Any, String, String]
+                .plainStream[Any, String, String](Deserializer.string, Deserializer.string)
                 .flattenChunks
                 .takeUntil(cr => untilExists(endOffsets, cr))
               records <- stream
@@ -129,8 +129,8 @@ package object consumer {
 
         private def ok3(topic: String): Task[Stream[Task, Message]] = {
           val consumer = Consumer
-            .subscribeAnd[Any, String, String](Subscription.Topics(Set(topic)))
-            .plainStream
+            .subscribeAnd(Subscription.Topics(Set(topic)))
+            .plainStream[Any, String, String](Deserializer.string, Deserializer.string)
             .flattenChunks
             .tap(cr => logger.debugIO(s"Msg: ${cr.record.key}"))
             .map(v => Message(v.record.key, v.record.value))
