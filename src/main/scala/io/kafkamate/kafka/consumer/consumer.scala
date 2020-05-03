@@ -31,19 +31,17 @@ package object consumer {
       def consumeStream(topic: String): Task[Stream[Task, Message]]
     }
 
-    private [consumer] val kafkaConsumerLayer: URLayer[RuntimeProvider with Clock with Blocking with ConfigProvider, KafkaConsumerProvider] =
+    private [consumer] val kafkaConsumerLayer: URLayer[Clock with Blocking with ConfigProvider, KafkaConsumerProvider] =
       ZLayer.fromServices[
-        Runtime[ZEnv],
         Clock.Service,
         Blocking.Service,
         ConfigProvider.Service,
         KafkaConsumerProvider.Service](createService)
 
-    val liveLayer: URLayer[RuntimeProvider, KafkaConsumerProvider] =
-      ZLayer.requires[RuntimeProvider] ++ Clock.live ++ Blocking.live ++ ConfigProvider.liveLayer >>> kafkaConsumerLayer
+    val liveLayer: ULayer[KafkaConsumerProvider] =
+      Clock.live ++ Blocking.live ++ ConfigProvider.liveLayer >>> kafkaConsumerLayer
 
-    private def createService(runtime: Runtime[ZEnv],
-                              clock: Clock.Service,
+    private def createService(clock: Clock.Service,
                               blocking: Blocking.Service,
                               configService: ConfigProvider.Service): Service =
       new Service with LoggingSupport {
@@ -61,7 +59,7 @@ package object consumer {
           }
 
         private def consumerLayer(consumerSettings: ConsumerSettings): ULayer[Clock with Blocking with Consumer] =
-          clockLayer ++ blockingLayer >+> Consumer.make(consumerSettings).orDie
+          clockLayer ++ blockingLayer ++ ((clockLayer ++ blockingLayer) >>> Consumer.make(consumerSettings).orDie)
 
         def consumeAll(topic: String): Task[List[(String, String)]] = {
           val consumer: RIO[Clock with Blocking with Consumer, List[(String, String)]] =
@@ -69,11 +67,10 @@ package object consumer {
               _ <- Consumer.subscribe(Subscription.Topics(Set(topic)))
               endOffsets <- Consumer.assignment.repeat(Schedule.doUntil(_.nonEmpty)).flatMap(Consumer.endOffsets(_, timeout))
               _ <- logger.infoIO( s"End offsets: $endOffsets")
-              stream = Consumer
-                .plainStream[Any, String, String](Deserializer.string, Deserializer.string)
+              records <- Consumer
+                .plainStream(Deserializer.string, Deserializer.string)
                 .flattenChunks
                 .takeUntil(cr => untilExists(endOffsets, cr))
-              records <- stream
                 .runCollect
                 .flatMap { recs =>
                   recs
@@ -93,7 +90,7 @@ package object consumer {
           endOffsets.exists(o => o._1 == cr.offset.topicPartition && o._2 == 1 + cr.offset.offset)
 
         override def consumeStream(topic: String): Task[Stream[Task, Message]] =
-          ok3(topic)
+          ok1(topic)
 
         private def ok1(topic: String): Task[Stream[Task, Message]] =
           ZIO {
@@ -103,9 +100,9 @@ package object consumer {
               //switcher = Stream.eval(switch.complete(Right())).delayBy(Duration(20L, SECONDS))
               q <- Stream.bracket(FSQueue.noneTerminated[Task, Message])(terminateQueue)
               cs <- Stream.eval(consumerSettings)
-              _ <- Stream.bracket[Task, Fiber[Throwable, Unit]](
+              _ <- Stream.bracket[Task, Fiber.Runtime[Throwable, Unit]](
                 Consumer
-                  .consumeWith[Any, Any, String, String](cs, Subscription.Topics(Set(topic)), Serde.string, Serde.string)(enqueue(q))
+                  .consumeWith(cs, Subscription.Topics(Set(topic)), Serde.string, Serde.string)(enqueue(q))
                   .fork
                   .provideLayer(clockLayer ++ blockingLayer)
               )(_.interrupt *> logger.debugIO("Consumer fiber interrupted!"))
@@ -115,39 +112,39 @@ package object consumer {
               .take(100)
           }
 
-        private def enqueue(q: NoneTerminatedQueue[Task, Message])(k: String, v: String): ZIO[Any, Nothing, Unit] =
+        private def enqueue(q: NoneTerminatedQueue[Task, Message])(k: String, v: String): UIO[Unit] =
           q.enqueue1(Some(Message(k, v))).foldM(
             e => logger.errorIO(s"Error pushing message: ${e.getMessage}"),
             _ => logger.debugIO(s"Pushed: ($k, $v)")
           )
 
-        private def terminateQueue(q: NoneTerminatedQueue[Task, Message]): ZIO[Any, Nothing, Unit] =
+        private def terminateQueue(q: NoneTerminatedQueue[Task, Message]): UIO[Unit] =
           q.enqueue1(None).foldM(
             e => logger.errorIO(s"Error terminating queue: ${e.getMessage}"),
             _ => logger.debugIO(s"FSQueue terminated!")
           )
 
-        private def ok3(topic: String): Task[Stream[Task, Message]] = {
-          val consumer = Consumer
-            .subscribeAnd(Subscription.Topics(Set(topic)))
-            .plainStream[Any, String, String](Deserializer.string, Deserializer.string)
-            .flattenChunks
-            .tap(cr => logger.debugIO(s"Msg: ${cr.record.key}"))
-            .map(v => Message(v.record.key, v.record.value))
+        private def ok2(topic: String): Task[Stream[Task, Message]] =
           consumerSettings
-            .map(cs =>
-              consumer
+            .flatMap(cs =>
+              Consumer
+                .subscribeAnd(Subscription.Topics(Set(topic)))
+                .plainStream[Any, String, String](Deserializer.string, Deserializer.string)
+                .flattenChunks
+                .tap(cr => logger.debugIO(s"Msg: ${cr.record.key}"))
+                .map(v => Message(v.record.key, v.record.value))
                 .provideLayer(consumerLayer(cs))
-                .unsafeRunToFStream(runtime)
-                .onFinalize(logger.debugIO("Stream terminated!"))
+                .unsafeRunToFStream
+                .map(_.onFinalize(logger.debugIO("Stream terminated!")))
             )
-        }
 
-        implicit private class ZStreamToFStream[A](private val stream: ZStream[Any, Throwable, A]) {
+        implicit private class ZStreamToFStream[A](private val zStream: ZStream[Any, Throwable, A]) {
           import zio.interop.reactivestreams._
           import fs2.interop.reactivestreams.fromPublisher
-          def unsafeRunToFStream(implicit r: Runtime[Any]): Stream[Task, A] =
-            r.unsafeRun(stream.toPublisher >>= (p => Task(fromPublisher[Task, A](p))))
+          def unsafeRunToFStream: Task[Stream[Task, A]] =
+            ZIO.runtime[Any].map { implicit r =>
+              r.unsafeRun(zStream.toPublisher >>= (p => Task(fromPublisher[Task, A](p))))
+            }
         }
 
       }

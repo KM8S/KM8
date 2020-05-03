@@ -16,19 +16,22 @@ package object producer {
       def produce(topic: String, key: String, value: String): Task[Unit]
     }
 
-    private [producer] val kafkaProducerLayer: URLayer[ConfigProvider, KafkaProducerProvider] =
-      ZLayer.fromService { configProvider =>
+    private [producer] val kafkaProducerLayer: URLayer[Blocking with ConfigProvider, KafkaProducerProvider] =
+      ZLayer.fromServices[Blocking.Service, ConfigProvider.Service, KafkaProducerProvider.Service] { (blockingService, configProvider) =>
         new Service {
           def produce(topic: String, key: String, value: String): Task[Unit] =
             for {
               c <- configProvider.config
-              producerSettings = ProducerSettings(c.kafkaHosts)
-              producerLayer = Blocking.live ++ Producer.make(producerSettings, Serde.string, Serde.string).orDie
-              _ <- Producer.produce[Any, String, String](new ProducerRecord(topic, key, value)).provideLayer(producerLayer)
+              producerLayer = Producer.make(ProducerSettings(c.kafkaHosts), Serde.string, Serde.string).orDie
+              _ <- Producer
+                .produce[Any, String, String](new ProducerRecord(topic, key, value))
+                .flatten
+                .provideSomeLayer[Blocking](producerLayer)
+                .provide(Has(blockingService))
             } yield ()
         }
       }
 
-    val liveLayer: ULayer[KafkaProducerProvider] = ConfigProvider.liveLayer >>> kafkaProducerLayer
+    val liveLayer: ULayer[KafkaProducerProvider] = Blocking.live ++ ConfigProvider.liveLayer >>> kafkaProducerLayer
   }
 }

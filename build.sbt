@@ -24,14 +24,14 @@ scalacOptions := Seq(
 
 resolvers += Resolver.sonatypeRepo("public")
 
-lazy val ZIOVersion = "1.0.0-RC18-2+184-45b83808-SNAPSHOT"
+lazy val ZIOVersion = "1.0.0-RC18-2"//+222-7d752e30-SNAPSHOT"
 lazy val FinchVersion = "0.32.1"
 
 libraryDependencies ++= Seq(
   "org.typelevel"                   %% "cats-effect"                        % "2.1.2",
   "org.typelevel"                   %% "cats-core"                          % "2.1.1",
   "dev.zio"                         %% "zio"                                % ZIOVersion,
-  "dev.zio"                         %% "zio-macros"                         % ZIOVersion,
+  //"dev.zio"                         %% "zio-macros"                         % ZIOVersion,
   "dev.zio"                         %% "zio-kafka"                          % "0.8.0",
   "dev.zio"                         %% "zio-interop-cats"                   % "2.0.0.0-RC12",
   "dev.zio"                         %% "zio-interop-twitter"                % "20.3.0.0-RC1",

@@ -6,16 +6,19 @@ import config._
 import com.twitter.finagle.{Http, ListeningServer}
 import zio.interop.twitter._
 import zio._
-import zio.macros.accessible
+//import zio.macros.accessible
 
-@accessible object HttpServer {
+/*@accessible*/ object HttpServer {
   type HttpServerProvider = Has[Service]
 
   trait Service {
     def startServer: Task[Int]
   }
 
-  private [http] val httpLayer: URLayer[ApiProvider with ConfigProvider, HttpServerProvider] =
+  def startServer: RIO[HttpServerProvider, Int] =
+    ZIO.accessM(_.get.startServer)
+
+  private [http] val httpURLayer: URLayer[ApiProvider with ConfigProvider, HttpServerProvider] =
     ZLayer.fromServices[ApiProvider.Service, ConfigProvider.Service, HttpServer.Service] { (apiProvider, configProvider) =>
       new Service {
         def startServer: Task[Int] = {
@@ -34,5 +37,5 @@ import zio.macros.accessible
     }
 
   val liveLayer: URLayer[RuntimeProvider, HttpServerProvider] =
-    ApiProvider.liveLayer ++ ConfigProvider.liveLayer >>> httpLayer
+    ApiProvider.liveLayer ++ ConfigProvider.liveLayer >>> httpURLayer
 }
