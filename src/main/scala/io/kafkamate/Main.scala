@@ -8,10 +8,10 @@ object Main extends App with LoggingSupport {
 
   private lazy val runtimeLayer: ULayer[Has[Runtime[ZEnv]]] = ZLayer.succeed(this)
 
-  def run(args: List[String]): URIO[ZEnv, Int] =
+  def run(args: List[String]): URIO[ZEnv, ExitCode] =
     HttpServer
       .startServer
-      .catchAll((e: Throwable) => logger.errorIO(s"Failed running app: ${e.getMessage}", e).as(1))
       .provideLayer(runtimeLayer >>> HttpServer.liveLayer)
+      .catchAll(e => logger.errorIO(s"Failed running app: ${e.getMessage}", e).as(ExitCode.failure))
 
 }

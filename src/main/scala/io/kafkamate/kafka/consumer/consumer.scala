@@ -4,7 +4,7 @@ package kafka
 import java.util.UUID
 
 import api.ApiProvider._
-import config.ConfigProvider
+import config._
 import com.github.mlangc.slf4zio.api._
 import cats.effect.concurrent.Deferred
 import fs2.Stream
@@ -31,27 +31,27 @@ package object consumer {
       def consumeStream(topic: String): Task[Stream[Task, Message]]
     }
 
-    private [consumer] val kafkaConsumerLayer: URLayer[Clock with Blocking with ConfigProvider, KafkaConsumerProvider] =
+    private [consumer] val kafkaConsumerLayer: URLayer[Clock with Blocking with Config, KafkaConsumerProvider] =
       ZLayer.fromServices[
         Clock.Service,
         Blocking.Service,
-        ConfigProvider.Service,
+        ConfigProperties,
         KafkaConsumerProvider.Service](createService)
 
     val liveLayer: ULayer[KafkaConsumerProvider] =
-      Clock.live ++ Blocking.live ++ ConfigProvider.liveLayer >>> kafkaConsumerLayer
+      Clock.live ++ Blocking.live ++ config.liveLayer >>> kafkaConsumerLayer
 
     private def createService(clock: Clock.Service,
                               blocking: Blocking.Service,
-                              configService: ConfigProvider.Service): Service =
+                              config: ConfigProperties): Service =
       new Service with LoggingSupport {
-        private val clockLayer: ULayer[Clock] = ZLayer.succeed(clock)
-        private val blockingLayer: ULayer[Blocking] = ZLayer.succeed(blocking)
+        private lazy val clockLayer: ULayer[Clock] = ZLayer.succeed(clock)
+        private lazy val blockingLayer: ULayer[Blocking] = ZLayer.succeed(blocking)
         private val timeout: Duration = 1000.millis
 
         private def consumerSettings: Task[ConsumerSettings] =
-          configService.config.map { c =>
-            ConsumerSettings(c.kafkaHosts)
+          Task {
+            ConsumerSettings(config.kafkaHosts)
               .withGroupId(UUID.randomUUID().toString)
               .withClientId("kafkamate")
               .withOffsetRetrieval(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))
@@ -59,17 +59,16 @@ package object consumer {
           }
 
         private def consumerLayer(consumerSettings: ConsumerSettings): ULayer[Clock with Blocking with Consumer] =
-          clockLayer ++ blockingLayer ++ ((clockLayer ++ blockingLayer) >>> Consumer.make(consumerSettings).orDie)
+          (clockLayer ++ blockingLayer) >+> ZLayer.fromManaged(Consumer.make(consumerSettings).orDie)
 
         def consumeAll(topic: String): Task[List[(String, String)]] = {
-          val consumer: RIO[Clock with Blocking with Consumer, List[(String, String)]] =
+          val consumer =
             for {
               _ <- Consumer.subscribe(Subscription.Topics(Set(topic)))
-              endOffsets <- Consumer.assignment.repeat(Schedule.doUntil(_.nonEmpty)).flatMap(Consumer.endOffsets(_, timeout))
+              endOffsets <- Consumer.assignment.repeatUntil(_.nonEmpty).flatMap(Consumer.endOffsets(_, timeout))
               _ <- logger.infoIO( s"End offsets: $endOffsets")
               records <- Consumer
                 .plainStream(Deserializer.string, Deserializer.string)
-                .flattenChunks
                 .takeUntil(cr => untilExists(endOffsets, cr))
                 .runCollect
                 .flatMap { recs =>
@@ -78,7 +77,7 @@ package object consumer {
                     .commit
                     .as(recs.map(r => (r.record.key, r.record.value)))
                 }
-            } yield records
+            } yield records.toList
           for {
             cs <- consumerSettings
             r <- consumer.provideLayer(consumerLayer(cs))
@@ -129,8 +128,7 @@ package object consumer {
             .flatMap(cs =>
               Consumer
                 .subscribeAnd(Subscription.Topics(Set(topic)))
-                .plainStream[Any, String, String](Deserializer.string, Deserializer.string)
-                .flattenChunks
+                .plainStream(Deserializer.string, Deserializer.string)
                 .tap(cr => logger.debugIO(s"Msg: ${cr.record.key}"))
                 .map(v => Message(v.record.key, v.record.value))
                 .provideLayer(consumerLayer(cs))
@@ -138,12 +136,12 @@ package object consumer {
                 .map(_.onFinalize(logger.debugIO("Stream terminated!")))
             )
 
-        implicit private class ZStreamToFStream[A](private val zStream: ZStream[Any, Throwable, A]) {
+        implicit private class ZStreamToFStream[A](private val zioStream: ZStream[Any, Throwable, A]) {
           import zio.interop.reactivestreams._
           import fs2.interop.reactivestreams.fromPublisher
           def unsafeRunToFStream: Task[Stream[Task, A]] =
             ZIO.runtime[Any].map { implicit r =>
-              r.unsafeRun(zStream.toPublisher >>= (p => Task(fromPublisher[Task, A](p))))
+              r.unsafeRun(zioStream.toPublisher >>= (p => Task(fromPublisher[Task, A](p))))
             }
         }
 

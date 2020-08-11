@@ -2,7 +2,6 @@ package io.kafkamate
 package kafka
 
 import config._
-import org.apache.kafka.clients.producer.ProducerRecord
 import zio._
 import zio.kafka.serde._
 import zio.kafka.producer._
@@ -16,22 +15,28 @@ package object producer {
       def produce(topic: String, key: String, value: String): Task[Unit]
     }
 
-    private [producer] val kafkaProducerLayer: URLayer[Blocking with ConfigProvider, KafkaProducerProvider] =
-      ZLayer.fromServices[Blocking.Service, ConfigProvider.Service, KafkaProducerProvider.Service] { (blockingService, configProvider) =>
+    private [producer] lazy val kafkaProducerLayer: URLayer[Blocking with Config, KafkaProducerProvider] =
+      ZLayer.fromServices[Blocking.Service, ConfigProperties, KafkaProducerProvider.Service] { (blockingService, config) =>
         new Service {
+          lazy val serdeLayer: ULayer[Has[Serializer[Any, String]]] =
+            ZLayer.succeed(Serde.string)
+
+          lazy val settingsLayer: ULayer[Has[ProducerSettings]] =
+            ZLayer.succeed(ProducerSettings(config.kafkaHosts))
+
+          def producerLayer =
+            serdeLayer ++ settingsLayer >>> Producer.live[Any, String, String]
+
           def produce(topic: String, key: String, value: String): Task[Unit] =
-            for {
-              c <- configProvider.config
-              producerLayer = Producer.make(ProducerSettings(c.kafkaHosts), Serde.string, Serde.string).orDie
-              _ <- Producer
-                .produce[Any, String, String](new ProducerRecord(topic, key, value))
-                .flatten
-                .provideSomeLayer[Blocking](producerLayer)
-                .provide(Has(blockingService))
-            } yield ()
+            Producer
+              .produce[Any, String, String](topic, key, value)
+              .unit
+              .provideSomeLayer[Blocking](producerLayer)
+              .provide(Has(blockingService))
         }
       }
 
-    val liveLayer: ULayer[KafkaProducerProvider] = Blocking.live ++ ConfigProvider.liveLayer >>> kafkaProducerLayer
+    lazy val liveLayer: ULayer[KafkaProducerProvider] =
+      Blocking.live ++ config.liveLayer >>> kafkaProducerLayer
   }
 }

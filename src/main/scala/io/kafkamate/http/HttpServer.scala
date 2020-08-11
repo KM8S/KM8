@@ -3,39 +3,34 @@ package http
 
 import api._
 import config._
+import com.github.mlangc.slf4zio.api._
 import com.twitter.finagle.{Http, ListeningServer}
 import zio.interop.twitter._
 import zio._
-//import zio.macros.accessible
+import zio.macros.accessible
 
-/*@accessible*/ object HttpServer {
+@accessible object HttpServer {
   type HttpServerProvider = Has[Service]
 
   trait Service {
-    def startServer: Task[Int]
+    def startServer: Task[ExitCode]
   }
 
-  def startServer: RIO[HttpServerProvider, Int] =
-    ZIO.accessM(_.get.startServer)
-
-  private [http] val httpURLayer: URLayer[ApiProvider with ConfigProvider, HttpServerProvider] =
-    ZLayer.fromServices[ApiProvider.Service, ConfigProvider.Service, HttpServer.Service] { (apiProvider, configProvider) =>
-      new Service {
-        def startServer: Task[Int] = {
+  private [http] val httpURLayer: URLayer[ApiProvider with Config, HttpServerProvider] =
+    ZLayer.fromServices[ApiProvider.Service, ConfigProperties, HttpServer.Service] { (apiProvider, config) =>
+      new Service with LoggingSupport {
+        def startServer: Task[ExitCode] = {
           val acquire: Task[ListeningServer] =
-            for {
-              c <- configProvider.config
-              r <- ZIO(Http.server.withHttp2.serve(s":${c.port}", apiProvider.api))
-            } yield r
+            Task(Http.server.withHttp2.serve(s":${config.port}", apiProvider.api))
 
           def release(s: ListeningServer): UIO[Unit] =
-            Task.fromTwitterFuture(Task(s.close())).orDie
+            Task.fromTwitterFuture(s.close()).tapError(e => logger.errorIO(e.getMessage, e)).orDie
 
-          ZManaged.make(acquire)(release).useForever.as(0)
+          ZManaged.make(acquire)(release).useForever.as(ExitCode.success)
         }
       }
     }
 
   val liveLayer: URLayer[RuntimeProvider, HttpServerProvider] =
-    ApiProvider.liveLayer ++ ConfigProvider.liveLayer >>> httpURLayer
+    ApiProvider.liveLayer ++ config.liveLayer >>> httpURLayer
 }
