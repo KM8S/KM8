@@ -1,6 +1,5 @@
 package io.kafkamate
 package kafka
-package producer
 
 import config._
 import Config._
@@ -17,7 +16,7 @@ import zio.macros.accessible
     def produce(topic: String, key: String, value: String): RIO[Blocking, Unit]
   }
 
-  private [producer] lazy val kafkaProducerLayer: URLayer[Config, KafkaProducer] =
+  private [kafka] lazy val kafkaProducerLayer: URLayer[Config, KafkaProducer] =
     ZLayer.fromService { config =>
       new Service {
         lazy val serdeLayer: ULayer[Has[Serializer[Any, String]]] =

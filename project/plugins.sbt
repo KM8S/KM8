@@ -1,4 +1,4 @@
-resolvers += Resolver.sonatypeRepo("snapshots")
+ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.2.0")
 

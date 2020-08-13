@@ -5,15 +5,13 @@ import io.grpc.Status
 import zio.{ZEnv, ZIO}
 import zio.stream.ZStream
 
-import kafka.consumer.KafkaConsumer
-import kafka.consumer.KafkaConsumer._
-import kafka.producer.KafkaProducer
-import kafka.producer.KafkaProducer._
+import kafka.KafkaConsumer
+import kafka.KafkaProducer
 import kafkamate.{Message, Request, Response}
 import kafkamate.ZioKafkamate
 
 object KafkaMate {
-  type Env = ZEnv with KafkaConsumer with KafkaProducer
+  type Env = ZEnv with KafkaConsumer.KafkaConsumer with KafkaProducer.KafkaProducer
 
   object Service extends ZioKafkamate.RKafkaMateService[Env] {
     override def produceMessage(request: Request): ZIO[Env, Status, Response] =

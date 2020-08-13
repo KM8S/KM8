@@ -1,6 +1,5 @@
 package io.kafkamate
 package kafka
-package consumer
 
 import java.util.UUID
 
@@ -15,10 +14,10 @@ import zio.duration._
 import zio.stream.ZStream
 import zio.kafka.consumer._
 import zio.kafka.consumer.Consumer._
-import zio.kafka.serde.{Deserializer, Serde}
+import zio.kafka.serde.Deserializer
 import zio.macros.accessible
 
-import io.kafkamate.kafkamate.{Message, Request, Response}
+import io.kafkamate.kafkamate.Message
 
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
@@ -28,7 +27,7 @@ import io.kafkamate.kafkamate.{Message, Request, Response}
     def consumeStream(topic: String): ZStream[Clock with Blocking, Throwable, Message]
   }
 
-  private [consumer] lazy val kafkaConsumerLayer: URLayer[Config, KafkaConsumer] =
+  private [kafka] lazy val kafkaConsumerLayer: URLayer[Config, KafkaConsumer] =
     ZLayer.fromService(createService)
 
   lazy val liveLayer: ULayer[KafkaConsumer] =
