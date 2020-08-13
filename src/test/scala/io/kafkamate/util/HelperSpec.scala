@@ -1,13 +1,15 @@
-package io.kafkamate.util
+package io.kafkamate
+package util
 
-import io.kafkamate.config._
-import io.kafkamate.util.KafkaEmbedded.Kafka
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.kafka.producer.{Producer, ProducerSettings}
 import zio.kafka.serde.{Serde, Serializer}
+
+import config.Config._
+import KafkaEmbedded.Kafka
 
 trait HelperSpec {
   type StringProducer = Producer[Any, String, String]
@@ -19,7 +21,7 @@ trait HelperSpec {
     (producerSettings.toLayer ++ ZLayer.succeed(Serde.string: Serializer[Any, String])) >>>
       Producer.live[Any, String, String]
 
-  val testConfigLayer: URLayer[Clock with Blocking with Kafka, Config with Clock with Blocking] =
+  val testConfigLayer: RLayer[Clock with Blocking with Kafka, Config with Clock with Blocking] =
     ZLayer.requires[Clock] ++
       ZLayer.requires[Blocking] ++
       ZLayer.fromService[Kafka.Service, ConfigProperties] { kafka =>

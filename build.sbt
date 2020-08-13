@@ -1,6 +1,6 @@
 name := "KafkaMate"
 
-version := "0.1.1"
+version := "0.2.0"
 
 scalaVersion := "2.12.11"
 
@@ -25,22 +25,14 @@ scalacOptions := Seq(
 resolvers += Resolver.sonatypeRepo("public")
 
 lazy val ZIOVersion = "1.0.0"
-lazy val FinchVersion = "0.32.1"
 
 libraryDependencies ++= Seq(
-  "org.typelevel"                   %% "cats-effect"                        % "2.1.4",
-  "org.typelevel"                   %% "cats-core"                          % "2.1.1",
   "dev.zio"                         %% "zio"                                % ZIOVersion,
   "dev.zio"                         %% "zio-macros"                         % ZIOVersion,
   "dev.zio"                         %% "zio-kafka"                          % "0.12.0",
-  "dev.zio"                         %% "zio-interop-cats"                   % "2.1.4.0",
-  "dev.zio"                         %% "zio-interop-twitter"                % "20.7.0.0",
-  "dev.zio"                         %% "zio-interop-reactivestreams"        % "1.0.3.5",
-  "com.github.finagle"              %% "finchx-core"                        % FinchVersion,
-  "com.github.finagle"              %% "finchx-circe"                       % FinchVersion,
-  "com.github.finagle"              %% "finchx-fs2"                         % FinchVersion,
+  "io.grpc"                         %  "grpc-netty"                         % "1.31.0",
+  "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"               % "2.10.0",
-  "co.fs2"                          %% "fs2-reactive-streams"               % "2.4.2",
   "io.circe"                        %% "circe-generic"                      % "0.13.0",
   "com.github.mlangc"               %% "slf4zio"                            % "0.7.0",
   "net.logstash.logback"            %  "logstash-logback-encoder"           % "6.3",
@@ -53,5 +45,10 @@ libraryDependencies ++= Seq(
 )
 
 testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
+
+PB.targets in Compile := Seq(
+  scalapb.gen(grpc = true) -> (sourceManaged in Compile).value / "scalapb",
+  scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value / "scalapb"
+)
 
 //bloopExportJarClassifiers in Global := Some(Set("sources"))

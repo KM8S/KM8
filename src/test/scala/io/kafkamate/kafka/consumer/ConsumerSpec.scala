@@ -2,6 +2,7 @@ package io.kafkamate
 package kafka
 package consumer
 
+import io.kafkamate.kafka.consumer.KafkaConsumer.KafkaConsumer
 import util.{HelperSpec, KafkaEmbedded}
 import zio._
 import zio.blocking.Blocking
@@ -13,6 +14,13 @@ import zio.test.environment._
 import zio.test.{DefaultRunnableSpec, _}
 
 object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
+
+  val testLayer: ZLayer[Any, TestFailure[Throwable], KafkaConsumer] =
+    (Clock.live >+>
+      (KafkaEmbedded.Kafka.embedded >+> stringProducer) ++
+        ((KafkaEmbedded.Kafka.embedded ++ Clock.any ++ Blocking.live) >>> testConfigLayer) >>> KafkaConsumer.kafkaConsumerLayer)
+      .mapError(TestFailure.fail)
+
   override def spec: ZSpec[TestEnvironment, Throwable] =
     suite("Consumer Streaming")(
       testM("plainStream emits messages for a topic subscription") {
@@ -20,12 +28,8 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
           topic <- UIO("topic150")
           kvs = (1 to 5).toList.map(i => (s"key$i", s"msg$i"))
           _ <- produceMany(topic, kvs)
-          records <- ZIO.accessM[KafkaConsumerProvider](_.get.consumeAll(topic))
+          records <- KafkaConsumer.consumeN(topic, 5)
         } yield assert(records)(equalTo(kvs))
       }
-    ).provideSomeLayerShared[TestEnvironment](
-      Clock.live ++
-        (KafkaEmbedded.Kafka.embedded >>> stringProducer ++ KafkaEmbedded.Kafka.embedded).mapError(TestFailure.fail) ++
-        ((KafkaEmbedded.Kafka.embedded.orDie ++ Clock.live ++ Blocking.live) >>> testConfigLayer) >>> KafkaConsumerProvider.kafkaConsumerLayer
-    ) @@ timeout(10.seconds)
+    ).provideLayerShared[TestEnvironment](testLayer) @@ timeout(10.seconds)
 }

@@ -1,17 +1,17 @@
 package io.kafkamate
 
-import com.github.mlangc.slf4zio.api._
-import http._
-import zio._
+import scalapb.zio_grpc.{ServerMain, ServiceList}
+import zio.ZEnv
 
-object Main extends App with LoggingSupport {
+import service.KafkaMate
+import kafka.consumer.KafkaConsumer
+import kafka.producer.KafkaProducer
 
-  private lazy val runtimeLayer: ULayer[Has[Runtime[ZEnv]]] = ZLayer.succeed(this)
+object Main extends ServerMain {
 
-  def run(args: List[String]): URIO[ZEnv, ExitCode] =
-    HttpServer
-      .startServer
-      .provideLayer(runtimeLayer >>> HttpServer.liveLayer)
-      .catchAll(e => logger.errorIO(s"Failed running app: ${e.getMessage}", e).as(ExitCode.failure))
+  override def services: ServiceList[ZEnv] =
+    ServiceList
+      .add(KafkaMate.Service)
+      .provideLayer(ZEnv.live ++ KafkaProducer.liveLayer ++ KafkaConsumer.liveLayer)
 
 }

@@ -1,14 +1,18 @@
 package io.kafkamate
+package config
 
-import zio._
+import zio.{Has, ULayer, URLayer, ZLayer}
 
-package object config {
+object Config {
 
   type Config = Has[ConfigProperties]
 
   case class ConfigProperties(port: String, kafkaHosts: List[String])
 
-  val liveLayer: ULayer[Config] =
+  def config: URLayer[Config, Config] =
+    ZLayer.service[ConfigProperties]
+
+  lazy val liveLayer: ULayer[Config] =
     ZLayer.succeed(ConfigProperties("8081", List("localhost:9092")))
 
 }
