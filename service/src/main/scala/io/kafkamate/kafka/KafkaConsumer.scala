@@ -57,12 +57,7 @@ import io.kafkamate.kafkamate.Message
               .takeUntil(cr => untilExists(endOffsets, cr))
               .take(nrOfMessages)
               .runCollect
-              .flatMap { recs =>
-                recs
-                  .foldLeft(OffsetBatch.empty)((b, r) => b merge r.offset)
-                  .commit
-                  .as(recs.map(r => Message(r.record.key, r.record.value)))
-              }
+              .map(_.map(r => Message(r.record.key, r.record.value)))
           } yield records.toList
         consumer.provideSomeLayer[Clock with Blocking](makeConsumerLayer)
       }
