@@ -1,18 +1,17 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
-lazy val ZIOVersion = "1.0.0"
+lazy val ZIOVersion = "1.0.1"
 
-lazy val root = (project in file("."))
+lazy val root = project
+  .in(file("."))
   .aggregate(service, site)
 
 lazy val service = project
   .in(file("service"))
+  .settings(sharedSettings: _*)
   .settings(
     name := "kafkamate-service",
-    version := "0.2.0",
-    scalaVersion := "2.13.3",
-    scalacOptions := Seq(
-      "-Ymacro-annotations",
+    scalacOptions ++= Seq(
       "-unchecked",
       "-deprecation",
       "-encoding", "utf8",
@@ -29,37 +28,21 @@ lazy val service = project
       "-Xfuture"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                         %% "zio"                                % ZIOVersion,
-      "dev.zio"                         %% "zio-macros"                         % ZIOVersion,
-      "dev.zio"                         %% "zio-kafka"                          % "0.12.0",
-      "io.grpc"                         %  "grpc-netty"                         % "1.31.0",
-      "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,
       "com.fasterxml.jackson.module"    %% "jackson-module-scala"               % "2.10.0",
-      "io.circe"                        %% "circe-generic"                      % "0.13.0",
       "com.github.mlangc"               %% "slf4zio"                            % "0.7.0",
       "net.logstash.logback"            %  "logstash-logback-encoder"           % "6.3",
       "ch.qos.logback"                  %  "logback-classic"                    % "1.2.3",
-      "dev.zio"                         %% "zio-test"                           % ZIOVersion % Test,
-      "dev.zio"                         %% "zio-test-sbt"                       % ZIOVersion % Test,
-      "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.4.1" % Test,
-      compilerPlugin("org.typelevel"   % "kind-projector" % "0.11.0" cross CrossVersion.full)
-    ),
-    testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
-    PB.targets in Compile := Seq(
-      scalapb.gen(grpc = true) -> (sourceManaged in Compile).value / "scalapb",
-      scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value / "scalapb"
+      "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.4.1" % Test
     )
-    //,bloopExportJarClassifiers in Global := Some(Set("sources"))
   )
+  .dependsOn(common.jvm)
 
 lazy val site = project
   .in(file("site"))
   .enablePlugins(ScalaJSBundlerPlugin)
+  .settings(sharedSettings: _*)
   .settings(
     name := "kafkamate-site",
-    version := "0.0.1",
-    scalaVersion := "2.13.3",
-    scalacOptions += "-Ymacro-annotations",
     scalacOptions ++= {
       if (scalaJSVersion.startsWith("0.6.")) Seq("-P:scalajs:sjsDefinedByDefault")
       else Nil
@@ -97,4 +80,34 @@ lazy val site = project
     addCommandAlias("dev", ";fastOptJS::startWebpackDevServer;~fastOptJS"),
     addCommandAlias("build", "fullOptJS::webpack")
   )
-  .dependsOn(service)
+  .dependsOn(service, common.js)
+
+lazy val common = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("common"))
+  .settings(sharedSettings: _*)
+
+lazy val sharedSettings = Seq(
+  version := "0.3.0",
+  scalaVersion := "2.13.3",
+  scalacOptions ++= Seq(
+    "-Ymacro-annotations"
+  ),
+  libraryDependencies ++= Seq(
+    "dev.zio"                         %% "zio"                                % ZIOVersion,
+    "dev.zio"                         %% "zio-macros"                         % ZIOVersion,
+    "dev.zio"                         %% "zio-kafka"                          % "0.12.0",
+    "io.grpc"                         %  "grpc-netty"                         % "1.31.0",
+    "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,
+    "io.circe"                        %% "circe-generic"                      % "0.13.0",
+    "dev.zio"                         %% "zio-test"                           % ZIOVersion % Test,
+    "dev.zio"                         %% "zio-test-sbt"                       % ZIOVersion % Test,
+  ),
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full),
+  testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
+  PB.targets in Compile := Seq(
+    scalapb.gen(grpc = true) -> (sourceManaged in Compile).value / "scalapb",
+    scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value / "scalapb"
+  )
+  //,bloopExportJarClassifiers in Global := Some(Set("sources"))
+)

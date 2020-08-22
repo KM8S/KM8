@@ -11,6 +11,8 @@ project/boot/
 project/plugins/project/
 project/activator-sbt*
 .sbtopts
+.js
+.jvm
 
 # Bloop
 .bloop
