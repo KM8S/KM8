@@ -1,11 +1,10 @@
 package io.kafkamate
 
-import slinky.core._
-import slinky.core.annotations.react
-import slinky.web.html._
-
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
+import slinky.core._
+import slinky.core.facade.Hooks._
+import slinky.web.html._
 
 @JSImport("resources/App.css", JSImport.Default)
 @js.native
@@ -15,20 +14,25 @@ object AppCSS extends js.Object
 @js.native
 object ReactLogo extends js.Object
 
-@react class App extends StatelessComponent {
-  type Props = Unit
-
+object App {
   private val css = AppCSS
 
-  def render() = {
+  case class Props(name: String)
+
+  /*private val clientLayer = io.kafkamate.kafkamate.ZioKafkamate.KafkaMateServiceClient.live(
+    scalapb.zio_grpc.ZManagedChannel(io.grpc.ManagedChannelBuilder.forAddress("localhost", 9000).usePlaintext())
+  )*/
+
+  val component = FunctionalComponent[Props] { case Props(name) =>
+    val (state, updateState) = useState(0)
     div(className := "App")(
       header(className := "App-header")(
         img(src := ReactLogo.asInstanceOf[String], className := "App-logo", alt := "logo"),
-        h1(className := "App-title")("Welcome to React (with Scala.js!)")
+        h1(className := "App-title")("Welcome to KafkaMate!")
       ),
-      p(className := "App-intro")(
-        "To get started, edit ", code("App.scala"), " and save to reload!"
-      )
+      br(),
+      button(onClick := { () => updateState(state + 1) })(s"Click me, $name!"),
+      p(className := "App-intro")(s"The button has been clicked $state times!")
     )
   }
 }

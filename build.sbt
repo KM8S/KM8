@@ -10,15 +10,15 @@ lazy val service = project
   .settings(
     name := "kafkamate-service",
     version := "0.2.0",
-    scalaVersion := "2.12.12",
+    scalaVersion := "2.13.3",
     scalacOptions := Seq(
+      "-Ymacro-annotations",
       "-unchecked",
       "-deprecation",
       "-encoding", "utf8",
       "-target:jvm-1.8",
       "-feature",
       "-language:_",
-      "-Yno-adapted-args",
       "-Ywarn-dead-code",
       "-Ywarn-macros:after",
       "-Ywarn-numeric-widen",
@@ -42,8 +42,7 @@ lazy val service = project
       "dev.zio"                         %% "zio-test"                           % ZIOVersion % Test,
       "dev.zio"                         %% "zio-test-sbt"                       % ZIOVersion % Test,
       "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.4.1" % Test,
-      compilerPlugin("org.typelevel"   % "kind-projector" % "0.11.0" cross CrossVersion.full),
-      compilerPlugin("org.scalamacros" % "paradise"       % "2.1.1"  cross CrossVersion.full)
+      compilerPlugin("org.typelevel"   % "kind-projector" % "0.11.0" cross CrossVersion.full)
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     PB.targets in Compile := Seq(
@@ -98,3 +97,4 @@ lazy val site = project
     addCommandAlias("dev", ";fastOptJS::startWebpackDevServer;~fastOptJS"),
     addCommandAlias("build", "fullOptJS::webpack")
   )
+  .dependsOn(service)

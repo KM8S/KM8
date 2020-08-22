@@ -3,11 +3,9 @@ package io.kafkamate
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSExportTopLevel, JSImport}
 import scala.scalajs.LinkingInfo
-
 import slinky.core._
 import slinky.web.ReactDOM
 import slinky.hot
-
 import org.scalajs.dom
 
 @JSImport("resources/index.css", JSImport.Default)
@@ -15,7 +13,7 @@ import org.scalajs.dom
 object IndexCSS extends js.Object
 
 object Main {
-  val css = IndexCSS
+  private val css = IndexCSS
 
   @JSExportTopLevel("main")
   def main(): Unit = {
@@ -30,6 +28,6 @@ object Main {
       elem
     }
 
-    ReactDOM.render(App(), container)
+    ReactDOM.render(App.component(App.Props(name = "Master")), container)
   }
 }
