@@ -6,6 +6,9 @@ import slinky.core._
 import slinky.core.facade.Hooks._
 import slinky.web.html._
 
+import scalapb.grpc.Channels
+import scala.concurrent.ExecutionContext.Implicits.global
+
 @JSImport("resources/App.css", JSImport.Default)
 @js.native
 object AppCSS extends js.Object
@@ -19,11 +22,11 @@ object KafkaMateApp {
 
   case class Props(name: String)
 
-  /*private val clientLayer = io.kafkamate.ZioKafkamate.KafkaMateServiceClient.live(
-    scalapb.zio_grpc.ZManagedChannel(scalapb.grpc.Channels.grpcwebChannel("http://localhost:9000"))
-  )*/
+  private val client =
+    KafkaMateServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:9000"))
 
-//  private val cl = KafkaMateServiceGrpcWeb.stub(scalapb.grpc.Channels.grpcwebChannel("http://localhost:9000"))
+  def produceMessage() =
+    client.produceMessage(Request("new-topic", "key", "value")).onComplete(_ => println("s-a dat"))
 
   val component = FunctionalComponent[Props] { case Props(name) =>
     val (state, updateState) = useState(0)
@@ -33,7 +36,7 @@ object KafkaMateApp {
         h1(className := "App-title")("Welcome to KafkaMate!")
       ),
       br(),
-      button(onClick := { () => updateState(state + 1) })(s"Click me, $name!"),
+      button(onClick := { () => produceMessage() })(s"Click me, $name!"),
       p(className := "App-intro")(s"The button has been clicked $state times!")
     )
   }
