@@ -14,14 +14,16 @@ object AppCSS extends js.Object
 @js.native
 object ReactLogo extends js.Object
 
-object App {
+object KafkaMateApp {
   private val css = AppCSS
 
   case class Props(name: String)
 
-  /*private val clientLayer = io.kafkamate.kafkamate.ZioKafkamate.KafkaMateServiceClient.live(
-    scalapb.zio_grpc.ZManagedChannel(io.grpc.ManagedChannelBuilder.forAddress("localhost", 9000).usePlaintext())
+  /*private val clientLayer = io.kafkamate.ZioKafkamate.KafkaMateServiceClient.live(
+    scalapb.zio_grpc.ZManagedChannel(scalapb.grpc.Channels.grpcwebChannel("http://localhost:9000"))
   )*/
+
+//  private val cl = KafkaMateServiceGrpcWeb.stub(scalapb.grpc.Channels.grpcwebChannel("http://localhost:9000"))
 
   val component = FunctionalComponent[Props] { case Props(name) =>
     val (state, updateState) = useState(0)

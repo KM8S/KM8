@@ -7,13 +7,17 @@ import slinky.core._
 import slinky.web.ReactDOM
 import slinky.hot
 import org.scalajs.dom
+//import zio._
 
 @JSImport("resources/index.css", JSImport.Default)
 @js.native
 object IndexCSS extends js.Object
 
-object Main {
+object Main /*extends App*/ {
   private val css = IndexCSS
+
+  /*def run(args: List[String]): URIO[ZEnv, ExitCode] =
+    ZIO(main()).exitCode*/
 
   @JSExportTopLevel("main")
   def main(): Unit = {
@@ -28,6 +32,6 @@ object Main {
       elem
     }
 
-    ReactDOM.render(App.component(App.Props(name = "Master")), container)
+    ReactDOM.render(KafkaMateApp.component(KafkaMateApp.Props(name = "Master")), container)
   }
 }

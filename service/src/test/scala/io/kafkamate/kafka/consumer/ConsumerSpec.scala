@@ -12,10 +12,8 @@ import zio.test.TestAspect._
 import zio.test.environment._
 import zio.test.{DefaultRunnableSpec, _}
 
-import KafkaConsumer.KafkaConsumer
-import kafkamate.Message
-
 object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
+  import KafkaConsumer._
 
   val testLayer: ZLayer[Any, TestFailure[Throwable], Clock with Blocking with StringProducer with KafkaConsumer] =
     (Clock.live >+>
