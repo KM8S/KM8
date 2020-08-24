@@ -33,5 +33,5 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
           records <- KafkaConsumer.consumeN(topic, 5)
         } yield assert(records)(equalTo(kvs.map(v => Message(v._1, v._2))))
       }
-    ).provideLayerShared(testLayer) @@ timeout(10.seconds)
+    ).provideLayerShared(testLayer) @@ timeout(30.seconds)
 }
