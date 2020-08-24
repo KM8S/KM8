@@ -29,13 +29,22 @@ object KafkaMateApp {
   val component = FunctionalComponent[Props] { case Props(name) =>
     val (state, updateState) = useState(0)
 
-    def produceMessage() =
+    def produceMessageFuture() =
       client
         .produceMessage(Request("test", "key", "value"))
         .onComplete {
           case Success(v) => updateState(state + 1); println("s-a dat: " + v)
-          case Failure(e) => updateState(state - 1); println("err: " + e)
+          case Failure(e) => updateState(state - 1); println("cip err: " + e)
         }
+
+    def produceMessageZIO() =
+      zio.Runtime.default.unsafeRunAsync(
+        zio.ZIO.fromFuture(implicit ec => client.produceMessage(Request("test", "key", "value")))
+          .fold(
+            e => {updateState(state - 1); println("cip err: " + e)},
+            v => {updateState(state + 1); println("s-a dat: " + v)}
+          )
+      )(_ => ())
 
     div(className := "App")(
       header(className := "App-header")(
@@ -43,7 +52,9 @@ object KafkaMateApp {
         h1(className := "App-title")("Welcome to KafkaMate!")
       ),
       br(),
-      button(onClick := { () => produceMessage() })(s"Click me, $name!"),
+      button(onClick := { () => produceMessageZIO() })(s"Click me, ZIO $name!"),
+      br(),
+      button(onClick := { () => produceMessageFuture() })(s"Click me, Future $name!"),
       p(className := "App-intro")(s"The button has been clicked $state times!")
     )
   }
