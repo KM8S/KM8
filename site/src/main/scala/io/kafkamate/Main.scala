@@ -13,6 +13,10 @@ import org.scalajs.dom
 @js.native
 object IndexCSS extends js.Object
 
+/**
+ * Don't forget to start envoyproxy docker
+ * docker run -d -v "$(pwd)"/common/src/main/resources/envoy.yaml:/etc/envoy/envoy.yaml:ro --network=host envoyproxy/envoy:v1.15.0
+ */
 object Main /*extends App*/ {
   private val css = IndexCSS
 
