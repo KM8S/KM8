@@ -7,13 +7,22 @@ import slinky.core._
 import slinky.web.ReactDOM
 import slinky.hot
 import org.scalajs.dom
+import zio._
 
 @JSImport("resources/index.css", JSImport.Default)
 @js.native
 object IndexCSS extends js.Object
 
-object Main {
+/**
+ * Don't forget to start envoyproxy docker
+ * https://github.com/grpc/grpc-web/tree/master/net/grpc/gateway/examples/helloworld
+ * docker run -d -v "$(pwd)"/common/src/main/resources/envoy.yaml:/etc/envoy/envoy.yaml:ro --network=host envoyproxy/envoy:v1.15.0
+ */
+object Main extends App {
   private val css = IndexCSS
+
+  def run(args: List[String]): URIO[ZEnv, ExitCode] =
+    ZIO(main()).exitCode
 
   @JSExportTopLevel("main")
   def main(): Unit = {
@@ -28,6 +37,6 @@ object Main {
       elem
     }
 
-    ReactDOM.render(App.component(App.Props(name = "Master")), container)
+    ReactDOM.render(KafkaMateApp.component(KafkaMateApp.Props(name = "Master")), container)
   }
 }

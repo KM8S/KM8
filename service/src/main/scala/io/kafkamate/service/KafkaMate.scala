@@ -9,8 +9,6 @@ import kafka.KafkaConsumer
 import kafka.KafkaConsumer.KafkaConsumer
 import kafka.KafkaProducer
 import kafka.KafkaProducer.KafkaProducer
-import kafkamate.{Message, Request, Response}
-import kafkamate.ZioKafkamate
 
 object KafkaMate {
   type Env = ZEnv with KafkaConsumer.KafkaConsumer with KafkaProducer.KafkaProducer

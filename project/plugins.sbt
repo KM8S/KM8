@@ -10,7 +10,11 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 
 addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.34")
 
-libraryDependencies ++= Seq("com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen" % "0.4.0-RC3+10-8091a078-SNAPSHOT")
+libraryDependencies ++= Seq(
+  "com.thesamet.scalapb"            %% "compilerplugin"             % "0.10.8",
+  "com.thesamet.scalapb.grpcweb"    %% "scalapb-grpcweb-code-gen"   % "0.4.1",
+  "com.thesamet.scalapb.zio-grpc"   %% "zio-grpc-codegen"           % "0.4.0"
+)
 
 // For Scala.js:
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.1.1")

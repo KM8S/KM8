@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option java_package = "io.kafkamate";
+option java_package = "io";
 
 package kafkamate;
 

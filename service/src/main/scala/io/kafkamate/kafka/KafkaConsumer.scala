@@ -17,8 +17,6 @@ import zio.kafka.consumer.Consumer._
 import zio.kafka.serde.Deserializer
 import zio.macros.accessible
 
-import io.kafkamate.kafkamate.Message
-
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
 
