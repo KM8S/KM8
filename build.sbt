@@ -2,6 +2,7 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
 lazy val ZIOVersion  = "1.0.1"
 lazy val GrpcVersion = "1.31.1"
+lazy val SlinkyVersion = "0.6.6"
 
 lazy val service = project
   .in(file("service"))
@@ -52,19 +53,19 @@ lazy val site = project
     },
     version in webpack := "4.43.0",
     version in startWebpackDevServer:= "3.11.0",
-    scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "me.shadaj" %%% "slinky-core" % "0.6.5",
-      "me.shadaj" %%% "slinky-web" % "0.6.5",
-      "me.shadaj" %%% "slinky-native" % "0.6.5",
-      "me.shadaj" %%% "slinky-hot" % "0.6.5",
-      //"me.shadaj" %%% "slinky-scalajsreact-interop" % "0.6.5", // not avail for 2.13 yet
+      "me.shadaj" %%% "slinky-core" % SlinkyVersion,
+      "me.shadaj" %%% "slinky-web" % SlinkyVersion,
+      "me.shadaj" %%% "slinky-native" % SlinkyVersion,
+      "me.shadaj" %%% "slinky-hot" % SlinkyVersion,
+      //"me.shadaj" %%% "slinky-scalajsreact-interop" % SlinkyVersion, // not avail for 2.13 yet
       "org.scalatest" %%% "scalatest" % "3.1.1" % Test
     ),
     npmDependencies in Compile ++= Seq(
       "react" -> "16.13.1",
       "react-dom" -> "16.13.1",
-      "react-proxy" -> "1.1.8"
+      "react-proxy" -> "1.1.8",
+      "grpc-web" -> "1.0.7"
     ),
     npmDevDependencies in Compile ++= Seq(
       "file-loader" -> "6.0.0",

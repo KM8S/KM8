@@ -34,7 +34,7 @@ import zio.macros.accessible
   private def createService(config: ConfigProperties): Service =
     new Service with LoggingSupport {
       private lazy val timeout: Duration = 1000.millis
-      private lazy val consumerSettings: ConsumerSettings =
+      private def consumerSettings: ConsumerSettings =
         ConsumerSettings(config.kafkaHosts)
           .withGroupId(UUID.randomUUID().toString)
           .withClientId("kafkamate")
