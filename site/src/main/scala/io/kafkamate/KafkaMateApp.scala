@@ -1,13 +1,11 @@
 package io.kafkamate
 
-import io.grpc.{Channel, ManagedChannel, MethodDescriptor, Status, StatusRuntimeException}
-import io.grpc.stub.StreamObserver
+import io.grpc.ManagedChannel
+import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
+import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.facade.Hooks._
 import slinky.web.html._
-import scalapb.grpc.{Channels, ClientCalls}
-import scalapb.grpcweb.Metadata
-import scalapb.grpcweb.native.{ClientReadableStream, ErrorInfo, StatusInfo}
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
@@ -28,10 +26,10 @@ object KafkaMateApp {
   case class Props(name: String)
 
   private val grpcChannel = Channels.grpcwebChannel("http://localhost:8081")
-  private val kafkaGrpcClient = KafkaMateServiceGrpcWeb.stub(grpcChannel)
+  private val mateGrpcClient = KafkaMateServiceGrpcWeb.stub(grpcChannel)
 
   case class Consumer(channel: ManagedChannel) {
-    private var stream: ClientReadableStream = _
+    private var stream: ClientCallStreamObserver = _
 
     private def responseObs: StreamObserver[Message] = new StreamObserver[Message] {
       def onNext(value: Message): Unit =
@@ -48,51 +46,11 @@ object KafkaMateApp {
       }
     }
 
-    private def asyncServerStreamingCall[ReqT, RespT](
-      channel: Channel,
-      method: MethodDescriptor[ReqT, RespT],
-      metadata: Metadata = Metadata.empty,
-      request: ReqT,
-      responseObserver: StreamObserver[RespT]
-    ): ClientReadableStream =
-      channel.client
-        .rpcCall(
-          channel.baseUrl + "/" + method.fullName,
-          request,
-          metadata,
-          method.methodInfo
-        )
-        .on("data", { res: RespT => responseObserver.onNext(res) })
-        .on(
-          "status",
-          { statusInfo: StatusInfo =>
-            if (statusInfo.code != 0) {
-              responseObserver.onError(
-                new StatusRuntimeException(Status.fromStatusInfo(statusInfo))
-              )
-            } else {
-              // Once https://github.com/grpc/grpc-web/issues/289 is fixed.
-              responseObserver.onCompleted()
-            }
-          }
-        )
-        .on(
-          "error",
-          { errorInfo: ErrorInfo =>
-            responseObserver
-              .onError(
-                new StatusRuntimeException(Status.fromErrorInfo(errorInfo))
-              )
-          }
-        )
-        .on("end", { _: Any => responseObserver.onCompleted() })
-
     def start(): Unit =
       stream =
         if (stream == null) {
-          println("Start reading stream!")
-          asyncServerStreamingCall(channel, KafkaMateServiceGrpcWeb.METHOD_CONSUME_MESSAGES, Metadata.empty, Request("test", "key", "value"), responseObs)
-          //ClientCalls.asyncServerStreamingCall(channel, KafkaMateServiceGrpcWeb.METHOD_CONSUME_MESSAGES, CallOptions.DEFAULT, Metadata.empty, Request("test", "key", "value"), responseObs)
+          println("Starting to read the stream...")
+          mateGrpcClient.consumeMessages(Request("test", "key", "value"), responseObs)
         } else {
           println("Stream already started!")
           stream
@@ -101,24 +59,24 @@ object KafkaMateApp {
     def stop(): Unit =
       if (stream == null) println("Stream already stopped!")
       else {
-        println("Stopped reading stream!")
         stream.cancel()
         stream = null
+        println("Stream canceled!")
       }
   }
+
+  private val consumer = Consumer(grpcChannel)
 
   val component = FunctionalComponent[Props] { case Props(name) =>
     val (state, updateState) = useState(0)
 
     def produceMessage() =
-      kafkaGrpcClient
+      mateGrpcClient
         .produceMessage(Request("test", "key", "value"))
         .onComplete {
           case Success(v) => updateState(state + 1); println("Message produced: " + v)
           case Failure(e) => updateState(state - 1); println("Error producing message: " + e)
         }
-
-    val consumer = Consumer(grpcChannel)
 
     div(className := "App")(
       header(className := "App-header")(

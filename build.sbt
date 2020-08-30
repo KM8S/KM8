@@ -64,8 +64,7 @@ lazy val site = project
     npmDependencies in Compile ++= Seq(
       "react" -> "16.13.1",
       "react-dom" -> "16.13.1",
-      "react-proxy" -> "1.1.8",
-      "grpc-web" -> "1.0.7"
+      "react-proxy" -> "1.1.8"
     ),
     npmDevDependencies in Compile ++= Seq(
       "file-loader" -> "6.0.0",
