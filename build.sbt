@@ -21,7 +21,8 @@ lazy val service = project
       "-Ywarn-numeric-widen",
       "-Ywarn-value-discard",
       "-Xlint",
-      //"-Xfatal-warnings",
+      //"-Xfatal-warnings",,
+      "-Xlint:-byname-implicit",
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
@@ -58,13 +59,20 @@ lazy val site = project
       "me.shadaj" %%% "slinky-web" % SlinkyVersion,
       "me.shadaj" %%% "slinky-native" % SlinkyVersion,
       "me.shadaj" %%% "slinky-hot" % SlinkyVersion,
-      //"me.shadaj" %%% "slinky-scalajsreact-interop" % SlinkyVersion, // not avail for 2.13 yet
+      "me.shadaj" %%% "slinky-react-router" % SlinkyVersion,
+      "me.shadaj" %%% "slinky-scalajsreact-interop" % SlinkyVersion,
+      //"com.github.oen9" %%% "slinky-bridge-react-konva" % "0.1.1",
       "org.scalatest" %%% "scalatest" % "3.1.1" % Test
     ),
     npmDependencies in Compile ++= Seq(
-      "react" -> "16.13.1",
-      "react-dom" -> "16.13.1",
-      "react-proxy" -> "1.1.8"
+      "react"            -> "16.13.1",
+      "react-dom"        -> "16.13.1",
+      "react-proxy"      -> "1.1.8",
+      "react-router-dom" -> "5.2.0",
+      "path-to-regexp"   -> "3.0.0",
+      //"react-konva"      -> "16.13.0-3",
+      //"konva"            -> "4.2.2",
+      "use-image"        -> "1.0.6"
     ),
     npmDevDependencies in Compile ++= Seq(
       "file-loader" -> "6.0.0",

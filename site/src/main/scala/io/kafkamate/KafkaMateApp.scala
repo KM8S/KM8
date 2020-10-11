@@ -1,9 +1,8 @@
 package io.kafkamate
 
-import io.grpc.ManagedChannel
-import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 import scalapb.grpc.Channels
 import slinky.core._
+import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.web.html._
 
@@ -20,75 +19,124 @@ object AppCSS extends js.Object
 @js.native
 object ReactLogo extends js.Object
 
-object KafkaMateApp {
+@react object KafkaMateApp {
   private val css = AppCSS
+//  case class Props(settings: String)
+  type Props = Unit
 
-  case class Props(name: String)
+  case class ProducerState(
+    produceMessage: Option[ProduceMessage] = None,
+    produced: Int = 0
+  )
 
-  private val grpcChannel = Channels.grpcwebChannel("http://localhost:8081")
-  private val mateGrpcClient = KafkaMateServiceGrpcWeb.stub(grpcChannel)
+  case class Item(key: String, value: String)
+  case class ConsumerState(
+    streamData: Option[Boolean] = None,
+    items: List[Item] = List.empty
+  )
 
-  case class Consumer(channel: ManagedChannel) {
-    private var stream: ClientCallStreamObserver = _
+  sealed trait ProducerAction
+  case class ProduceMessage(key: String, value: String) extends ProducerAction
+  case class UpdateProduced(value: Int) extends ProducerAction
 
-    private def responseObs: StreamObserver[Message] = new StreamObserver[Message] {
-      def onNext(value: Message): Unit =
-        println(s"Message consumed: $value")
+  sealed trait ConsumerAction
+  case object StreamDataOn extends ConsumerAction
+  case object StreamDataOff extends ConsumerAction
+  case class NewItem(key: String, value: String) extends ConsumerAction
 
-      def onError(throwable: Throwable): Unit = {
-        println(s"Failed consuming messages: ${throwable.getMessage}")
-        stop()
-      }
+  private def uuid: String = java.util.UUID.randomUUID.toString
 
-      def onCompleted(): Unit = {
-        println("Finished consuming messages!")
-        stop()
-      }
+  private def consumerReducer(state: ConsumerState, action: ConsumerAction): ConsumerState =
+    action match {
+      case StreamDataOn =>
+        state.copy(
+          streamData = Some(true),
+          items = if (state.streamData.contains(true)) state.items else List.empty
+        )
+      case StreamDataOff => state.copy(streamData = Some(false))
+      case NewItem(key, value) => state.copy(items = state.items :+ Item(key, value))
     }
 
-    def start(): Unit =
-      stream =
-        if (stream == null) {
-          println("Starting to read the stream...")
-          mateGrpcClient.consumeMessages(Request("test", "key", "value"), responseObs)
-        } else {
-          println("Stream already started!")
-          stream
-        }
+  private def producerReducer(state: ProducerState, action: ProducerAction): ProducerState =
+    action match {
+      case m: ProduceMessage => state.copy(produceMessage = Some(m))
+      case UpdateProduced(value) => state.copy(produced = state.produced + value, produceMessage = None)
+    }
 
-    def stop(): Unit =
-      if (stream == null) println("Stream already stopped!")
-      else {
-        stream.cancel()
-        stream = null
-        println("Stream canceled!")
-      }
-  }
+  private val mateGrpcClient =
+    KafkaMateServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
-  private val consumer = Consumer(grpcChannel)
+  private val consumer =
+    Utils.KafkaMateServiceGrpcConsumer(mateGrpcClient)
 
-  val component = FunctionalComponent[Props] { case Props(name) =>
-    val (state, updateState) = useState(0)
+  val component = FunctionalComponent[Props] { _ =>
+    val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
+    val (producerState, producerDispatch) = useReducer(producerReducer, ProducerState())
 
-    def produceMessage() =
-      mateGrpcClient
-        .produceMessage(Request("test", "key", "value"))
-        .onComplete {
-          case Success(v) => updateState(state + 1); println("Message produced: " + v)
-          case Failure(e) => updateState(state - 1); println("Error producing message: " + e)
-        }
+    useEffect(
+      () => {
+        if (consumerState.streamData.contains(true))
+          consumer.start(Request("test", "", ""))(v => {consumerDispatch(NewItem(v.key, v.value)); println(s"Got $v")})
+
+        if (consumerState.streamData.contains(false))
+          consumer.stop()
+
+        /** This is an example on how to clean up the effect
+         * () => consumer.stop()
+         */
+      },
+      List(consumerState.streamData)
+    )
+
+    useEffect(
+      () => {
+        if (producerState.produceMessage.isDefined)
+          mateGrpcClient
+            .produceMessage(Request("test", producerState.produceMessage.get.key, producerState.produceMessage.get.value))
+            .onComplete {
+              case Success(v) => producerDispatch(UpdateProduced(1)); println("Message produced: " + v)
+              case Failure(e) => producerDispatch(UpdateProduced(-1)); println("Error producing message: " + e)
+            }
+      },
+      List(producerState.produceMessage)
+    )
 
     div(className := "App")(
-      header(className := "App-header")(
+      /*header(className := "App-header")(
         img(src := ReactLogo.asInstanceOf[String], className := "App-logo", alt := "logo"),
         h1(className := "App-title")("Welcome to KafkaMate!")
-      ),
+      ),*/
+      button(className:= "btn btn-success", onClick := { () => producerDispatch(ProduceMessage("ala", "bala")) })(s"Produce random message!"),
+      p(className := "App-intro")(s"Produced ${producerState.produced} messages!"),
       br(),
-      button(onClick := { () => produceMessage() })(s"Produce random message!"),
-      p(className := "App-intro")(s"Produced $state messages!"),
-      br(),
-      button(onClick := { () => consumer.start() })(s"Stream data to console!"),
-      button(onClick := { () => consumer.stop() })(s"Close stream!")
+      label(className := "inline")(button(className:= "btn btn-primary", onClick := { () => consumerDispatch(StreamDataOn) })(s"Stream data!")),
+      label(className := "inline")(button(className:= "btn btn-danger", onClick := { () => consumerDispatch(StreamDataOff) })(s"Close stream!")),
+      div(className := "container card-body table-responsive",
+        table(className := "table table-hover",
+          thead(
+            tr(
+              th("Key"),
+              th("Value")
+            )
+          ),
+          tbody(
+            tr(key := "test1")(
+              td("some key"),
+              td("some value")
+            ),
+            tr(key := "test2")(
+              td("some key 2"),
+              td("some value 2")
+            ),
+            consumerState.items.zipWithIndex.map { case (item, idx) =>
+              tr(key := idx.toString)(
+                td(item.key),
+                td(item.value)
+              )
+            }
+          )
+        )
+      )
     )
   }
 }

@@ -9,6 +9,9 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSExportTopLevel, JSImport}
 import scala.scalajs.LinkingInfo
 
+import bridges.reactrouter.HashRouter
+
+
 @JSImport("resources/index.css", JSImport.Default)
 @js.native
 object IndexCSS extends js.Object
@@ -34,6 +37,6 @@ object Main {
       elem
     }
 
-    ReactDOM.render(KafkaMateApp.component(KafkaMateApp.Props("Master")), container)
+    ReactDOM.render(HashRouter(MainRouter(MainRouter.Props("KafkaMate"))), container)
   }
 }
