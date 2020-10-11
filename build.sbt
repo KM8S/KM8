@@ -90,7 +90,8 @@ lazy val site = project
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     requireJsDomEnv in Test := true,
     addCommandAlias("dev", ";fastOptJS::startWebpackDevServer;~fastOptJS"),
-    addCommandAlias("build", "fullOptJS::webpack")
+    addCommandAlias("build", "fullOptJS::webpack"),
+    test in Compile := {} //disable site tests for now
   )
   .dependsOn(common.js)
 

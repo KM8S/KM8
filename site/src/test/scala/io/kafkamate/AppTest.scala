@@ -8,7 +8,7 @@ import org.scalatest.funsuite.AnyFunSuite
 class AppTest extends AnyFunSuite {
   test("Renders without crashing") {
     val div = document.createElement("div")
-    ReactDOM.render(KafkaMateApp.component(KafkaMateApp.Props("Master")), div)
+    ReactDOM.render(KafkaMateApp.component(), div)
     ReactDOM.unmountComponentAtNode(div)
   }
 }
