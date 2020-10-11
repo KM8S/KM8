@@ -2,6 +2,7 @@ package io.kafkamate
 
 import scalapb.grpc.Channels
 import slinky.core._
+import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.web.html._
 
@@ -18,16 +19,17 @@ object AppCSS extends js.Object
 @js.native
 object ReactLogo extends js.Object
 
-object KafkaMateApp {
+@react object KafkaMateApp {
   private val css = AppCSS
-  case class Props(settings: String)
+//  case class Props(settings: String)
+  type Props = Unit
 
-  case class Item(kkey: String, value: String)
   case class ProducerState(
     produceMessage: Option[ProduceMessage] = None,
     produced: Int = 0
   )
 
+  case class Item(key: String, value: String)
   case class ConsumerState(
     streamData: Option[Boolean] = None,
     items: List[Item] = List.empty
@@ -42,9 +44,15 @@ object KafkaMateApp {
   case object StreamDataOff extends ConsumerAction
   case class NewItem(key: String, value: String) extends ConsumerAction
 
+  private def uuid: String = java.util.UUID.randomUUID.toString
+
   private def consumerReducer(state: ConsumerState, action: ConsumerAction): ConsumerState =
     action match {
-      case StreamDataOn => state.copy(streamData = Some(true), items = List.empty)
+      case StreamDataOn =>
+        state.copy(
+          streamData = Some(true),
+          items = if (state.streamData.contains(true)) state.items else List.empty
+        )
       case StreamDataOff => state.copy(streamData = Some(false))
       case NewItem(key, value) => state.copy(items = state.items :+ Item(key, value))
     }
@@ -52,7 +60,7 @@ object KafkaMateApp {
   private def producerReducer(state: ProducerState, action: ProducerAction): ProducerState =
     action match {
       case m: ProduceMessage => state.copy(produceMessage = Some(m))
-      case UpdateProduced(value) => state.copy(produced = value, produceMessage = None)
+      case UpdateProduced(value) => state.copy(produced = state.produced + value, produceMessage = None)
     }
 
   private val mateGrpcClient =
@@ -61,7 +69,7 @@ object KafkaMateApp {
   private val consumer =
     Utils.KafkaMateServiceGrpcConsumer(mateGrpcClient)
 
-  val component = FunctionalComponent[Props] { case Props(settings) =>
+  val component = FunctionalComponent[Props] { _ =>
     val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
     val (producerState, producerDispatch) = useReducer(producerReducer, ProducerState())
 
@@ -73,7 +81,9 @@ object KafkaMateApp {
         if (consumerState.streamData.contains(false))
           consumer.stop()
 
-        () => consumer.stop() //This is used for cleaning up the effect
+        /** This is an example on how to clean up the effect
+         * () => consumer.stop()
+         */
       },
       List(consumerState.streamData)
     )
@@ -84,35 +94,44 @@ object KafkaMateApp {
           mateGrpcClient
             .produceMessage(Request("test", producerState.produceMessage.get.key, producerState.produceMessage.get.value))
             .onComplete {
-              case Success(v) => producerDispatch(UpdateProduced(producerState.produced + 1)); println("Message produced: " + v)
-              case Failure(e) => producerDispatch(UpdateProduced(producerState.produced - 1)); println("Error producing message: " + e)
+              case Success(v) => producerDispatch(UpdateProduced(1)); println("Message produced: " + v)
+              case Failure(e) => producerDispatch(UpdateProduced(-1)); println("Error producing message: " + e)
             }
       },
       List(producerState.produceMessage)
     )
 
     div(className := "App")(
-      header(className := "App-header")(
+      /*header(className := "App-header")(
         img(src := ReactLogo.asInstanceOf[String], className := "App-logo", alt := "logo"),
         h1(className := "App-title")("Welcome to KafkaMate!")
-      ),
-      br(),
-      button(onClick := { () => producerDispatch(ProduceMessage("ala", "bala")) })(s"Produce random message!"),
+      ),*/
+      button(className:= "btn btn-success", onClick := { () => producerDispatch(ProduceMessage("ala", "bala")) })(s"Produce random message!"),
       p(className := "App-intro")(s"Produced ${producerState.produced} messages!"),
       br(),
-      label(className := "inline")(button(onClick := { () => consumerDispatch(StreamDataOn) })(s"Stream data to console!"), " "),
-      label(className := "inline")(button(onClick := { () => consumerDispatch(StreamDataOff) })(s"Close stream!")),
-      div(className := "card-body",
-        table(className := "table table-striped",
-          tbody(
+      label(className := "inline")(button(className:= "btn btn-primary", onClick := { () => consumerDispatch(StreamDataOn) })(s"Stream data!")),
+      label(className := "inline")(button(className:= "btn btn-danger", onClick := { () => consumerDispatch(StreamDataOff) })(s"Close stream!")),
+      div(className := "container card-body table-responsive",
+        table(className := "table table-hover",
+          thead(
             tr(
-              td("Key"),
-              td("Value")
+              th("Key"),
+              th("Value")
+            )
+          ),
+          tbody(
+            tr(key := "test1")(
+              td("some key"),
+              td("some value")
             ),
-            consumerState.items.map { i =>
-              tr(
-                td(i.kkey),
-                td(i.value)
+            tr(key := "test2")(
+              td("some key 2"),
+              td("some value 2")
+            ),
+            consumerState.items.zipWithIndex.map { case (item, idx) =>
+              tr(key := idx.toString)(
+                td(item.key),
+                td(item.value)
               )
             }
           )
