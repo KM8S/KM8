@@ -3,8 +3,6 @@ package kafka
 
 import java.util.UUID
 
-import config._
-import Config._
 import com.github.mlangc.slf4zio.api._
 import org.apache.kafka.common.TopicPartition
 import zio._
@@ -17,6 +15,8 @@ import zio.kafka.consumer.Consumer._
 import zio.kafka.serde.Deserializer
 import zio.macros.accessible
 
+import config._, Config._
+
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
 
@@ -25,7 +25,7 @@ import zio.macros.accessible
     def consumeStream(topic: String): ZStream[Clock with Blocking, Throwable, Message]
   }
 
-  private [kafka] lazy val kafkaConsumerLayer: URLayer[Config, KafkaConsumer] =
+  private [kafka] lazy val kafkaConsumerLayer: URLayer[HasConfig, KafkaConsumer] =
     ZLayer.fromService(createService)
 
   lazy val liveLayer: ULayer[KafkaConsumer] =
@@ -36,7 +36,7 @@ import zio.macros.accessible
       private lazy val timeout: Duration = 1000.millis
       private def consumerSettings: ConsumerSettings =
         ConsumerSettings(config.kafkaHosts)
-          .withGroupId(UUID.randomUUID().toString)
+          .withGroupId(s"kafkamate-${UUID.randomUUID().toString}")
           .withClientId("kafkamate")
           .withOffsetRetrieval(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))
           .withCloseTimeout(30.seconds)

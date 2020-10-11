@@ -46,15 +46,15 @@ object ReactLogo extends js.Object
 
   private def uuid: String = java.util.UUID.randomUUID.toString
 
-  private def consumerReducer(state: ConsumerState, action: ConsumerAction): ConsumerState =
+  private def consumerReducer(prevState: ConsumerState, action: ConsumerAction): ConsumerState =
     action match {
       case StreamDataOn =>
-        state.copy(
+        prevState.copy(
           streamData = Some(true),
-          items = if (state.streamData.contains(true)) state.items else List.empty
+          items = List.empty
         )
-      case StreamDataOff => state.copy(streamData = Some(false))
-      case NewItem(key, value) => state.copy(items = state.items :+ Item(key, value))
+      case StreamDataOff => prevState.copy(streamData = Some(false))
+      case NewItem(key, value) => prevState.copy(items = prevState.items :+ Item(key, value))
     }
 
   private def producerReducer(state: ProducerState, action: ProducerAction): ProducerState =
@@ -81,9 +81,8 @@ object ReactLogo extends js.Object
         if (consumerState.streamData.contains(false))
           consumer.stop()
 
-        /** This is an example on how to clean up the effect
-         * () => consumer.stop()
-         */
+        /** This is an example on how to clean up the effect */
+        () => consumer.stop()
       },
       List(consumerState.streamData)
     )
@@ -120,14 +119,6 @@ object ReactLogo extends js.Object
             )
           ),
           tbody(
-            tr(key := "test1")(
-              td("some key"),
-              td("some value")
-            ),
-            tr(key := "test2")(
-              td("some key 2"),
-              td("some value 2")
-            ),
             consumerState.items.zipWithIndex.map { case (item, idx) =>
               tr(key := idx.toString)(
                 td(item.key),

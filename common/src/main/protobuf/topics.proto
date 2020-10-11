@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option java_package = "io";
+
+package topic;
+
+message TopicRequest {
+  string clusterId = 1;
+}
+
+message TopicDetails {
+  string name = 1;
+  int32 partitions = 2;
+  int32 replication = 3;
+  string cleanupPolicy = 4;
+  uint64 size = 5;
+}
+
+message TopicResponse {
+  repeated TopicDetails topics = 1;
+}
+
+service TopicsService {
+  rpc GetTopics(TopicRequest) returns (TopicResponse);
+}

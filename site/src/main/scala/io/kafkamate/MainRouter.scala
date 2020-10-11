@@ -17,17 +17,17 @@ import scala.scalajs.js.annotation.JSImport
 
   val component = FunctionalComponent[Props] { case Props(appName) =>
     val routerSwitch = Switch(
-      Route(exact = true, path = Loc.home, component = KafkaMateApp.component),
+      Route(exact = true, path = Loc.home, component = ListTopics.component),
       Route(exact = true, path = Loc.brokers, component = KafkaMateApp.component),
-      Route(exact = true, path = Loc.topics, component = KafkaMateApp.component)
+      Route(exact = true, path = Loc.topics, component = ListTopics.component)
     )
 
     Layout(routerSwitch)
   }
 
   object Loc {
-    val home           = "/"
     val brokers        = "/brokers"
     val topics         = "/topics"
+    val home           = topics
   }
 }

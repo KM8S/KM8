@@ -21,7 +21,7 @@ trait HelperSpec {
     (producerSettings.toLayer ++ ZLayer.succeed(Serde.string: Serializer[Any, String])) >>>
       Producer.live[Any, String, String]
 
-  val testConfigLayer: RLayer[Clock with Blocking with Kafka, Config with Clock with Blocking] =
+  val testConfigLayer: RLayer[Clock with Blocking with Kafka, HasConfig with Clock with Blocking] =
     ZLayer.requires[Clock] ++
       ZLayer.requires[Blocking] ++
       ZLayer.fromService[Kafka.Service, ConfigProperties] { kafka =>

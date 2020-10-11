@@ -11,9 +11,9 @@ import kafka.KafkaProducer
 import kafka.KafkaProducer.KafkaProducer
 
 object KafkaMate {
-  type Env = ZEnv with KafkaConsumer.KafkaConsumer with KafkaProducer.KafkaProducer
+  type Env = ZEnv with KafkaConsumer with KafkaProducer
 
-  lazy val liveLayer: ULayer[ZEnv with KafkaProducer with KafkaConsumer] =
+  lazy val liveLayer: ULayer[Env] =
     ZEnv.live ++ KafkaProducer.liveLayer ++ KafkaConsumer.liveLayer
 
   object Service extends ZioKafkamate.RKafkaMateService[Env] {
