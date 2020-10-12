@@ -9,9 +9,11 @@ import slinky.web.html._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
+import bridges.reactrouter.ReactRouterDOM
 import messages._
 
-@react object KafkaMateApp {
+@react object ListMessages {
+  private val css = AppCSS
 //  case class Props(settings: String)
   type Props = Unit
 
@@ -20,7 +22,11 @@ import messages._
     produced: Int = 0
   )
 
-  case class Item(key: String, value: String)
+  case class Item(offset: Long, partition: Int, timestamp: Long, key: String, value: String)
+  case object Item {
+    def fromMessage(m: Message): Item =
+      Item(m.offset, m.partition, m.timestamp, m.key, m.value)
+  }
   case class ConsumerState(
     streamData: Option[Boolean] = None,
     items: List[Item] = List.empty
@@ -33,9 +39,7 @@ import messages._
   sealed trait ConsumerAction
   case object StreamDataOn extends ConsumerAction
   case object StreamDataOff extends ConsumerAction
-  case class NewItem(key: String, value: String) extends ConsumerAction
-
-  private def uuid: String = java.util.UUID.randomUUID.toString
+  case class NewItem(item: Item) extends ConsumerAction
 
   private def consumerReducer(prevState: ConsumerState, action: ConsumerAction): ConsumerState =
     action match {
@@ -45,7 +49,7 @@ import messages._
           items = List.empty
         )
       case StreamDataOff => prevState.copy(streamData = Some(false))
-      case NewItem(key, value) => prevState.copy(items = prevState.items :+ Item(key, value))
+      case NewItem(item) => prevState.copy(items = prevState.items :+ item)
     }
 
   private def producerReducer(state: ProducerState, action: ProducerAction): ProducerState =
@@ -61,13 +65,16 @@ import messages._
     Utils.KafkaMateServiceGrpcConsumer(mateGrpcClient)
 
   val component = FunctionalComponent[Props] { _ =>
+    val params = ReactRouterDOM.useParams().toMap
+    val topicName = params.getOrElse("name", "")
+
     val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
     val (producerState, producerDispatch) = useReducer(producerReducer, ProducerState())
 
     useEffect(
       () => {
         if (consumerState.streamData.contains(true))
-          consumer.start(ConsumeRequest("test"))(v => consumerDispatch(NewItem(v.key, v.value)))
+          consumer.start(ConsumeRequest(topicName))(v => consumerDispatch(NewItem(Item.fromMessage(v))))
 
         if (consumerState.streamData.contains(false))
           consumer.stop()
@@ -82,7 +89,7 @@ import messages._
       () => {
         if (producerState.produceMessage.isDefined)
           mateGrpcClient
-            .produceMessage(ProduceRequest("test", producerState.produceMessage.get.key, producerState.produceMessage.get.value))
+            .produceMessage(ProduceRequest(topicName, producerState.produceMessage.get.key, producerState.produceMessage.get.value))
             .onComplete {
               case Success(v) => producerDispatch(UpdateProduced(1)); println("Message produced: " + v)
               case Failure(e) => producerDispatch(UpdateProduced(-1)); println("Error producing message: " + e)
@@ -92,12 +99,7 @@ import messages._
     )
 
     div(className := "App")(
-      /*header(className := "App-header")(
-        img(src := ReactLogo.asInstanceOf[String], className := "App-logo", alt := "logo"),
-        h1(className := "App-title")("Welcome to KafkaMate!")
-      ),*/
-      button(className:= "btn btn-success", onClick := { () => producerDispatch(ProduceMessage("ala", "bala")) })(s"Produce random message!"),
-      p(className := "App-intro")(s"Produced ${producerState.produced} messages!"),
+      h2(s"Topic $topicName"),
       br(),
       label(className := "inline")(button(className:= "btn btn-primary", onClick := { () => consumerDispatch(StreamDataOn) })(s"Stream data!")),
       label(className := "inline")(button(className:= "btn btn-danger", onClick := { () => consumerDispatch(StreamDataOff) })(s"Close stream!")),
@@ -105,6 +107,9 @@ import messages._
         table(className := "table table-hover",
           thead(
             tr(
+              th("Offset"),
+              th("Partition"),
+              th("Timestamp"),
               th("Key"),
               th("Value")
             )
@@ -112,6 +117,9 @@ import messages._
           tbody(
             consumerState.items.zipWithIndex.map { case (item, idx) =>
               tr(key := idx.toString)(
+                td(item.offset.toString),
+                td(item.partition.toString),
+                td(item.timestamp.toString),
                 td(item.key),
                 td(item.value)
               )

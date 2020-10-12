@@ -1,3 +1,11 @@
 .App-logo {
     height: 30px;
 }
+
+.main-content.mt {
+    margin-top: 5rem !important;
+}
+
+tr a {
+   display: block;
+}

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option java_package = "io.kafkamate";
+
+package messages;
+
+message ConsumeRequest {
+  string topicName = 1;
+}
+
+message ProduceRequest {
+  string topicName = 1;
+  string key = 2;
+  string value = 3;
+}
+
+message ProduceResponse {
+  string status = 1;
+}
+
+message Message {
+  uint64 offset = 1;
+  int32 partition = 2;
+  uint64 timestamp = 3;
+  string key = 4;
+  string value = 5;
+}
+
+service MessagesService {
+  rpc ProduceMessage(ProduceRequest) returns (ProduceResponse);
+
+  rpc ConsumeMessages(ConsumeRequest) returns (stream Message);
+}

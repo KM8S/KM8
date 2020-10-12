@@ -4,18 +4,18 @@ package service
 import io.grpc.Status
 import zio.{ULayer, ZEnv, ZIO}
 
-import kafka.TopicExplorer
-import io.topics._
+import kafka.KafkaExplorer
+import topics._
 
-object TopicService {
-  type Env = ZEnv with TopicExplorer.HasTopicExplorer
+object TopicsService {
+  type Env = ZEnv with KafkaExplorer.HasKafkaExplorer
 
   lazy val liveLayer: ULayer[Env] =
-    ZEnv.live ++ TopicExplorer.liveLayer.orDie
+    ZEnv.live ++ KafkaExplorer.liveLayer.orDie
 
   object Service extends ZioTopics.RTopicsService[Env] {
     def getTopics(request: TopicRequest): ZIO[Env, Status, TopicResponse] =
-      TopicExplorer
+      KafkaExplorer
         .listTopics
         .bimap(Status.fromThrowable, r => TopicResponse(r))
   }

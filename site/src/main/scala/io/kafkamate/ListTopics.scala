@@ -4,26 +4,25 @@ import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
+import slinky.reactrouter.Link
 import slinky.web.html._
 
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSImport
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
-import io.topics._
+import topics._
 
 @react object ListTopics {
   type Props = Unit
 
-  case class TopicsState(items: List[TopicDetails] = List.empty)
+  case class TopicsState(topics: List[TopicDetails] = List.empty)
 
   sealed trait TopicsAction
-  case class NewItems(items: List[TopicDetails] = List.empty) extends TopicsAction
+  case class NewTopics(items: List[TopicDetails] = List.empty) extends TopicsAction
 
   private def topicsReducer(state: TopicsState, action: TopicsAction): TopicsState =
     action match {
-      case NewItems(items) => state.copy(items = items)
+      case NewTopics(topics) => state.copy(topics = topics)
     }
 
   private val topicsGrpcClient =
@@ -37,8 +36,8 @@ import io.topics._
         topicsGrpcClient
           .getTopics(TopicRequest("test"))
           .onComplete {
-            case Success(v) => topicDispatch(NewItems(v.topics.toList))
-            case Failure(e) => topicDispatch(NewItems(List(TopicDetails("Could not get topics.")))); println("Error receiving topics: " + e)
+            case Success(v) => topicDispatch(NewTopics(v.topics.toList))
+            case Failure(e) => topicDispatch(NewTopics(List(TopicDetails("Could not get topics.")))); println("Error receiving topics: " + e)
           }
       },
       List.empty
@@ -55,11 +54,11 @@ import io.topics._
             )
           ),
           tbody(
-            listState.items.zipWithIndex.map { case (item, idx) =>
+            listState.topics.zipWithIndex.map { case (topicDetails, idx) =>
               tr(key := idx.toString)(
-                td(item.name),
-                td(item.partitions.toString),
-                td(item.replication.toString)
+                td(Link(to = Loc.pathToTopic(topicDetails.name))(topicDetails.name)),
+                td(topicDetails.partitions.toString),
+                td(topicDetails.replication.toString)
               )
             }
           )

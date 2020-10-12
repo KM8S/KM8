@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option java_package = "io.kafkamate";
+
+package brokers;
+
+message BrokerRequest {
+  string clusterId = 1;
+}
+
+message BrokerDetails {
+  int32 id = 1;
+  string address = 2;
+}
+
+message BrokerResponse {
+  repeated BrokerDetails brokers = 1;
+}
+
+service BrokersService {
+  rpc GetBrokers(BrokerRequest) returns (BrokerResponse);
+}

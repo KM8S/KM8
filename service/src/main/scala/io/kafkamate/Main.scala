@@ -9,8 +9,9 @@ object Main extends ServerMain {
 
   override def services: ServiceList[ZEnv] =
     ServiceList
-      .add(KafkaMate.Service)
-      .add(TopicService.Service)
-      .provideLayer(KafkaMate.liveLayer ++ TopicService.liveLayer)
+      .add(MessagesService.Service)
+      .add(TopicsService.Service)
+      .add(BrokersService.Service)
+      .provideLayer(MessagesService.liveLayer ++ BrokersService.liveLayer)
 
 }

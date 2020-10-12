@@ -11,9 +11,18 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 
 import bridges.reactrouter.{NavLink, ReactRouterDOM}
-import MainRouter.Loc
+
+@JSImport("resources/App.css", JSImport.Default)
+@js.native
+object AppCSS extends js.Object
+
+@JSImport("resources/logo.svg", JSImport.Default)
+@js.native
+object ReactLogo extends js.Object
 
 @react object Layout {
+  private val css = AppCSS
+
   case class Props(content: ReactElement)
 
   private def createRegularMenuItem(idx: String, label: String, location: String) =
@@ -54,7 +63,7 @@ import MainRouter.Loc
     Fragment(
       navPath(location.pathname),
       div(className := "container",
-        div(className := "main-content mt-5", role := "main", props.content)
+        div(className := "main-content mt", role := "main", props.content)
       )
     )
   }

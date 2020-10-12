@@ -16,6 +16,7 @@ import zio.kafka.serde.Deserializer
 import zio.macros.accessible
 
 import config._, Config._
+import messages.Message
 
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
@@ -55,7 +56,7 @@ import config._, Config._
               .takeUntil(cr => untilExists(endOffsets, cr))
               .take(nrOfMessages)
               .runCollect
-              .map(_.map(r => Message(r.record.key, r.record.value)))
+              .map(_.map(v => Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value)))
           } yield records.toList
         consumer.provideSomeLayer[Clock with Blocking](makeConsumerLayer)
       }
@@ -69,7 +70,7 @@ import config._, Config._
           .subscribeAnd(Subscription.Topics(Set(topic)))
           .plainStream(Deserializer.string, Deserializer.string)
           .tap(cr => logger.debugIO(s"Msg: ${cr.record.key}"))
-          .map(v => Message(v.record.key, v.record.value))
+          .map(v => Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value))
           .provideSomeLayer[Clock with Blocking](makeConsumerLayer)
     }
 }

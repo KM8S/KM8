@@ -5,22 +5,31 @@ import zio._
 import zio.blocking.Blocking
 import zio.kafka.admin._
 import zio.macros.accessible
+import org.apache.kafka.common.config.ConfigResource
+import org.apache.kafka.clients.admin.AdminClientConfig
 
 import config._
-import io.topics.TopicDetails
+import topics.TopicDetails
+import brokers.BrokerDetails
 
-@accessible object TopicExplorer {
+@accessible object KafkaExplorer {
 
-  type HasTopicExplorer = Has[Service]
+  type HasKafkaExplorer = Has[Service]
   type HasAdminClient = Has[AdminClient]
 
   trait Service {
+    def listBrokers: RIO[Blocking, List[BrokerDetails]]
     def listTopics: RIO[Blocking, List[TopicDetails]]
   }
 
-  lazy val topicExplorerLayer: URLayer[HasAdminClient, HasTopicExplorer] =
+  lazy val kafkaExplorerLayer: URLayer[HasAdminClient, HasKafkaExplorer] =
     ZLayer.fromService { adminClient =>
       new Service {
+        def listBrokers: RIO[Blocking, List[BrokerDetails]] =
+          /*adminClient
+            .describeConfigs(List(new ConfigResource(ConfigResource.Type.BROKER, AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG)))*/
+          Task(List(BrokerDetails(1, "localhost:9092")))
+
         def listTopics: RIO[Blocking, List[TopicDetails]] =
           adminClient
             .listTopics()
@@ -38,10 +47,10 @@ import io.topics.TopicDetails
       }
     }
 
-  lazy val liveLayer: TaskLayer[HasTopicExplorer] =
+  lazy val liveLayer: TaskLayer[HasKafkaExplorer] =
     Config.liveLayer >>>
       (Config.accessConfig.toManaged_ >>=
         (c => AdminClient.make(AdminClientSettings(c.kafkaHosts)))).toLayer >>>
-      topicExplorerLayer
+      kafkaExplorerLayer
 
 }

@@ -14,6 +14,7 @@ import zio.test.{DefaultRunnableSpec, _}
 
 object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
   import KafkaConsumer._
+  import messages._
 
   val testLayer: ZLayer[Any, TestFailure[Throwable], Clock with Blocking with StringProducer with KafkaConsumer] =
     (Clock.live >+>
@@ -31,7 +32,7 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
           kvs = (1 to 5).toList.map(i => (s"key$i", s"msg$i"))
           _ <- produceMany(topic, kvs)
           records <- KafkaConsumer.consumeN(topic, 5)
-        } yield assert(records)(equalTo(kvs.map(v => Message(v._1, v._2))))
+        } yield assert(records.map(v => (v.key, v.value)))(equalTo(kvs.map(v => (v._1, v._2))))
       }
     ).provideLayerShared(testLayer) @@ timeout(30.seconds)
 }

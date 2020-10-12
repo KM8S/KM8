@@ -3,10 +3,12 @@ package io.kafkamate
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 import scalapb.grpcweb.Metadata
 
+import messages._
+
 object Utils {
 
   case class KafkaMateServiceGrpcConsumer(
-    service: KafkaMateServiceGrpcWeb.KafkaMateService[Metadata]
+    service: MessagesServiceGrpcWeb.MessagesService[Metadata]
   ) {
     private var stream: ClientCallStreamObserver = _
 
@@ -26,7 +28,7 @@ object Utils {
         }
       }
 
-    def start(request: Request)(onMessage: Message => Unit): Unit =
+    def start(request: ConsumeRequest)(onMessage: Message => Unit): Unit =
       stream =
         if (stream == null) {
           println("Starting to read the stream...")
