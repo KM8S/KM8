@@ -8,7 +8,7 @@ import zio.clock.Clock
 import zio.kafka.producer.{Producer, ProducerSettings}
 import zio.kafka.serde.{Serde, Serializer}
 
-import config.Config._
+import config.ClustersConfig._
 import KafkaEmbedded.Kafka
 
 trait HelperSpec {
@@ -24,7 +24,7 @@ trait HelperSpec {
   val testConfigLayer: RLayer[Clock with Blocking with Kafka, HasConfig with Clock with Blocking] =
     ZLayer.requires[Clock] ++
       ZLayer.requires[Blocking] ++
-      ZLayer.fromService[Kafka.Service, ConfigProperties] { kafka =>
+      ZLayer.fromService[Kafka.Service, ClusterProperties] { kafka =>
         ConfigProperties("8080", kafka.bootstrapServers)
       }
 

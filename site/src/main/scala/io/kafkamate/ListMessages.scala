@@ -66,7 +66,8 @@ import messages._
 
   val component = FunctionalComponent[Props] { _ =>
     val params = ReactRouterDOM.useParams().toMap
-    val topicName = params.getOrElse("name", "")
+    val clusterId = params.getOrElse(Loc.clusterIdKey, "")
+    val topicName = params.getOrElse(Loc.topicNameKey, "")
 
     val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
     val (producerState, producerDispatch) = useReducer(producerReducer, ProducerState())
@@ -74,7 +75,7 @@ import messages._
     useEffect(
       () => {
         if (consumerState.streamData.contains(true))
-          consumer.start(ConsumeRequest(topicName))(v => consumerDispatch(NewItem(Item.fromMessage(v))))
+          consumer.start(ConsumeRequest(clusterId, topicName))(v => consumerDispatch(NewItem(Item.fromMessage(v))))
 
         if (consumerState.streamData.contains(false))
           consumer.stop()
@@ -89,7 +90,7 @@ import messages._
       () => {
         if (producerState.produceMessage.isDefined)
           mateGrpcClient
-            .produceMessage(ProduceRequest(topicName, producerState.produceMessage.get.key, producerState.produceMessage.get.value))
+            .produceMessage(ProduceRequest(clusterId, topicName, producerState.produceMessage.get.key, producerState.produceMessage.get.value))
             .onComplete {
               case Success(v) => producerDispatch(UpdateProduced(1)); println("Message produced: " + v)
               case Failure(e) => producerDispatch(UpdateProduced(-1)); println("Error producing message: " + e)

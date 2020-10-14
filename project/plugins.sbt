@@ -1,5 +1,7 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
+addSbtPlugin("org.duhemm" % "sbt-errors-summary" % "0.6.3")
+
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.2.0")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.4.0-RC1")

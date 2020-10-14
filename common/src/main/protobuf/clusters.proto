@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option java_package = "io.kafkamate";
+
+package clusters;
+
+message ClusterRequest {}
+
+message ClusterDetails {
+  string id = 1;
+  string name = 2;
+  string address = 3;
+}
+
+message ClusterResponse {
+  repeated ClusterDetails brokers = 1;
+}
+
+service ClustersService {
+  rpc AddCluster(ClusterDetails) returns (ClusterDetails);
+  rpc GetClusters(ClusterRequest) returns (ClusterResponse);
+}
