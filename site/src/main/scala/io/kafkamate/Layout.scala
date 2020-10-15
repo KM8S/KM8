@@ -29,7 +29,7 @@ object ReactLogo extends js.Object
     li(key := idx, className := "nav-item", NavLink(exact = true, to = location)(className := "nav-link", label))
 
   private def createOptionalRegularMenuItem(clusterId: Option[String])(idx: String, label: String, location: String) =
-    clusterId.fold(li())(id => createRegularMenuItem(idx, label, Loc.clustersPath(id)(location)))
+    clusterId.map(id => createRegularMenuItem(idx, label, Loc.clustersPath(id)(location)))
 
   private def navPath(clusterId: Option[String]) =
     nav(
@@ -63,7 +63,7 @@ object ReactLogo extends js.Object
 
   val component = FunctionalComponent[Props] { props =>
     val location = ReactRouterDOM.useLocation()
-    val clusterId = location.pathname.split("/").lift(2)
+    val clusterId = location.pathname.split("/").lift(2).flatMap(p => if (p == "add") None else Some(p)) //todo smth better
 
     Fragment(
       navPath(clusterId),

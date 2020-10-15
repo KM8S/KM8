@@ -1,9 +1,7 @@
 {
-  "clusters": [
-    {
-      "id": "local",
-      "name": "local",
-      "kafkaHosts": ["localhost:9092"]
-    }
-  ]
+  "clusters" : [{
+    "id" : "local",
+    "name" : "local",
+    "hosts" : ["localhost:9092"]
+  }]
 }

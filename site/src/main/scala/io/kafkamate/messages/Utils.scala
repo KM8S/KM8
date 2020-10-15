@@ -1,9 +1,8 @@
 package io.kafkamate
+package messages
 
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 import scalapb.grpcweb.Metadata
-
-import messages._
 
 object Utils {
 

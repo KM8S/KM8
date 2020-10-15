@@ -1,4 +1,8 @@
 package io.kafkamate
+package clusters
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 import scalapb.grpc.Channels
 import slinky.core._
@@ -6,11 +10,6 @@ import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.reactrouter.Link
 import slinky.web.html._
-
-import clusters._
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
 
 @react object ListClusters {
   type Props = Unit
@@ -44,7 +43,7 @@ import scala.util.{Failure, Success}
     )
 
     div(className := "App")(
-      button(className:= "btn btn-primary", onClick := { () => () })(s"Add cluster"),
+      a(className:= "btn btn-primary", href := s"#${Loc.addCluster}")(s"Add cluster"),
       div(className := "container card-body table-responsive",
         table(className := "table table-hover",
           thead(

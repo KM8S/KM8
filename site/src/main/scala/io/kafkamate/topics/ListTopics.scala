@@ -1,4 +1,8 @@
 package io.kafkamate
+package topics
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 import scalapb.grpc.Channels
 import slinky.core._
@@ -7,11 +11,7 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Link
 import slinky.web.html._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
-
 import bridges.reactrouter.ReactRouterDOM
-import topics._
 
 @react object ListTopics {
   type Props = Unit

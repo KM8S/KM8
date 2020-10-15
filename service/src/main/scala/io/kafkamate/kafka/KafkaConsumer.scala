@@ -36,7 +36,7 @@ import messages.Message
     new Service with LoggingSupport {
       private lazy val timeout: Duration = 1000.millis
       private def consumerSettings(config: ClusterSettings): ConsumerSettings =
-        ConsumerSettings(config.kafkaHosts)
+        ConsumerSettings(config.hosts)
           .withGroupId(s"kafkamate-${UUID.randomUUID().toString}")
           .withClientId("kafkamate")
           .withOffsetRetrieval(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))

@@ -23,7 +23,7 @@ object ClustersService {
         .tapError(e => zio.UIO(println(s"---------------------- Got clusters error: ${e.getMessage}")))
         .bimap(
           Status.fromThrowable,
-          r => ClusterResponse(r.clusters.map(c => ClusterDetails(c.id, c.name, c.kafkaHosts.mkString(","))))
+          r => ClusterResponse(r.clusters.map(c => ClusterDetails(c.id, c.name, c.hostsString)))
         )
   }
 }

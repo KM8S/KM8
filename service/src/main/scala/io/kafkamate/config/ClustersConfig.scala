@@ -9,8 +9,8 @@ import zio.macros.accessible
 
   type ClustersConfigService = Has[Service]
 
-  case class ClusterSettings(id: String, name: String, kafkaHosts: List[String]) {
-    val kafkaHostsAsString: String = kafkaHosts.mkString(",")
+  case class ClusterSettings(id: String, name: String, hosts: List[String]) {
+    val hostsString: String = hosts.mkString(",")
   }
   object ClusterSettings {
     implicit val decoder: JsonDecoder[ClusterSettings] = DeriveJsonDecoder.gen[ClusterSettings]

@@ -1,4 +1,5 @@
 package io.kafkamate
+package brokers
 
 import scalapb.grpc.Channels
 import slinky.core._
@@ -8,8 +9,6 @@ import slinky.web.html._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
-
-import brokers._
 
 @react object ListBrokers {
   type Props = Unit
@@ -43,7 +42,7 @@ import brokers._
     )
 
     div(className := "App")(
-      div(className := "container card-body table-responsive",
+      div(className := "container card-body table-responsive", //todo add cluster name
         table(className := "table table-hover",
           thead(
             tr(
