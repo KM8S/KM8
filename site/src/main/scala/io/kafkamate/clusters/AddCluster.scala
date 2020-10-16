@@ -9,7 +9,7 @@ import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
-import slinky.reactrouter.Route
+import slinky.reactrouter.Redirect
 import slinky.web.html._
 
 @react object AddCluster {
@@ -19,6 +19,7 @@ import slinky.web.html._
     ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   val component = FunctionalComponent[Props] { _ =>
+    val (shouldRedirect, setRedirect) = useState(false)
     val (shouldMakeRequest, setRequestAction) = useState(false)
     val (clusterName, setClusterName) = useState("")
     val (address, setAddress)         = useState("")
@@ -39,8 +40,7 @@ import slinky.web.html._
             .addCluster(ClusterDetails("", clusterName, address))
             .onComplete {
               case Success(_) =>
-                println("routng")
-                Route(exact = true, path = Loc.clusters, component = ListClusters.component) //todo not working
+                setRedirect(true)
 
               case Failure(e) =>
                 setRequestAction(false)
@@ -92,13 +92,19 @@ import slinky.web.html._
         button(`type` := "submit", className := "btn btn-secondary", "Add")
       )
 
-    div(
-      className := "card",
-      div(className := "card-header", "Add cluster"),
+    def addCluster() =
       div(
-        className := "card-body",
-        addClusterForm()
+        className := "card",
+        div(className := "card-header", "Add cluster"),
+        div(
+          className := "card-body",
+          addClusterForm()
+        )
       )
-    )
+
+    if (shouldRedirect)
+      Redirect(to = Loc.clusters)
+    else
+      addCluster()
   }
 }

@@ -4,8 +4,7 @@ import scalajs.js
 
 import slinky.core.annotations.react
 import slinky.core.FunctionalComponent
-import slinky.reactrouter.Route
-import slinky.reactrouter.Switch
+import slinky.reactrouter._
 
 import bridges.PathToRegexp
 import brokers.ListBrokers
@@ -36,13 +35,13 @@ object Loc {
   val topicNameKey = "topicName"
 
   val home           =  "/"
+  val addCluster     =  "/add-cluster"
   val clusters       =  "/clusters"
-  val addCluster     =  "/clusters/add"
   val brokers        = s"/clusters/:$clusterIdKey(.*)/brokers"
   val topics         = s"/clusters/:$clusterIdKey(.*)/topics"
   val messages       = s"/clusters/:$clusterIdKey(.*)/topics/:$topicNameKey(.*)"
 
-  def clustersPath(clusterId: String)(location: String): String = {
+  def fromLocation(clusterId: String, location: String): String = {
     val fromPathData = PathToRegexp.compile(location)
     fromPathData(
       js.Dynamic
@@ -53,7 +52,7 @@ object Loc {
     )
   }
 
-  def messagesPath(clusterId: String, topicName: String): String = {
+  def fromTopic(clusterId: String, topicName: String): String = {
     val fromPathData = PathToRegexp.compile(Loc.messages)
     fromPathData(
       js.Dynamic

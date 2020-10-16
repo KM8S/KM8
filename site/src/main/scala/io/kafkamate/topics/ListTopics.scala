@@ -60,7 +60,7 @@ import bridges.reactrouter.ReactRouterDOM
           tbody(
             topicsState.topics.zipWithIndex.map { case (topicDetails, idx) =>
               tr(key := idx.toString)(
-                td(Link(to = Loc.messagesPath(clusterId, topicDetails.name))(topicDetails.name)),
+                td(Link(to = Loc.fromTopic(clusterId, topicDetails.name))(topicDetails.name)),
                 td(topicDetails.partitions.toString),
                 td(topicDetails.replication.toString)
               )

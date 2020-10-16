@@ -43,7 +43,7 @@ import slinky.web.html._
     )
 
     div(className := "App")(
-      a(className:= "btn btn-primary", href := s"#${Loc.addCluster}")(s"Add cluster"),
+      Link(to = Loc.addCluster)(div(className:= "btn btn-primary")("Add cluster")),
       div(className := "container card-body table-responsive",
         table(className := "table table-hover",
           thead(
@@ -56,7 +56,7 @@ import slinky.web.html._
           tbody(
             brokersState.items.zipWithIndex.map { case (cluster, idx) =>
               tr(key := idx.toString)(
-                td(Link(to = Loc.clustersPath(cluster.id)(Loc.topics))(cluster.id)),
+                td(Link(to = Loc.fromLocation(cluster.id, Loc.topics))(cluster.id)),
                 td(cluster.name),
                 td(cluster.address)
               )
