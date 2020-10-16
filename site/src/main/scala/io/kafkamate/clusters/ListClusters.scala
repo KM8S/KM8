@@ -14,14 +14,19 @@ import slinky.web.html._
 @react object ListClusters {
   type Props = Unit
 
-  case class BrokersState(items: List[ClusterDetails] = List.empty)
+  case class BrokersState(
+    items: List[ClusterDetails] = List.empty,
+    toDelete: Option[String] = None
+  )
 
   sealed trait BrokersAction
   case class NewItems(items: List[ClusterDetails] = List.empty) extends BrokersAction
+  case class DeleteItem(id: String) extends BrokersAction
 
   private def brokersReducer(state: BrokersState, action: BrokersAction): BrokersState =
     action match {
       case NewItems(items) => if (items.isEmpty) state.copy(items = List(ClusterDetails(name = "No clusters"))) else state.copy(items = items)
+      case DeleteItem(id) => state.copy(toDelete = Some(id))
     }
 
   private val topicsGrpcClient =
@@ -42,6 +47,19 @@ import slinky.web.html._
       List.empty
     )
 
+    useEffect(
+      () => {
+        if (brokersState.toDelete.isDefined)
+          topicsGrpcClient
+            .deleteCluster(ClusterDetails(brokersState.toDelete.get))
+            .onComplete {
+              case Success(v) => topicDispatch(NewItems(v.brokers.toList))
+              case Failure(e) => topicDispatch(NewItems(List(ClusterDetails("Could not delete cluster.")))); println("Error receiving brokers: " + e)
+            }
+      },
+      List(brokersState.toDelete)
+    )
+
     div(className := "App")(
       Link(to = Loc.addCluster)(div(className:= "btn btn-primary")("Add cluster")),
       div(className := "container card-body table-responsive",
@@ -50,7 +68,8 @@ import slinky.web.html._
             tr(
               th("Id"),
               th("Name"),
-              th("Address")
+              th("Address"),
+              th("Action")
             )
           ),
           tbody(
@@ -58,7 +77,8 @@ import slinky.web.html._
               tr(key := idx.toString)(
                 td(Link(to = Loc.fromLocation(cluster.id, Loc.topics))(cluster.id)),
                 td(cluster.name),
-                td(cluster.address)
+                td(cluster.address),
+                td(button(className:= "btn btn-danger", onClick := { () => topicDispatch(DeleteItem(cluster.id)) })("Delete"))
               )
             }
           )

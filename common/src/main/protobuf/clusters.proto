@@ -18,5 +18,6 @@ message ClusterResponse {
 
 service ClustersService {
   rpc AddCluster(ClusterDetails) returns (ClusterDetails);
+  rpc DeleteCluster(ClusterDetails) returns (ClusterResponse);
   rpc GetClusters(ClusterRequest) returns (ClusterResponse);
 }

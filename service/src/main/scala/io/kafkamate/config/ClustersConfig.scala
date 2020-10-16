@@ -25,7 +25,8 @@ import zio.macros.accessible
 
   trait Service {
     def readClusters: Task[ClusterProperties]
-    def writeClusters(props: ClusterProperties): Task[Unit]
+    def writeClusters(cluster: ClusterSettings): Task[Unit]
+    def deleteCluster(clusterId: String): Task[ClusterProperties]
 
     def getCluster(clusterId: String): Task[ClusterSettings] =
       for {
@@ -48,12 +49,21 @@ import zio.macros.accessible
           r <- ZIO.fromEither(s.fromJson[ClusterProperties]).mapError(new Throwable(_))
         } yield r
 
-      def writeClusters(props: ClusterProperties): Task[Unit] =
+      def writeClusters(cluster: ClusterSettings): Task[Unit] =
         for {
           c <- readClusters
-          json = c.copy(clusters = c.clusters ++ props.clusters).toJsonPretty
+          json = c.copy(clusters = c.clusters :+ cluster).toJsonPretty
           _ <- Task(os.write.over(configFilepath, json, createFolders = true))
         } yield ()
+
+      def deleteCluster(clusterId: String): Task[ClusterProperties] =
+        for {
+          c <- readClusters
+          ls <- ZIO.filterNot(c.clusters)(s => Task(s.id == clusterId))
+          json = ClusterProperties(ls).toJsonPretty
+          _ <- Task(os.write.over(configFilepath, json, createFolders = true))
+          r <- readClusters
+        } yield r
     }
   }
 
