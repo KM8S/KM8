@@ -13,7 +13,7 @@ object BrokersService {
   object GrpcService extends ZioBrokers.RBrokersService[Env] {
     def getBrokers(request: BrokerRequest): ZIO[Env, Status, BrokerResponse] =
       KafkaExplorer
-        .listBrokers
+        .listBrokers(request.clusterId)
         .tapError(e => zio.UIO(println(s"---------------------- Get brokers error: ${e.getMessage}")))
         .bimap(Status.fromThrowable, r => BrokerResponse(r))
   }

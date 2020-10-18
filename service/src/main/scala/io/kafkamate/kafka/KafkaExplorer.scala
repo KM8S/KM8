@@ -1,16 +1,17 @@
 package io.kafkamate
 package kafka
 
+import scala.concurrent.duration._
+
 import zio._
 import zio.clock.Clock
 import zio.duration.Duration
 import zio.blocking.Blocking
 import zio.kafka.admin._
 import zio.macros.accessible
+import zio.kafka.admin.AdminClient
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.clients.admin.AdminClientConfig
-
-import scala.concurrent.duration._
 
 import config._, ClustersConfig._
 import topics.TopicDetails
@@ -22,7 +23,7 @@ import brokers.BrokerDetails
   type HasAdminClient = Has[AdminClient]
 
   trait Service {
-    def listBrokers: RIO[Blocking, List[BrokerDetails]]
+    def listBrokers(clusterId: String): RIO[Blocking, List[BrokerDetails]]
     def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]]
   }
 
@@ -37,14 +38,23 @@ import brokers.BrokerDetails
             } yield client
           }
 
-        def listBrokers: RIO[Blocking, List[BrokerDetails]] =
-          /*adminClient
-            .describeConfigs(List(new ConfigResource(ConfigResource.Type.BROKER, AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG)))*/
-          Task(List(BrokerDetails(1, "localhost:9092")))
+        def listBrokers(clusterId: String): RIO[Blocking, List[BrokerDetails]] =
+          ZIO
+            .accessM[HasAdminClient with Blocking] { env =>
+              val ac = env.get[AdminClient]
+              for {
+                nodes <- ac.listClusterNodes()
+                controller <- ac.getClusterController().map(n => BrokerDetails(n.id(), isController = true))
+                brokers = nodes.map(n => BrokerDetails(n.id())).filterNot(_.id == controller.id) :+ controller
+                //resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
+                //_ <- ac.describeConfigs(resources)
+              } yield brokers
+            }
+            .provideSomeLayer[Blocking](adminClientLayer(clusterId))
 
         def internalListTopics: RIO[HasAdminClient with Blocking, List[TopicDetails]] =
-          ZIO.accessM { adminClientService =>
-            val ac = adminClientService.get
+          ZIO.accessM { env =>
+            val ac = env.get[AdminClient]
             ac.listTopics()
               .map(_.keys.toList)
               .flatMap(ac.describeTopics(_))
