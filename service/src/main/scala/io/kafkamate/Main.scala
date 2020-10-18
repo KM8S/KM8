@@ -9,6 +9,7 @@ import kafka.KafkaExplorer
 
 object Main extends ServerMain {
 
+  //todo test with multiple kafka versions
   override def services: ServiceList[ZEnv] =
     ServiceList
       .add(ClustersService.GrpcService)

@@ -8,7 +8,7 @@ import zio.clock.Clock
 import zio.kafka.producer.{Producer, ProducerSettings}
 import zio.kafka.serde.{Serde, Serializer}
 
-import config.ClustersConfig._
+import config._, ClustersConfig._
 import KafkaEmbedded.Kafka
 
 trait HelperSpec {
@@ -21,11 +21,18 @@ trait HelperSpec {
     (producerSettings.toLayer ++ ZLayer.succeed(Serde.string: Serializer[Any, String])) >>>
       Producer.live[Any, String, String]
 
-  val testConfigLayer: RLayer[Clock with Blocking with Kafka, HasConfig with Clock with Blocking] =
+  val testConfigLayer: URLayer[Clock with Blocking with Kafka, Clock with Blocking with ClustersConfigService] =
     ZLayer.requires[Clock] ++
       ZLayer.requires[Blocking] ++
-      ZLayer.fromService[Kafka.Service, ClusterProperties] { kafka =>
-        ConfigProperties("8080", kafka.bootstrapServers)
+      ZLayer.fromService[Kafka.Service, ClustersConfig.Service] { kafka =>
+        new ClustersConfig.Service {
+          def readClusters: Task[ClusterProperties] =
+            Task(ClusterProperties(List(ClusterSettings("test-id", "test", kafka.bootstrapServers))))
+
+          def writeClusters(cluster: ClusterSettings): Task[Unit] = ???
+
+          def deleteCluster(clusterId: String): Task[ClusterProperties] = ???
+        }
       }
 
   def produceMany(

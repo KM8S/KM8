@@ -35,7 +35,7 @@ lazy val service = project
       "com.github.mlangc"               %% "slf4zio"                            % "1.0.0",
       "net.logstash.logback"            %  "logstash-logback-encoder"           % "6.3",
       "ch.qos.logback"                  %  "logback-classic"                    % "1.2.3",
-      "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.4.1" % Test
+      "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.6.0" % Test
     ),
     PB.targets in Compile := Seq(
       scalapb.gen(grpc = true) -> (sourceManaged in Compile).value,
