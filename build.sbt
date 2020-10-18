@@ -26,7 +26,7 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                         %% "zio-kafka"                          % "0.13.0+1-cbfaf3f1",
+      "dev.zio"                         %% "zio-kafka"                          % "0.13.0+2-7ce016c2",
       "dev.zio"                         %% "zio-json"                           % "0.0.0+53-77ac2bc0-SNAPSHOT",
       "com.lihaoyi"                     %% "os-lib"                             % "0.7.1",
       "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,

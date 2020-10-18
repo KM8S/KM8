@@ -43,9 +43,12 @@ import brokers.BrokerDetails
             .accessM[HasAdminClient with Blocking] { env =>
               val ac = env.get[AdminClient]
               for {
-                nodes <- ac.listClusterNodes()
-                controller <- ac.getClusterController().map(n => BrokerDetails(n.id(), isController = true))
-                brokers = nodes.map(n => BrokerDetails(n.id())).filterNot(_.id == controller.id) :+ controller
+                (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id())
+                brokers = nodes.map { n =>
+                  val nodeId = n.id()
+                  if (controllerId != nodeId) BrokerDetails(nodeId)
+                  else BrokerDetails(nodeId, isController = true)
+                }
                 //resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
                 //_ <- ac.describeConfigs(resources)
               } yield brokers
