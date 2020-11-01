@@ -10,6 +10,8 @@ addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
 
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 
+addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
+
 addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.34")
 
 libraryDependencies ++= Seq(

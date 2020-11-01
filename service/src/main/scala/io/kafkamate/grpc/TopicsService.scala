@@ -15,6 +15,6 @@ object TopicsService {
       KafkaExplorer
         .listTopics(request.clusterId)
         .tapError(e => zio.UIO(println(s"---------------------- Got topics error: ${e.getMessage}")))
-        .bimap(Status.fromThrowable, r => TopicResponse(r))
+        .bimap(Status.fromThrowable, r => TopicResponse(r)) //todo better error status codes
   }
 }

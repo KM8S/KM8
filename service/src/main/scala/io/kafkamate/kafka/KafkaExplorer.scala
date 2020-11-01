@@ -1,15 +1,13 @@
 package io.kafkamate
 package kafka
 
-import scala.concurrent.duration._
-
 import zio._
-import zio.clock.Clock
-import zio.duration.Duration
 import zio.blocking.Blocking
+import zio.clock.Clock
+import zio.duration._
 import zio.kafka.admin._
-import zio.macros.accessible
 import zio.kafka.admin.AdminClient
+import zio.macros.accessible
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.clients.admin.AdminClientConfig
 
@@ -23,22 +21,22 @@ import brokers.BrokerDetails
   type HasAdminClient = Has[AdminClient]
 
   trait Service {
-    def listBrokers(clusterId: String): RIO[Blocking, List[BrokerDetails]]
+    def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
     def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]]
   }
 
   lazy val kafkaExplorerLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
     ZLayer.fromService { clustersConfigService =>
       new Service {
-        def adminClientLayer(clusterId: String): TaskLayer[HasAdminClient] =
+        private def adminClientLayer(clusterId: String): TaskLayer[HasAdminClient] =
           ZLayer.fromManaged {
             for {
               cs <- clustersConfigService.getCluster(clusterId).toManaged_
-              client <- AdminClient.make(AdminClientSettings(cs.hosts))
+              client <- AdminClient.make(AdminClientSettings(cs.hosts, 10.seconds, Map.empty))
             } yield client
           }
 
-        def listBrokers(clusterId: String): RIO[Blocking, List[BrokerDetails]] =
+        def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]] =
           ZIO
             .accessM[HasAdminClient with Blocking] { env =>
               val ac = env.get[AdminClient]
@@ -53,30 +51,28 @@ import brokers.BrokerDetails
                 //_ <- ac.describeConfigs(resources)
               } yield brokers
             }
-            .provideSomeLayer[Blocking](adminClientLayer(clusterId))
-
-        def internalListTopics: RIO[HasAdminClient with Blocking, List[TopicDetails]] =
-          ZIO.accessM { env =>
-            val ac = env.get[AdminClient]
-            ac.listTopics()
-              .map(_.keys.toList)
-              .flatMap(ac.describeTopics(_))
-              .map(
-                _.map { case (name, description) =>
-                  TopicDetails(
-                    name,
-                    description.partitions.size,
-                    description.partitions.headOption.map(_.replicas.size).getOrElse(0)
-                  )
-                }.toList
-              )
-          }
+            .timeoutFail(new Exception("Timed out"))(5.seconds)
+            .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
 
         def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]] =
-          internalListTopics
-            .timeout(Duration.fromScala(5.seconds))
-            .flatMap(op => ZIO.fromOption(op))
-            .orElseFail(new Exception("Timed out"))
+          ZIO
+            .accessM[HasAdminClient with Blocking] { env =>
+              val ac = env.get[AdminClient]
+              ac.listTopics()
+                .map(_.keys.toList)
+                .flatMap(ls => ZIO.filterNotPar(ls)(e => UIO(e.startsWith("__"))))
+                .flatMap(ac.describeTopics(_))
+                .map(
+                  _.map { case (name, description) =>
+                    TopicDetails(
+                      name,
+                      description.partitions.size,
+                      description.partitions.headOption.map(_.replicas.size).getOrElse(0)
+                    )
+                  }.toList
+                )
+            }
+            .timeoutFail(new Exception("Timed out"))(5.seconds)
             .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
       }
     }

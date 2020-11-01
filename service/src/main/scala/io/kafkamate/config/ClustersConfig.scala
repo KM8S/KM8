@@ -33,13 +33,13 @@ import zio.macros.accessible
         all <- readClusters
         cs <- ZIO
           .fromOption(all.clusters.find(_.id == clusterId))
-          .orElseFail(new Throwable(s"Cluster ($clusterId) doesn't exist!"))
+          .orElseFail(new Throwable(s"Cluster ($clusterId) doesn't exist..!"))
       } yield cs
   }
 
   lazy val liveLayer: ULayer[ClustersConfigService] = ZLayer.succeed {
     new Service {
-      private val configFilepath = os.pwd / "clusters.json"
+      private val configFilepath = os.pwd / os.up / "clusters.json"
 
       def readClusters: Task[ClusterProperties] =
         for {

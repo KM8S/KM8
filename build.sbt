@@ -101,6 +101,7 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("common"))
   .settings(sharedSettings)
+  .disablePlugins(RevolverPlugin)
   .settings(
     libraryDependencies += "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion,
     PB.protoSources in Compile := Seq(

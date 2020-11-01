@@ -22,11 +22,10 @@ import config._, ClustersConfig._
         lazy val serdeLayer: ULayer[Has[Serializer[Any, String]]] =
           ZLayer.succeed(Serde.string)
 
-        def settingsLayer(clusterId: String): ULayer[Has[ProducerSettings]] =
+        def settingsLayer(clusterId: String): TaskLayer[Has[ProducerSettings]] =
           clusterConfigService
             .getCluster(clusterId)
             .map(c => ProducerSettings(c.hosts))
-            .orDie
             .toLayer
 
         def producerLayer(clusterId: String): TaskLayer[Producer[Any, String, String]] =
@@ -34,8 +33,7 @@ import config._, ClustersConfig._
 
         def produce(topic: String, key: String, value: String)(clusterId: String): RIO[Blocking, Unit] =
           Producer
-            .produce[Any, String, String](topic, key, value)
-            .unit
+            .produce[Any, String, String](topic, key, value).unit
             .provideSomeLayer[Blocking](producerLayer(clusterId))
       }
     }
