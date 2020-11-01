@@ -1,4 +1,8 @@
 package io.kafkamate
+package topics
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 import scalapb.grpc.Channels
 import slinky.core._
@@ -7,10 +11,7 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Link
 import slinky.web.html._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
-
-import topics._
+import bridges.reactrouter.ReactRouterDOM
 
 @react object ListTopics {
   type Props = Unit
@@ -29,12 +30,15 @@ import topics._
     TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   val component = FunctionalComponent[Props] { _ =>
-    val (listState, topicDispatch) = useReducer(topicsReducer, TopicsState())
+    val params = ReactRouterDOM.useParams().toMap
+    val clusterId = params.getOrElse(Loc.clusterIdKey, "")
+
+    val (topicsState, topicDispatch) = useReducer(topicsReducer, TopicsState())
 
     useEffect(
       () => {
         topicsGrpcClient
-          .getTopics(TopicRequest("test"))
+          .getTopics(TopicRequest(clusterId))
           .onComplete {
             case Success(v) => topicDispatch(NewTopics(v.topics.toList))
             case Failure(e) => topicDispatch(NewTopics(List(TopicDetails("Could not get topics.")))); println("Error receiving topics: " + e)
@@ -54,9 +58,9 @@ import topics._
             )
           ),
           tbody(
-            listState.topics.zipWithIndex.map { case (topicDetails, idx) =>
+            topicsState.topics.zipWithIndex.map { case (topicDetails, idx) =>
               tr(key := idx.toString)(
-                td(Link(to = Loc.pathToTopic(topicDetails.name))(topicDetails.name)),
+                td(Link(to = Loc.fromTopic(clusterId, topicDetails.name))(topicDetails.name)),
                 td(topicDetails.partitions.toString),
                 td(topicDetails.replication.toString)
               )

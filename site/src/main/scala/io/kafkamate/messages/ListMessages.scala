@@ -1,26 +1,17 @@
 package io.kafkamate
+package messages
 
 import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
+import slinky.reactrouter.Link
 import slinky.web.html._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
-
 import bridges.reactrouter.ReactRouterDOM
-import messages._
 
 @react object ListMessages {
-  private val css = AppCSS
-//  case class Props(settings: String)
   type Props = Unit
-
-  case class ProducerState(
-    produceMessage: Option[ProduceMessage] = None,
-    produced: Int = 0
-  )
 
   case class Item(offset: Long, partition: Int, timestamp: Long, key: String, value: String)
   case object Item {
@@ -31,10 +22,6 @@ import messages._
     streamData: Option[Boolean] = None,
     items: List[Item] = List.empty
   )
-
-  sealed trait ProducerAction
-  case class ProduceMessage(key: String, value: String) extends ProducerAction
-  case class UpdateProduced(value: Int) extends ProducerAction
 
   sealed trait ConsumerAction
   case object StreamDataOn extends ConsumerAction
@@ -52,12 +39,6 @@ import messages._
       case NewItem(item) => prevState.copy(items = prevState.items :+ item)
     }
 
-  private def producerReducer(state: ProducerState, action: ProducerAction): ProducerState =
-    action match {
-      case m: ProduceMessage => state.copy(produceMessage = Some(m))
-      case UpdateProduced(value) => state.copy(produced = state.produced + value, produceMessage = None)
-    }
-
   private val mateGrpcClient =
     MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
@@ -66,15 +47,15 @@ import messages._
 
   val component = FunctionalComponent[Props] { _ =>
     val params = ReactRouterDOM.useParams().toMap
-    val topicName = params.getOrElse("name", "")
+    val clusterId = params.getOrElse(Loc.clusterIdKey, "")
+    val topicName = params.getOrElse(Loc.topicNameKey, "")
 
     val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
-    val (producerState, producerDispatch) = useReducer(producerReducer, ProducerState())
 
     useEffect(
       () => {
         if (consumerState.streamData.contains(true))
-          consumer.start(ConsumeRequest(topicName))(v => consumerDispatch(NewItem(Item.fromMessage(v))))
+          consumer.start(ConsumeRequest(clusterId, topicName))(v => consumerDispatch(NewItem(Item.fromMessage(v))))
 
         if (consumerState.streamData.contains(false))
           consumer.stop()
@@ -85,24 +66,12 @@ import messages._
       List(consumerState.streamData)
     )
 
-    useEffect(
-      () => {
-        if (producerState.produceMessage.isDefined)
-          mateGrpcClient
-            .produceMessage(ProduceRequest(topicName, producerState.produceMessage.get.key, producerState.produceMessage.get.value))
-            .onComplete {
-              case Success(v) => producerDispatch(UpdateProduced(1)); println("Message produced: " + v)
-              case Failure(e) => producerDispatch(UpdateProduced(-1)); println("Error producing message: " + e)
-            }
-      },
-      List(producerState.produceMessage)
-    )
-
     div(className := "App")(
       h2(s"Topic $topicName"),
       br(),
-      label(className := "inline")(button(className:= "btn btn-primary", onClick := { () => consumerDispatch(StreamDataOn) })(s"Stream data!")),
-      label(className := "inline")(button(className:= "btn btn-danger", onClick := { () => consumerDispatch(StreamDataOff) })(s"Close stream!")),
+      label(className := "inline")(button(className:= "btn btn-primary", onClick := { () => consumerDispatch(StreamDataOn) })("Stream data")),
+      label(className := "inline")(button(className:= "btn btn-danger", onClick := { () => consumerDispatch(StreamDataOff) })("Close stream")),
+      label(className := "inline")(Link(to = Loc.fromTopicAdd(clusterId, topicName))(div(className:= "btn btn-warning")("Add new message"))),
       div(className := "container card-body table-responsive",
         table(className := "table table-hover",
           thead(

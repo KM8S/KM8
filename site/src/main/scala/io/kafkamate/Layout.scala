@@ -28,7 +28,10 @@ object ReactLogo extends js.Object
   private def createRegularMenuItem(idx: String, label: String, location: String) =
     li(key := idx, className := "nav-item", NavLink(exact = true, to = location)(className := "nav-link", label))
 
-  private def navPath(currentPath: String) =
+  private def createOptionalRegularMenuItem(clusterId: Option[String])(idx: String, label: String, location: String) =
+    clusterId.map(id => createRegularMenuItem(idx, label, Loc.fromLocation(id, location)))
+
+  private def navPath(clusterId: Option[String]) =
     nav(
       className := "navbar fixed-top navbar-expand-lg navbar-dark bg-dark",
       Link(to = Loc.home)(
@@ -51,17 +54,19 @@ object ReactLogo extends js.Object
         id := "navbarSupportedContent",
         ul(
           className := "navbar-nav mr-auto",
-          createRegularMenuItem("100", "Brokers", Loc.brokers),
-          createRegularMenuItem("200", "Topics", Loc.topics)
+          createRegularMenuItem("100", "Clusters", Loc.clusters),
+          createOptionalRegularMenuItem(clusterId)("200", "Brokers", Loc.brokers),
+          createOptionalRegularMenuItem(clusterId)("300", "Topics", Loc.topics)
         )
       )
     )
 
   val component = FunctionalComponent[Props] { props =>
     val location = ReactRouterDOM.useLocation()
+    val clusterId = location.pathname.split("/").lift(2) //todo smth better
 
     Fragment(
-      navPath(location.pathname),
+      navPath(clusterId),
       div(className := "container",
         div(className := "main-content mt", role := "main", props.content)
       )

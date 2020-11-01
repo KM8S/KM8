@@ -1,0 +1,7 @@
+{
+  "clusters" : [{
+    "id" : "local-vpkxoE",
+    "name" : "local",
+    "hosts" : ["localhost:9092"]
+  }]
+}

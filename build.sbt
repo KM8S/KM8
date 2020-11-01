@@ -1,6 +1,6 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
-lazy val ZIOVersion  = "1.0.1"
+lazy val ZIOVersion  = "1.0.3"
 lazy val GrpcVersion = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 
@@ -26,14 +26,16 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                         %% "zio-kafka"                          % "0.12.0",
+      "dev.zio"                         %% "zio-kafka"                          % "0.13.0+2-7ce016c2",
+      "dev.zio"                         %% "zio-json"                           % "0.0.0+53-77ac2bc0-SNAPSHOT",
+      "com.lihaoyi"                     %% "os-lib"                             % "0.7.1",
       "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,
       "io.grpc"                         %  "grpc-netty"                         % GrpcVersion,
       "com.fasterxml.jackson.module"    %% "jackson-module-scala"               % "2.10.0",
-      "com.github.mlangc"               %% "slf4zio"                            % "0.7.0",
+      "com.github.mlangc"               %% "slf4zio"                            % "1.0.0",
       "net.logstash.logback"            %  "logstash-logback-encoder"           % "6.3",
       "ch.qos.logback"                  %  "logback-classic"                    % "1.2.3",
-      "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.4.1" % Test
+      "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.6.0" % Test
     ),
     PB.targets in Compile := Seq(
       scalapb.gen(grpc = true) -> (sourceManaged in Compile).value,
@@ -99,6 +101,7 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("common"))
   .settings(sharedSettings)
+  .disablePlugins(RevolverPlugin)
   .settings(
     libraryDependencies += "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion,
     PB.protoSources in Compile := Seq(

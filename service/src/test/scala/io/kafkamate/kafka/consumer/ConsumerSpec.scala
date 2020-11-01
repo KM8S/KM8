@@ -31,7 +31,7 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
           topic <- UIO("topic150")
           kvs = (1 to 5).toList.map(i => (s"key$i", s"msg$i"))
           _ <- produceMany(topic, kvs)
-          records <- KafkaConsumer.consumeN(topic, 5)
+          records <- KafkaConsumer.consumeN(topic, 5)("test-id")
         } yield assert(records.map(v => (v.key, v.value)))(equalTo(kvs.map(v => (v._1, v._2))))
       }
     ).provideLayerShared(testLayer) @@ timeout(30.seconds)

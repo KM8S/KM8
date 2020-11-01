@@ -1,4 +1,8 @@
 package io.kafkamate
+package brokers
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
 
 import scalapb.grpc.Channels
 import slinky.core._
@@ -6,10 +10,7 @@ import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.web.html._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
-
-import brokers._
+import bridges.reactrouter.ReactRouterDOM
 
 @react object ListBrokers {
   type Props = Unit
@@ -29,33 +30,35 @@ import brokers._
 
   val component = FunctionalComponent[Props] { _ =>
     val (listState, topicDispatch) = useReducer(brokersReducer, BrokersState())
+    val params = ReactRouterDOM.useParams().toMap
+    val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
     useEffect(
       () => {
         topicsGrpcClient
-          .getBrokers(BrokerRequest("test"))
+          .getBrokers(BrokerRequest(clusterId))
           .onComplete {
             case Success(v) => topicDispatch(NewItems(v.brokers.toList))
-            case Failure(e) => topicDispatch(NewItems(List(BrokerDetails(0, "Could not get brokers.")))); println("Error receiving brokers: " + e)
+            case Failure(e) => topicDispatch(NewItems(List(BrokerDetails(-1)))); println("Error receiving brokers: " + e)
           }
       },
       List.empty
     )
 
     div(className := "App")(
-      div(className := "container card-body table-responsive",
+      div(className := "container card-body table-responsive", //todo add cluster name
         table(className := "table table-hover",
           thead(
             tr(
               th("Id"),
-              th("Address")
+              th("IsController")
             )
           ),
           tbody(
             listState.items.zipWithIndex.map { case (item, idx) =>
               tr(key := idx.toString)(
                 td(item.id),
-                td(item.address)
+                td(item.isController.toString)
               )
             }
           )

@@ -10,7 +10,7 @@ message BrokerRequest {
 
 message BrokerDetails {
   int32 id = 1;
-  string address = 2;
+  bool isController = 2;
 }
 
 message BrokerResponse {
