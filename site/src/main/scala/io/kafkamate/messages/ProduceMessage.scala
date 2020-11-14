@@ -29,14 +29,13 @@ import bridges.reactrouter.ReactRouterDOM
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
-    //val (producerState, producerDispatch) = useReducer(producerReducer, ProducerState())
-
     def handleClusterName(e: SyntheticEvent[html.Input, Event]): Unit = setKey(e.target.value)
     def handleAddress(e: SyntheticEvent[html.Input, Event]): Unit     = setValue(e.target.value)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
-      setRequestAction(true)
+      if (messageKey.nonEmpty || messageValue.nonEmpty)
+        setRequestAction(true)
     }
 
     useEffect(
@@ -100,16 +99,13 @@ import bridges.reactrouter.ReactRouterDOM
         button(`type` := "submit", className := "btn btn-secondary", "Add")
       )
 
-    def addMessage() =
+    div(
+      className := "card",
+      div(className := "card-header", "Add message"),
       div(
-        className := "card",
-        div(className := "card-header", "Add message"),
-        div(
-          className := "card-body",
-          addMessageForm()
-        )
+        className := "card-body",
+        addMessageForm()
       )
-
-      addMessage()
+    )
   }
 }

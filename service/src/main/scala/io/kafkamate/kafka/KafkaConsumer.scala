@@ -35,12 +35,14 @@ import messages.Message
   private def createService(clustersConfigService: ClustersConfig.Service): Service =
     new Service with LoggingSupport {
       private lazy val timeout: Duration = 1000.millis
-      private def consumerSettings(config: ClusterSettings): ConsumerSettings =
+      private def consumerSettings(config: ClusterSettings): ConsumerSettings = {
+        val uuid = UUID.randomUUID().toString
         ConsumerSettings(config.hosts)
-          .withGroupId(s"kafkamate-${UUID.randomUUID().toString}")
-          .withClientId("kafkamate")
+          .withGroupId(s"group-kafkamate-$uuid")
+          .withClientId(s"client-kafkamate-$uuid")
           .withOffsetRetrieval(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))
           .withCloseTimeout(30.seconds)
+      }
 
       private def makeConsumerLayer(clusterId: String): RLayer[Clock with Blocking, Consumer] =
         ZLayer.fromManaged {

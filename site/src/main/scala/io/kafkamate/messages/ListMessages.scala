@@ -7,8 +7,8 @@ import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.reactrouter.Link
 import slinky.web.html._
-
 import bridges.reactrouter.ReactRouterDOM
+import org.scalajs.dom.{Event, html}
 
 @react object ListMessages {
   type Props = Unit
@@ -19,23 +19,24 @@ import bridges.reactrouter.ReactRouterDOM
       Item(m.offset, m.partition, m.timestamp, m.key, m.value)
   }
   case class ConsumerState(
-    streamData: Option[Boolean] = None,
+    streamData: Boolean = false,
     items: List[Item] = List.empty
   )
 
   sealed trait ConsumerAction
-  case object StreamDataOn extends ConsumerAction
-  case object StreamDataOff extends ConsumerAction
+  case object StreamToggle extends ConsumerAction
   case class NewItem(item: Item) extends ConsumerAction
 
   private def consumerReducer(prevState: ConsumerState, action: ConsumerAction): ConsumerState =
     action match {
-      case StreamDataOn =>
-        prevState.copy(
-          streamData = Some(true),
-          items = List.empty
-        )
-      case StreamDataOff => prevState.copy(streamData = Some(false))
+      case StreamToggle =>
+        if (prevState.streamData)
+          prevState.copy(streamData = ! prevState.streamData)
+        else
+          prevState.copy(
+            streamData = ! prevState.streamData,
+            items = List.empty
+          )
       case NewItem(item) => prevState.copy(items = prevState.items :+ item)
     }
 
@@ -54,10 +55,10 @@ import bridges.reactrouter.ReactRouterDOM
 
     useEffect(
       () => {
-        if (consumerState.streamData.contains(true))
+        if (consumerState.streamData)
           consumer.start(ConsumeRequest(clusterId, topicName))(v => consumerDispatch(NewItem(Item.fromMessage(v))))
 
-        if (consumerState.streamData.contains(false))
+        if (! consumerState.streamData)
           consumer.stop()
 
         /** This is an example on how to clean up the effect */
@@ -69,13 +70,18 @@ import bridges.reactrouter.ReactRouterDOM
     div(className := "App")(
       h2(s"Topic $topicName"),
       br(),
-      label(className := "inline")(button(className:= "btn btn-primary", onClick := { () => consumerDispatch(StreamDataOn) })("Stream data")),
-      label(className := "inline")(button(className:= "btn btn-danger", onClick := { () => consumerDispatch(StreamDataOff) })("Close stream")),
-      label(className := "inline")(Link(to = Loc.fromTopicAdd(clusterId, topicName))(div(className:= "btn btn-warning")("Add new message"))),
+      a(href := s"#${Loc.fromTopicAdd(clusterId, topicName)}", target := "_blank")(div(className:= "btn btn-primary float-right")("Add new message")),
+      div(className := "mb-3",
+        if (!consumerState.streamData)
+          button(className:= "btn btn-success fa fa-play", onClick := { () => consumerDispatch(StreamToggle) })(" Read")
+        else
+          button(className:= "btn btn-danger fa fa-stop", onClick := { () => consumerDispatch(StreamToggle) })(" Stop")
+      ),
       div(className := "container card-body table-responsive",
         table(className := "table table-hover",
           thead(
             tr(
+              th("Nr."),
               th("Offset"),
               th("Partition"),
               th("Timestamp"),
@@ -86,6 +92,7 @@ import bridges.reactrouter.ReactRouterDOM
           tbody(
             consumerState.items.zipWithIndex.map { case (item, idx) =>
               tr(key := idx.toString)(
+                th(idx.toString),
                 td(item.offset.toString),
                 td(item.partition.toString),
                 td(item.timestamp.toString),

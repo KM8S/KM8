@@ -54,8 +54,8 @@ object Loc {
     )
   }
 
-  def fromTopic(clusterId: String, topicName: String): String = {
-    val fromPathData = PathToRegexp.compile(Loc.listMessages)
+  private def fromTopic(clusterId: String, topicName: String)(location: String): String = {
+    val fromPathData = PathToRegexp.compile(location)
     fromPathData(
       js.Dynamic
         .literal(
@@ -66,15 +66,9 @@ object Loc {
     )
   }
 
-  def fromTopicAdd(clusterId: String, topicName: String): String = {
-    val fromPathData = PathToRegexp.compile(Loc.addMessage)
-    fromPathData(
-      js.Dynamic
-        .literal(
-          clusterId = clusterId,
-          topicName = topicName
-        )
-        .asInstanceOf[PathToRegexp.ToPathData]
-    )
-  }
+  def fromTopicList(clusterId: String, topicName: String): String =
+    fromTopic(clusterId, topicName)(Loc.listMessages)
+
+  def fromTopicAdd(clusterId: String, topicName: String): String =
+    fromTopic(clusterId, topicName)(Loc.addMessage)
 }

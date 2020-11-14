@@ -60,7 +60,7 @@ import brokers.BrokerDetails
               val ac = env.get[AdminClient]
               ac.listTopics()
                 .map(_.keys.toList)
-                .flatMap(ls => ZIO.filterNotPar(ls)(e => UIO(e.startsWith("__"))))
+                .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("__"))))
                 .flatMap(ac.describeTopics(_))
                 .map(
                   _.map { case (name, description) =>
