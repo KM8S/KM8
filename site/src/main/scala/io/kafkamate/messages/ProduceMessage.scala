@@ -16,7 +16,7 @@ import bridges.reactrouter.ReactRouterDOM
 @react object ProduceMessage {
   type Props = Unit
 
-  private val mateGrpcClient =
+  private val messagesGrpcClient =
     MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   val component = FunctionalComponent[Props] { _ =>
@@ -41,7 +41,7 @@ import bridges.reactrouter.ReactRouterDOM
     useEffect(
       () => {
         if (shouldMakeRequest)
-          mateGrpcClient
+          messagesGrpcClient
             .produceMessage(ProduceRequest(clusterId, topicName, messageKey, messageValue))
             .onComplete {
               case Success(_) =>

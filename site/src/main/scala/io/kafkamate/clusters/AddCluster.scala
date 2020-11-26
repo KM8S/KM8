@@ -15,7 +15,7 @@ import slinky.web.html._
 @react object AddCluster {
   type Props = Unit
 
-  private val topicsGrpcClient =
+  private val clustersGrpcClient =
     ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   val component = FunctionalComponent[Props] { _ =>
@@ -36,7 +36,7 @@ import slinky.web.html._
     useEffect(
       () => {
         if (shouldMakeRequest)
-          topicsGrpcClient
+          clustersGrpcClient
             .addCluster(ClusterDetails("", clusterName, address))
             .onComplete {
               case Success(_) =>

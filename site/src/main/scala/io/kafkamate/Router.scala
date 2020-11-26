@@ -7,9 +7,9 @@ import slinky.core.FunctionalComponent
 import slinky.reactrouter._
 
 import bridges.PathToRegexp
-import brokers.ListBrokers
+import brokers._
 import clusters._
-import topics.ListTopics
+import topics._
 import messages._
 
 @react object Router {
@@ -22,6 +22,7 @@ import messages._
       Route(exact = true, path = Loc.clusters, component = ListClusters.component),
       Route(exact = true, path = Loc.brokers, component = ListBrokers.component),
       Route(exact = true, path = Loc.topics, component = ListTopics.component),
+      Route(exact = true, path = Loc.addTopic, component = AddTopic.component),
       Route(exact = true, path = Loc.addMessage, component = ProduceMessage.component),
       Route(exact = true, path = Loc.listMessages, component = ListMessages.component),
       Route(exact = false, path = "", component = NotFound.component)
@@ -40,6 +41,7 @@ object Loc {
   val clusters       =  "/clusters"
   val brokers        = s"/clusters/:$clusterIdKey(.*)/brokers"
   val topics         = s"/clusters/:$clusterIdKey(.*)/topics"
+  val addTopic       = s"/clusters/:$clusterIdKey(.*)/topics/new-topic"
   val listMessages   = s"/clusters/:$clusterIdKey(.*)/topics/consume/:$topicNameKey(.*)"
   val addMessage     = s"/clusters/:$clusterIdKey(.*)/topics/produce/:$topicNameKey(.*)"
 

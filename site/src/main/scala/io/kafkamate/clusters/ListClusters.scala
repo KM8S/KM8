@@ -29,7 +29,7 @@ import slinky.web.html._
       case DeleteItem(id) => state.copy(toDelete = Some(id))
     }
 
-  private val topicsGrpcClient =
+  private val clustersGrpcClient =
     ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   val component = FunctionalComponent[Props] { _ =>
@@ -37,7 +37,7 @@ import slinky.web.html._
 
     useEffect(
       () => {
-        topicsGrpcClient
+        clustersGrpcClient
           .getClusters(ClusterRequest())
           .onComplete {
             case Success(v) => topicDispatch(NewItems(v.brokers.toList))
@@ -50,7 +50,7 @@ import slinky.web.html._
     useEffect(
       () => {
         if (brokersState.toDelete.isDefined)
-          topicsGrpcClient
+          clustersGrpcClient
             .deleteCluster(ClusterDetails(brokersState.toDelete.get))
             .onComplete {
               case Success(v) => topicDispatch(NewItems(v.brokers.toList))

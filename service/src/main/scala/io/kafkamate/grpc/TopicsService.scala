@@ -11,10 +11,16 @@ object TopicsService {
   type Env = ZEnv with KafkaExplorer.HasKafkaExplorer
 
   object GrpcService extends ZioTopics.RTopicsService[Env] {
-    def getTopics(request: TopicRequest): ZIO[Env, Status, TopicResponse] =
+    def getTopics(request: GetTopicsRequest): ZIO[Env, Status, TopicResponse] =
       KafkaExplorer
         .listTopics(request.clusterId)
         .tapError(e => zio.UIO(println(s"---------------------- Got topics error: ${e.getMessage}")))
         .bimap(Status.fromThrowable, r => TopicResponse(r)) //todo better error status codes
+
+    def addTopic(request: AddTopicRequest): ZIO[Env, Status, TopicDetails] =
+      KafkaExplorer
+        .addTopic(request)
+        .tapError(e => zio.UIO(println(s"---------------------- Got add topic error: ${e.getMessage}")))
+        .mapError(Status.fromThrowable) //todo better error status codes
   }
 }

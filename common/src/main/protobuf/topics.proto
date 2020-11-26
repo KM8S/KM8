@@ -4,7 +4,15 @@ option java_package = "io.kafkamate";
 
 package topics;
 
-message TopicRequest {
+message AddTopicRequest {
+  string clusterId = 1;
+  string name = 2;
+  int32 partitions = 3;
+  int32 replication = 4;
+  string cleanupPolicy = 5;
+}
+
+message GetTopicsRequest {
   string clusterId = 1;
 }
 
@@ -21,5 +29,6 @@ message TopicResponse {
 }
 
 service TopicsService {
-  rpc GetTopics(TopicRequest) returns (TopicResponse);
+  rpc AddTopic(AddTopicRequest) returns (TopicDetails);
+  rpc GetTopics(GetTopicsRequest) returns (TopicResponse);
 }

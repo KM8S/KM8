@@ -40,11 +40,11 @@ import org.scalajs.dom.{Event, html}
       case NewItem(item) => prevState.copy(items = prevState.items :+ item)
     }
 
-  private val mateGrpcClient =
+  private val messagesGrpcClient =
     MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   private val consumer =
-    Utils.KafkaMateServiceGrpcConsumer(mateGrpcClient)
+    MessagesConsumer(messagesGrpcClient)
 
   val component = FunctionalComponent[Props] { _ =>
     val params = ReactRouterDOM.useParams().toMap
@@ -70,8 +70,8 @@ import org.scalajs.dom.{Event, html}
     div(className := "App")(
       h2(s"Topic $topicName"),
       br(),
-      a(href := s"#${Loc.fromTopicAdd(clusterId, topicName)}", target := "_blank")(div(className:= "btn btn-primary float-right")("Add new message")),
-      div(className := "mb-3",
+      a(href := s"#${Loc.fromTopicAdd(clusterId, topicName)}", target := "_blank")(div(className:= "btn btn-primary float-right fa")("Add new message")),
+      div(className := "mb-2",
         if (!consumerState.streamData)
           button(className:= "btn btn-success fa fa-play", onClick := { () => consumerDispatch(StreamToggle) })(" Read")
         else

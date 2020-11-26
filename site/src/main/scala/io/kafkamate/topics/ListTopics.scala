@@ -38,7 +38,7 @@ import bridges.reactrouter.ReactRouterDOM
     useEffect(
       () => {
         topicsGrpcClient
-          .getTopics(TopicRequest(clusterId))
+          .getTopics(GetTopicsRequest(clusterId))
           .onComplete {
             case Success(v) => topicDispatch(NewTopics(v.topics.toList))
             case Failure(e) => topicDispatch(NewTopics(List(TopicDetails("Could not get topics.")))); println("Error receiving topics: " + e)
@@ -49,12 +49,14 @@ import bridges.reactrouter.ReactRouterDOM
 
     div(className := "App")(
       div(className := "container card-body table-responsive",
+        Link(to = Loc.fromLocation(clusterId, Loc.addTopic))(div(className:= "btn btn-primary mb-3")("Add topic")),
         table(className := "table table-hover",
           thead(
             tr(
               th("Name"),
               th("Partitions"),
-              th("Replication")
+              th("Replication factor"),
+              th("Action")
             )
           ),
           tbody(
@@ -62,7 +64,8 @@ import bridges.reactrouter.ReactRouterDOM
               tr(key := idx.toString)(
                 td(Link(to = Loc.fromTopicList(clusterId, topicDetails.name))(topicDetails.name)),
                 td(topicDetails.partitions.toString),
-                td(topicDetails.replication.toString)
+                td(topicDetails.replication.toString),
+                td("delete btn")
               )
             }
           )

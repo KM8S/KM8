@@ -6,13 +6,12 @@ import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration._
 import zio.kafka.admin._
-import zio.kafka.admin.AdminClient
 import zio.macros.accessible
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.clients.admin.AdminClientConfig
 
 import config._, ClustersConfig._
-import topics.TopicDetails
+import topics._
 import brokers.BrokerDetails
 
 @accessible object KafkaExplorer {
@@ -23,6 +22,7 @@ import brokers.BrokerDetails
   trait Service {
     def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
     def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]]
+    def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails]
   }
 
   lazy val kafkaExplorerLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
@@ -35,6 +35,12 @@ import brokers.BrokerDetails
               client <- AdminClient.make(AdminClientSettings(cs.hosts, 10.seconds, Map.empty))
             } yield client
           }
+
+        private implicit class AdminClientProvider[A](eff: RIO[HasAdminClient with Blocking, A]) {
+          def withAdminClient(clusterId: String): RIO[Blocking with Clock, A] = eff
+            .timeoutFail(new Exception("Timed out"))(5.seconds)
+            .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
+        }
 
         def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]] =
           ZIO
@@ -51,8 +57,7 @@ import brokers.BrokerDetails
                 //_ <- ac.describeConfigs(resources)
               } yield brokers
             }
-            .timeoutFail(new Exception("Timed out"))(5.seconds)
-            .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
+            .withAdminClient(clusterId)
 
         def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]] =
           ZIO
@@ -72,8 +77,18 @@ import brokers.BrokerDetails
                   }.toList
                 )
             }
-            .timeoutFail(new Exception("Timed out"))(5.seconds)
-            .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
+            .withAdminClient(clusterId)
+
+        def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails] =
+          ZIO
+            .accessM[HasAdminClient with Blocking] { env =>
+              env
+                .get[AdminClient]
+                .createTopic(AdminClient.NewTopic(req.name, req.partitions, req.replication.toShort))
+                .as(TopicDetails(req.name, req.partitions, req.replication, req.cleanupPolicy))
+            }
+            .withAdminClient(req.clusterId)
+
       }
     }
 
