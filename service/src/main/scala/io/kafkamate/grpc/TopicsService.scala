@@ -22,5 +22,11 @@ object TopicsService {
         .addTopic(request)
         .tapError(e => zio.UIO(println(s"---------------------- Got add topic error: ${e.getMessage}")))
         .mapError(Status.fromThrowable) //todo better error status codes
+
+    def deleteTopic(request: DeleteTopicRequest): ZIO[Env with Any, Status, DeleteTopicResponse] =
+      KafkaExplorer
+        .deleteTopic(request)
+        .tapError(e => zio.UIO(println(s"---------------------- Got delete topic error: ${e.getMessage}")))
+        .mapError(Status.fromThrowable) //todo better error status codes
   }
 }

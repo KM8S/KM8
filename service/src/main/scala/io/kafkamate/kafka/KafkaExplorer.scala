@@ -23,6 +23,7 @@ import brokers.BrokerDetails
     def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
     def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]]
     def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails]
+    def deleteTopic(req: DeleteTopicRequest): RIO[Blocking with Clock, DeleteTopicResponse]
   }
 
   lazy val kafkaExplorerLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
@@ -87,6 +88,16 @@ import brokers.BrokerDetails
                 .get[AdminClient]
                 .createTopic(AdminClient.NewTopic(req.name, req.partitions, req.replication.toShort))
                 .as(TopicDetails(req.name, req.partitions, req.replication, req.cleanupPolicy))
+            }
+            .withAdminClient(req.clusterId)
+
+        def deleteTopic(req: DeleteTopicRequest): RIO[Blocking with Clock, DeleteTopicResponse] =
+          ZIO
+            .accessM[HasAdminClient with Blocking] { env =>
+              env
+                .get[AdminClient]
+                .deleteTopic(req.topicName)
+                .as(DeleteTopicResponse(req.topicName))
             }
             .withAdminClient(req.clusterId)
 

@@ -78,7 +78,7 @@ import slinky.web.html._
                 td(Link(to = Loc.fromLocation(cluster.id, Loc.topics))(cluster.id)),
                 td(cluster.name),
                 td(cluster.address),
-                td(button(className:= "btn btn-danger", onClick := { () => topicDispatch(DeleteItem(cluster.id)) })("Delete"))
+                td(button(className:= "btn btn-danger fa", onClick := { () => topicDispatch(DeleteItem(cluster.id)) })("Delete"))
               )
             }
           )

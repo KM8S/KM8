@@ -16,14 +16,22 @@ import bridges.reactrouter.ReactRouterDOM
 @react object ListTopics {
   type Props = Unit
 
-  case class TopicsState(topics: List[TopicDetails] = List.empty)
+  case class TopicsState(
+    refreshPage: Boolean = false,
+    topics: List[TopicDetails] = List.empty,
+    deleteTopic: Option[String] = None
+  )
 
   sealed trait TopicsAction
   case class NewTopics(items: List[TopicDetails] = List.empty) extends TopicsAction
+  case class SetDeleteTopic(name: String) extends TopicsAction
+  case object ShouldRefresh extends TopicsAction
 
   private def topicsReducer(state: TopicsState, action: TopicsAction): TopicsState =
     action match {
       case NewTopics(topics) => state.copy(topics = topics)
+      case SetDeleteTopic(name) => state.copy(deleteTopic = Some(name))
+      case ShouldRefresh => state.copy(refreshPage = !state.refreshPage, deleteTopic = None)
     }
 
   private val topicsGrpcClient =
@@ -44,7 +52,23 @@ import bridges.reactrouter.ReactRouterDOM
             case Failure(e) => topicDispatch(NewTopics(List(TopicDetails("Could not get topics.")))); println("Error receiving topics: " + e)
           }
       },
-      List.empty
+      List(topicsState.refreshPage)
+    )
+
+    useEffect(
+      () => {
+        topicsState.deleteTopic match {
+          case None => ()
+          case Some(name) =>
+            topicsGrpcClient
+              .deleteTopic(DeleteTopicRequest(clusterId, name))
+              .onComplete {
+                case Success(_) => topicDispatch(ShouldRefresh)
+                case Failure(_) => () //todo
+              }
+        }
+      },
+      List(topicsState.deleteTopic)
     )
 
     div(className := "App")(
@@ -67,7 +91,7 @@ import bridges.reactrouter.ReactRouterDOM
                 td(topicDetails.partitions.toString),
                 td(topicDetails.replication.toString),
                 td(topicDetails.cleanupPolicy),
-                td("delete btn")
+                td(button(className:= "btn btn-danger fa", onClick := { () => topicDispatch(SetDeleteTopic(topicDetails.name)) })("Delete"))
               )
             }
           )
