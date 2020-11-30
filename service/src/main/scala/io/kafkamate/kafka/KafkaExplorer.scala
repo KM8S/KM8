@@ -76,7 +76,7 @@ import brokers.BrokerDetails
                       description.partitions.headOption.map(_.replicas.size).getOrElse(0),
                       "delete" //todo fix this
                     )
-                  }.toList
+                  }.toList.sortBy(_.name)
                 )
             }
             .withAdminClient(clusterId)

@@ -71,6 +71,31 @@ import bridges.reactrouter.ReactRouterDOM
       List(topicsState.deleteTopic)
     )
 
+    def renderDeleteModal(idx: String, topicDetails: TopicDetails) = {
+      val modalId = s"modalNr$idx"
+      div(
+        button(className:= "btn btn-danger fa", data-"toggle" := "modal", data-"target" := s"#$modalId")("Delete"),
+        div(className := "modal fade", id := modalId, role := "dialog",
+          div(className := "modal-dialog modal-dialog-centered", role := "document",
+            div(className := "modal-content",
+              div(className :="modal-header",
+                h5(className := "modal-title")(topicDetails.name)
+              ),
+              div(className := "modal-body")(
+                p(s"Are you sure you want to delete ${topicDetails.name} topic?"),
+                p("Keep in mind that the topic will be deleted eventually, not immediately!")
+              ),
+              div(className := "modal-footer")(
+                button(className := "btn btn-secondary", data-"dismiss" := "modal")("Cancel"),
+                button(className := "btn btn-danger", data-"dismiss" := "modal",
+                  onClick := (() => topicDispatch(SetDeleteTopic(topicDetails.name))))("Delete")
+              )
+            )
+          )
+        )
+      )
+    }
+
     div(className := "App")(
       div(className := "card-body table-responsive",
         Link(to = Loc.fromLocation(clusterId, Loc.addTopic))(div(className:= "btn btn-primary mb-3")("Add topic")),
@@ -91,7 +116,7 @@ import bridges.reactrouter.ReactRouterDOM
                 td(topicDetails.partitions.toString),
                 td(topicDetails.replication.toString),
                 td(topicDetails.cleanupPolicy),
-                td(button(className:= "btn btn-danger fa", onClick := { () => topicDispatch(SetDeleteTopic(topicDetails.name)) })("Delete"))
+                td(renderDeleteModal(idx.toString, topicDetails))
               )
             }
           )
