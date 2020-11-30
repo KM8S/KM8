@@ -47,6 +47,7 @@ lazy val service = project
 lazy val site = project
   .in(file("site"))
   .enablePlugins(ScalaJSBundlerPlugin)
+  .disablePlugins(RevolverPlugin)
   .settings(sharedSettings)
   .settings(
     name := "kafkamate-site",

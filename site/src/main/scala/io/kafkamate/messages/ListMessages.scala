@@ -70,14 +70,14 @@ import org.scalajs.dom.{Event, html}
     div(className := "App")(
       h2(s"Topic $topicName"),
       br(),
-      a(href := s"#${Loc.fromTopicAdd(clusterId, topicName)}", target := "_blank")(div(className:= "btn btn-primary float-right fa")("Add new message")),
-      div(className := "mb-2",
-        if (!consumerState.streamData)
-          button(className:= "btn btn-success fa fa-play", onClick := { () => consumerDispatch(StreamToggle) })(" Read")
-        else
-          button(className:= "btn btn-danger fa fa-stop", onClick := { () => consumerDispatch(StreamToggle) })(" Stop")
-      ),
       div(className := "container card-body table-responsive",
+        a(href := s"#${Loc.fromTopicAdd(clusterId, topicName)}", target := "_blank")(div(className:= "btn btn-primary float-right fa")("Add new message")),
+        div(className := "mb-3",
+          if (!consumerState.streamData)
+            button(className:= "btn btn-success fa fa-play", onClick := { () => consumerDispatch(StreamToggle) })(" Read")
+          else
+            button(className:= "btn btn-danger fa fa-stop", onClick := { () => consumerDispatch(StreamToggle) })(" Stop")
+        ),
         table(className := "table table-hover",
           thead(
             tr(

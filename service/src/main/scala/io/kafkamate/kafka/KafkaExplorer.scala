@@ -72,7 +72,8 @@ import brokers.BrokerDetails
                     TopicDetails(
                       name,
                       description.partitions.size,
-                      description.partitions.headOption.map(_.replicas.size).getOrElse(0)
+                      description.partitions.headOption.map(_.replicas.size).getOrElse(0),
+                      "delete" //todo fix this
                     )
                   }.toList
                 )

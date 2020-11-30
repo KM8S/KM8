@@ -61,8 +61,8 @@ import slinky.web.html._
     )
 
     div(className := "App")(
-      Link(to = Loc.addCluster)(div(className:= "btn btn-primary")("Add cluster")),
       div(className := "container card-body table-responsive",
+        Link(to = Loc.addCluster)(div(className:= "btn btn-primary mb-3")("Add cluster")),
         table(className := "table table-hover",
           thead(
             tr(

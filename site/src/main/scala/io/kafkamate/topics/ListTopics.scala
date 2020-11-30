@@ -48,7 +48,7 @@ import bridges.reactrouter.ReactRouterDOM
     )
 
     div(className := "App")(
-      div(className := "container card-body table-responsive",
+      div(className := "card-body table-responsive",
         Link(to = Loc.fromLocation(clusterId, Loc.addTopic))(div(className:= "btn btn-primary mb-3")("Add topic")),
         table(className := "table table-hover",
           thead(
@@ -56,6 +56,7 @@ import bridges.reactrouter.ReactRouterDOM
               th("Name"),
               th("Partitions"),
               th("Replication factor"),
+              th("Cleanup Policy"),
               th("Action")
             )
           ),
@@ -65,6 +66,7 @@ import bridges.reactrouter.ReactRouterDOM
                 td(Link(to = Loc.fromTopicList(clusterId, topicDetails.name))(topicDetails.name)),
                 td(topicDetails.partitions.toString),
                 td(topicDetails.replication.toString),
+                td(topicDetails.cleanupPolicy),
                 td("delete btn")
               )
             }

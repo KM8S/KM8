@@ -24,18 +24,18 @@ import bridges.reactrouter.ReactRouterDOM
     val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
-    val (shouldRedirect, setRedirect) = useState(false)
+    val (shouldRedirect, setRedirect)         = useState(false)
     val (shouldMakeRequest, setRequestAction) = useState(false)
-    val (topicName, setTopicName) = useState("")
-    val (partitions, setPartitions)         = useState(1)
+    val (topicName, setTopicName)             = useState("")
+    val (partitions, setPartitions)           = useState(1)
     val (replication, setReplication)         = useState(1)
-    val (cleanupPolicy, setCleanupPolicy)         = useState("delete")
-    val (errorMsgs, setErrorMsgs)     = useState(List.empty[String])
+    val (cleanupPolicy, setCleanupPolicy)     = useState("delete")
+    val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
 
-    def handleTopicName(e: SyntheticEvent[html.Input, Event]): Unit = setTopicName(e.target.value)
+    def handleTopicName(e: SyntheticEvent[html.Input, Event]): Unit      = setTopicName(e.target.value)
     def handlePartitions(e: SyntheticEvent[html.Input, Event]): Unit     = setPartitions(e.target.value.toInt)
-    def handleReplication(e: SyntheticEvent[html.Input, Event]): Unit     = setReplication(e.target.value.toInt)
-    def handleCleanupPolicy(e: SyntheticEvent[html.Input, Event]): Unit     = setCleanupPolicy(e.target.value)
+    def handleReplication(e: SyntheticEvent[html.Input, Event]): Unit    = setReplication(e.target.value.toInt)
+    def handleCleanupPolicy(e: SyntheticEvent[html.Select, Event]): Unit = setCleanupPolicy(e.target.value)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
@@ -66,7 +66,7 @@ import bridges.reactrouter.ReactRouterDOM
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "name", id := "form-username-label")
+            span(className := "input-group-text", "name", id := "form-topicname-label")
           ),
           input(
             `type` := "text",
@@ -79,7 +79,7 @@ import bridges.reactrouter.ReactRouterDOM
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "partitions", id := "form-username-label")
+            span(className := "input-group-text", "partitions", id := "form-partitions-label")
           ),
           input(
             `type` := "number",
@@ -94,7 +94,7 @@ import bridges.reactrouter.ReactRouterDOM
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "replication", id := "form-username-label")
+            span(className := "input-group-text", "replication", id := "form-replication-label")
           ),
           input(
             `type` := "number",
@@ -109,13 +109,15 @@ import bridges.reactrouter.ReactRouterDOM
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "cleanupPolicy", id := "form-username-label")
+            span(className := "input-group-text", "cleanupPolicy", id := "form-cleanupPolicy-label1")
           ),
-          input(
-            `type` := "text",
+          select(
             className := "form-control",
-            value := cleanupPolicy,
+            id := "form-cleanupPolicy-label2",
             onChange := (handleCleanupPolicy(_))
+          )(
+            option(value := "delete")("delete"),
+            option(value := "compact")("compact")
           )
         ),
         errorMsgs.zipWithIndex.map {
@@ -127,7 +129,7 @@ import bridges.reactrouter.ReactRouterDOM
 
     def addTopic() = {
       div(
-        className := "container p-4",
+        className := "container w-50 p-4",
         div(
           className := "card",
           div(className := "card-header", "Add topic"),
