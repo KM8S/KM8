@@ -3,6 +3,7 @@ package topics
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
+import scala.scalajs.js
 
 import scalapb.grpc.Channels
 import slinky.core._
@@ -19,19 +20,19 @@ import bridges.reactrouter.ReactRouterDOM
   case class TopicsState(
     refreshPage: Boolean = false,
     topics: List[TopicDetails] = List.empty,
-    deleteTopic: Option[String] = None
+    topic$Modal: (String, String) = ("", "")
   )
 
   sealed trait TopicsAction
   case class NewTopics(items: List[TopicDetails] = List.empty) extends TopicsAction
-  case class SetDeleteTopic(name: String) extends TopicsAction
+  case class SetToDelete(name: String, id: String) extends TopicsAction
   case object ShouldRefresh extends TopicsAction
 
   private def topicsReducer(state: TopicsState, action: TopicsAction): TopicsState =
     action match {
       case NewTopics(topics) => state.copy(topics = topics)
-      case SetDeleteTopic(name) => state.copy(deleteTopic = Some(name))
-      case ShouldRefresh => state.copy(refreshPage = !state.refreshPage, deleteTopic = None)
+      case SetToDelete(name, id) => state.copy(topic$Modal = (name, id))
+      case ShouldRefresh => state.copy(refreshPage = !state.refreshPage, topic$Modal = ("", ""))
     }
 
   private val topicsGrpcClient =
@@ -57,21 +58,23 @@ import bridges.reactrouter.ReactRouterDOM
 
     useEffect(
       () => {
-        topicsState.deleteTopic match {
-          case None => ()
-          case Some(name) =>
+        topicsState.topic$Modal match {
+          case ("", _) => ()
+          case (name, id) =>
             topicsGrpcClient
               .deleteTopic(DeleteTopicRequest(clusterId, name))
               .onComplete {
-                case Success(_) => topicDispatch(ShouldRefresh)
+                case Success(_) =>
+                  js.eval("$('" + s"#$id" + "').modal('toggle')")
+                  topicDispatch(ShouldRefresh)
                 case Failure(_) => () //todo
               }
         }
       },
-      List(topicsState.deleteTopic)
+      List(topicsState.topic$Modal)
     )
 
-    def renderDeleteModal(idx: String, topicDetails: TopicDetails) = {
+    def renderDelete(idx: String, topicDetails: TopicDetails) = {
       val modalId = s"modalNr$idx"
       div(
         button(className:= "btn btn-danger fa", data-"toggle" := "modal", data-"target" := s"#$modalId")("Delete"),
@@ -87,8 +90,8 @@ import bridges.reactrouter.ReactRouterDOM
               ),
               div(className := "modal-footer")(
                 button(className := "btn btn-secondary", data-"dismiss" := "modal")("Cancel"),
-                button(className := "btn btn-danger", data-"dismiss" := "modal",
-                  onClick := (() => topicDispatch(SetDeleteTopic(topicDetails.name))))("Delete")
+                button(className := "btn btn-danger",
+                  onClick := (() => topicDispatch(SetToDelete(topicDetails.name, modalId))))("Delete")
               )
             )
           )
@@ -116,7 +119,7 @@ import bridges.reactrouter.ReactRouterDOM
                 td(topicDetails.partitions.toString),
                 td(topicDetails.replication.toString),
                 td(topicDetails.cleanupPolicy),
-                td(renderDeleteModal(idx.toString, topicDetails))
+                td(renderDelete(idx.toString, topicDetails))
               )
             }
           )
