@@ -16,21 +16,21 @@ import bridges.reactrouter.ReactRouterDOM
 @react object ProduceMessage {
   type Props = Unit
 
-  private val mateGrpcClient =
+  private val messagesGrpcClient =
     MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   val component = FunctionalComponent[Props] { _ =>
     val (shouldMakeRequest, setRequestAction) = useState(false)
-    val (messageKey, setKey)        = useState("")
-    val (messageValue, setValue)    = useState("")
-    val (errorMsgs, setErrorMsgs)   = useState(List.empty[String])
+    val (messageKey, setKey)                  = useState("")
+    val (messageValue, setValue)              = useState("")
+    val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
 
     val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
-    def handleClusterName(e: SyntheticEvent[html.Input, Event]): Unit = setKey(e.target.value)
-    def handleAddress(e: SyntheticEvent[html.Input, Event]): Unit     = setValue(e.target.value)
+    def handleKey(e: SyntheticEvent[html.Input, Event]): Unit       = setKey(e.target.value)
+    def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit  = setValue(e.target.value)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
@@ -41,7 +41,7 @@ import bridges.reactrouter.ReactRouterDOM
     useEffect(
       () => {
         if (shouldMakeRequest)
-          mateGrpcClient
+          messagesGrpcClient
             .produceMessage(ProduceRequest(clusterId, topicName, messageKey, messageValue))
             .onComplete {
               case Success(_) =>
@@ -64,7 +64,7 @@ import bridges.reactrouter.ReactRouterDOM
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "key", id := "form-username-label")
+            span(className := "input-group-text", "key", id := "form-key-label")
           ),
           input(
             `type` := "text",
@@ -73,23 +73,22 @@ import bridges.reactrouter.ReactRouterDOM
             aria - "label" := "key",
             aria - "describedby" := "form-username-label",
             value := messageKey,
-            onChange := (handleClusterName(_))
+            onChange := (handleKey(_))
           )
         ),
         div(
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "value", id := "form-username-label")
+            span(className := "input-group-text", "value", id := "form-value-label")
           ),
-          input(
-            `type` := "text",
+          textarea(
             className := "form-control",
             placeholder := "value",
             aria - "label" := "value",
             aria - "describedby" := "form-password-label",
             value := messageValue,
-            onChange := (handleAddress(_))
+            onChange := (handleValue(_))
           )
         ),
         errorMsgs.zipWithIndex.map {
@@ -99,12 +98,16 @@ import bridges.reactrouter.ReactRouterDOM
         button(`type` := "submit", className := "btn btn-secondary", "Add")
       )
 
-    div(
-      className := "card",
-      div(className := "card-header", "Add message"),
+    div(className := "App")(
+      h2(s"Topic $topicName"),
+      br(),
       div(
-        className := "card-body",
-        addMessageForm()
+        className := "card",
+        div(className := "card-header", "Add message"),
+        div(
+          className := "card-body",
+          addMessageForm()
+        )
       )
     )
   }

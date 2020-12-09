@@ -27,7 +27,7 @@ lazy val service = project
     ),
     libraryDependencies ++= Seq(
       "dev.zio"                         %% "zio-kafka"                          % "0.13.0+2-7ce016c2",
-      "dev.zio"                         %% "zio-json"                           % "0.0.0+53-77ac2bc0-SNAPSHOT",
+      "dev.zio"                         %% "zio-json"                           % "0.0.1",
       "com.lihaoyi"                     %% "os-lib"                             % "0.7.1",
       "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,
       "io.grpc"                         %  "grpc-netty"                         % GrpcVersion,
@@ -47,6 +47,7 @@ lazy val service = project
 lazy val site = project
   .in(file("site"))
   .enablePlugins(ScalaJSBundlerPlugin)
+  .disablePlugins(RevolverPlugin)
   .settings(sharedSettings)
   .settings(
     name := "kafkamate-site",

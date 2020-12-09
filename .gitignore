@@ -16,6 +16,7 @@ project/activator-sbt*
 
 # Bloop
 .bloop
+.bsp
 out
 project/metals.sbt
 

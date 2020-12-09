@@ -29,7 +29,7 @@ import slinky.web.html._
       case DeleteItem(id) => state.copy(toDelete = Some(id))
     }
 
-  private val topicsGrpcClient =
+  private val clustersGrpcClient =
     ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
 
   val component = FunctionalComponent[Props] { _ =>
@@ -37,7 +37,7 @@ import slinky.web.html._
 
     useEffect(
       () => {
-        topicsGrpcClient
+        clustersGrpcClient
           .getClusters(ClusterRequest())
           .onComplete {
             case Success(v) => topicDispatch(NewItems(v.brokers.toList))
@@ -50,7 +50,7 @@ import slinky.web.html._
     useEffect(
       () => {
         if (brokersState.toDelete.isDefined)
-          topicsGrpcClient
+          clustersGrpcClient
             .deleteCluster(ClusterDetails(brokersState.toDelete.get))
             .onComplete {
               case Success(v) => topicDispatch(NewItems(v.brokers.toList))
@@ -61,8 +61,8 @@ import slinky.web.html._
     )
 
     div(className := "App")(
-      Link(to = Loc.addCluster)(div(className:= "btn btn-primary")("Add cluster")),
       div(className := "container card-body table-responsive",
+        Link(to = Loc.addCluster)(div(className:= "btn btn-primary mb-3")("Add cluster")),
         table(className := "table table-hover",
           thead(
             tr(
@@ -78,7 +78,7 @@ import slinky.web.html._
                 td(Link(to = Loc.fromLocation(cluster.id, Loc.topics))(cluster.id)),
                 td(cluster.name),
                 td(cluster.address),
-                td(button(className:= "btn btn-danger", onClick := { () => topicDispatch(DeleteItem(cluster.id)) })("Delete"))
+                td(button(className:= "btn btn-danger fa", onClick := { () => topicDispatch(DeleteItem(cluster.id)) })("Delete"))
               )
             }
           )
