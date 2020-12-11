@@ -23,7 +23,7 @@ import messages.Message
 
   trait Service {
     def consumeN(topic: String, nrOfMessages: Long)(clusterId: String): RIO[Clock with Blocking, List[Message]]
-    def consumeStream(topic: String)(clusterId: String): ZStream[Clock with Blocking, Throwable, Message]
+    def consumeStream(topic: String, maxResults: Long)(clusterId: String): ZStream[Clock with Blocking, Throwable, Message]
   }
 
   lazy val kafkaConsumerLayer: URLayer[ClustersConfigService, KafkaConsumer] =
@@ -35,13 +35,14 @@ import messages.Message
   private def createService(clustersConfigService: ClustersConfig.Service): Service =
     new Service with LoggingSupport {
       private lazy val timeout: Duration = 1000.millis
+
       private def consumerSettings(config: ClusterSettings): ConsumerSettings = {
         val uuid = UUID.randomUUID().toString
         ConsumerSettings(config.hosts)
           .withGroupId(s"group-kafkamate-$uuid")
           .withClientId(s"client-kafkamate-$uuid")
           .withOffsetRetrieval(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))
-          .withCloseTimeout(30.seconds)
+          .withCloseTimeout(10.seconds)
       }
 
       private def makeConsumerLayer(clusterId: String): RLayer[Clock with Blocking, Consumer] =
@@ -55,7 +56,7 @@ import messages.Message
       def consumeN(topic: String, nrOfMessages: Long)(clusterId: String): RIO[Clock with Blocking, List[Message]] = {
         val consumer =
           for {
-            _ <- Consumer.subscribe(Subscription.Topics(Set(topic)))
+            _ <- Consumer.subscribe(Subscription.topics(topic))
             endOffsets <- Consumer.assignment.repeatUntil(_.nonEmpty).flatMap(Consumer.endOffsets(_, timeout))
             _ <- logger.infoIO( s"End offsets: $endOffsets")
             records <- Consumer
@@ -72,12 +73,15 @@ import messages.Message
                               cr: CommittableRecord[String, String]): Boolean =
         endOffsets.exists(o => o._1 == cr.offset.topicPartition && o._2 == 1 + cr.offset.offset)
 
-      def consumeStream(topic: String)(clusterId: String): ZStream[Clock with Blocking, Throwable, Message] =
-        Consumer
-          .subscribeAnd(Subscription.Topics(Set(topic)))
+      def consumeStream(topic: String, maxResults: Long)(clusterId: String): ZStream[Clock with Blocking, Throwable, Message] = {
+        val stream = Consumer
+          .subscribeAnd(Subscription.topics(topic))
           .plainStream(Deserializer.string, Deserializer.string)
-          .tap(cr => logger.debugIO(s"Msg: ${cr.record.key}"))
           .map(v => Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value))
-          .provideSomeLayer[Clock with Blocking](makeConsumerLayer(clusterId))
+
+        val result = if (maxResults <= 0L) stream else stream.take(maxResults)
+
+        result.provideSomeLayer[Clock with Blocking](makeConsumerLayer(clusterId))
+      }
     }
 }

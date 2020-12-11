@@ -24,8 +24,8 @@ object MessagesService {
 
     override def consumeMessages(request: ConsumeRequest): ZStream[Env, Status, Message] =
       KafkaConsumer
-        .consumeStream(request.topicName)(request.clusterId)
-        .onError(e => zio.UIO(println("----------------------\n" + e.prettyPrint)))
+        .consumeStream(request.topicName, request.maxResults)(request.clusterId)
+        .onError(e => zio.UIO(println("---------------------- kafka consume error: \n" + e.prettyPrint)))
         .mapError(Status.fromThrowable)
   }
 }
