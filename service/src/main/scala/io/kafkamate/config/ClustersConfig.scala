@@ -39,7 +39,7 @@ import zio.macros.accessible
 
   lazy val liveLayer: ULayer[ClustersConfigService] = ZLayer.succeed {
     new Service {
-      private val configFilepath = os.pwd / os.up / "clusters.json"
+      private val configFilepath = os.pwd / "clusters.json"
 
       def readClusters: Task[ClusterProperties] =
         for {

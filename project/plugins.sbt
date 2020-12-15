@@ -14,6 +14,10 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 
 addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.34")
 
+addSbtPlugin("se.marcuslonnberg" % "sbt-docker" % "1.8.0")
+
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.15.0")
+
 libraryDependencies ++= Seq(
   "com.thesamet.scalapb"            %% "compilerplugin"             % "0.10.8",
   "com.thesamet.scalapb.grpcweb"    %% "scalapb-grpcweb-code-gen"   % "0.4.1+21-1dbb6ad7-SNAPSHOT",

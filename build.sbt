@@ -4,6 +4,8 @@ lazy val ZIOVersion  = "1.0.3"
 lazy val GrpcVersion = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 
+//enablePlugins(DockerPlugin)
+
 lazy val service = project
   .in(file("service"))
   .settings(sharedSettings)
@@ -43,6 +45,30 @@ lazy val service = project
     )
   )
   .dependsOn(common.jvm)
+  .enablePlugins(DockerPlugin)
+  .settings(
+    dockerfile in docker := {
+      // The assembly task generates a fat JAR file
+      val artifact: File = assembly.value
+      val artifactTargetPath = s"/app/${artifact.name}"
+
+      new Dockerfile {
+        from("openjdk:8-jre")
+        add(artifact, artifactTargetPath)
+        entryPoint("java", "-jar", artifactTargetPath)
+      }
+    }
+  )
+  .settings(
+    assemblyMergeStrategy in assembly := {
+      case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.concat
+      case "module-info.class" => MergeStrategy.discard
+      case x =>
+        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        oldStrategy(x)
+    },
+    test in assembly := {}
+  )
 
 lazy val site = project
   .in(file("site"))

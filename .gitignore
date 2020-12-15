@@ -38,7 +38,8 @@ projectFilesBackup/
 .metals
 .vscode
 
+# Project
 revision.txt
-
 .DS_Store
 local.sbt
+site/build
