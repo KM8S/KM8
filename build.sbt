@@ -1,10 +1,43 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
+lazy val ProjectName = "kafkamate"
+lazy val ProjectOrganization = "cipriansofronia"
+lazy val ProjectVersion = "0.1.0-v1"
+lazy val ProjectScalaVersion = "2.13.3"
+
 lazy val ZIOVersion  = "1.0.3"
 lazy val GrpcVersion = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 
-//enablePlugins(DockerPlugin)
+lazy val root = project
+  .in(file("."))
+  .aggregate(service, site)
+  .settings(
+    name := ProjectName,
+    organization := ProjectOrganization,
+    version := ProjectVersion
+  )
+  .enablePlugins(DockerPlugin)
+  .settings(
+    docker := (docker dependsOn (assembly in service)).value,
+    dockerfile in docker := {
+      val artifact: File = (assemblyOutputPath in assembly in service).value
+      val artifactTargetPath = s"/app/${artifact.name}"
+
+      new Dockerfile {
+        from("openjdk:8-jre")
+        add(artifact, artifactTargetPath)
+        entryPoint("java", "-jar", artifactTargetPath)
+      }
+    },
+    imageNames in docker := Seq(
+      ImageName(s"${organization.value}/${name.value}:latest"),
+      ImageName(
+        repository = s"${organization.value}/${name.value}",
+        tag = Some(version.value)
+      )
+    )
+  )
 
 lazy val service = project
   .in(file("service"))
@@ -45,20 +78,6 @@ lazy val service = project
     )
   )
   .dependsOn(common.jvm)
-  .enablePlugins(DockerPlugin)
-  .settings(
-    dockerfile in docker := {
-      // The assembly task generates a fat JAR file
-      val artifact: File = assembly.value
-      val artifactTargetPath = s"/app/${artifact.name}"
-
-      new Dockerfile {
-        from("openjdk:8-jre")
-        add(artifact, artifactTargetPath)
-        entryPoint("java", "-jar", artifactTargetPath)
-      }
-    }
-  )
   .settings(
     assemblyMergeStrategy in assembly := {
       case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.concat
@@ -67,7 +86,7 @@ lazy val service = project
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)
     },
-    test in assembly := {}
+    test in assembly := {} //todo remove this
   )
 
 lazy val site = project
@@ -155,8 +174,8 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   )
 
 lazy val sharedSettings = Seq(
-  version := "0.3.0",
-  scalaVersion := "2.13.3",
+  version := ProjectVersion,
+  scalaVersion := ProjectScalaVersion,
   scalacOptions ++= Seq(
     "-Ymacro-annotations"
   ),
