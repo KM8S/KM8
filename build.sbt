@@ -28,10 +28,10 @@ lazy val root = project
         from("openjdk:8-jre")
         maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
 
-        expose(8080)
+        expose(8080, 8081, 9000)
 
         runRaw("apt-get update")
-        runRaw("apt-get install -y nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
+        runRaw("apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
         runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
         runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
         runRaw("""add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """)
@@ -51,7 +51,8 @@ lazy val root = project
         copy(baseDirectory(_ / "start.sh" ).value, "start.sh")
         runRaw("chmod +x start.sh")
 
-        entryPoint("./start.sh", artifactTargetPath)
+        entryPoint("/usr/bin/dumb-init", "--")
+        cmd("./start.sh", artifactTargetPath)
       }
     },
     imageNames in docker := Seq(
