@@ -2,7 +2,7 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
 lazy val ProjectName = "kafkamate"
 lazy val ProjectOrganization = "cipriansofronia"
-lazy val ProjectVersion = "0.1.0-v1"
+lazy val ProjectVersion = "0.1.0"
 lazy val ProjectScalaVersion = "2.13.3"
 
 lazy val ZIOVersion  = "1.0.3"
@@ -26,8 +26,32 @@ lazy val root = project
 
       new Dockerfile {
         from("openjdk:8-jre")
+        maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
+
+        expose(8080)
+
+        runRaw("apt-get update")
+        runRaw("apt-get install -y nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
+        runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
+        runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
+        runRaw("""add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """)
+        runRaw("apt-get update")
+        //runRaw("apt-cache policy getenvoy-envoy")
+        runRaw("apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
+
+        copy(baseDirectory(_ / "common" / "src" / "main" / "resources" / "envoy.yaml").value, "envoy.yaml")
+
         add(artifact, artifactTargetPath)
-        entryPoint("java", "-jar", artifactTargetPath)
+
+        runRaw("rm -v /etc/nginx/nginx.conf")
+        copy(baseDirectory(_ / "site" / "conf").value, "/etc/nginx/")
+        copy(baseDirectory(_ / "site" / "build").value, "/usr/share/nginx/html/")
+        copy(baseDirectory(_ / "site" / "build").value, "/var/www/html/")
+
+        copy(baseDirectory(_ / "start.sh" ).value, "start.sh")
+        runRaw("chmod +x start.sh")
+
+        entryPoint("./start.sh", artifactTargetPath)
       }
     },
     imageNames in docker := Seq(
@@ -37,6 +61,9 @@ lazy val root = project
         tag = Some(version.value)
       )
     )
+  )
+  .settings(
+    addCommandAlias("dockerize", ";compile;build;docker")
   )
 
 lazy val service = project
