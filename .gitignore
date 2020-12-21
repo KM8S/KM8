@@ -43,3 +43,4 @@ revision.txt
 .DS_Store
 local.sbt
 site/build
+kafkamate.json

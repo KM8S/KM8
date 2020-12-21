@@ -18,6 +18,7 @@ lazy val kafkamate = project
     version := ProjectVersion
   )
   .enablePlugins(DockerPlugin)
+  .disablePlugins(RevolverPlugin)
   .settings(
     docker := (docker dependsOn (assembly in service)).value,
     dockerfile in docker := {
@@ -28,6 +29,7 @@ lazy val kafkamate = project
         from("openjdk:8-jre")
         maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
 
+        env("KAFKAMATE_ENV", "prod")
         expose(8080, 61234, 9000)
 
         runRaw("apt-get update")

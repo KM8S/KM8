@@ -16,5 +16,5 @@ In another shell tab start the service:
 
 We need also to start the Envoy proxy to forward the browser's gRPC-Web requests to the backend:
 ```bash
-➜ docker run -d -v "$(pwd)"/common/src/main/resources/envoy.yaml:/etc/envoy/envoy.yaml:ro --network=host envoyproxy/envoy:v1.15.0
+➜ docker run -d -v "$(pwd)"/build/envoy.yaml:/etc/envoy/envoy.yaml:ro --network host envoyproxy/envoy:v1.15.0
 ```
