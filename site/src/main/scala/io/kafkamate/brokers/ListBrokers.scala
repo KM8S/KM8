@@ -26,7 +26,7 @@ import bridges.reactrouter.ReactRouterDOM
     }
 
   private val topicsGrpcClient =
-    BrokersServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
+    BrokersServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
     val (listState, topicDispatch) = useReducer(brokersReducer, BrokersState())

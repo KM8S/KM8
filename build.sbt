@@ -9,7 +9,7 @@ lazy val ZIOVersion  = "1.0.3"
 lazy val GrpcVersion = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 
-lazy val root = project
+lazy val kafkamate = project
   .in(file("."))
   .aggregate(service, site)
   .settings(
@@ -28,7 +28,7 @@ lazy val root = project
         from("openjdk:8-jre")
         maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
 
-        expose(8080, 8081, 9000)
+        expose(8080, 61234, 9000)
 
         runRaw("apt-get update")
         runRaw("apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
@@ -36,20 +36,15 @@ lazy val root = project
         runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
         runRaw("""add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """)
         runRaw("apt-get update")
-        //runRaw("apt-cache policy getenvoy-envoy")
         runRaw("apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
 
-        copy(baseDirectory(_ / "common" / "src" / "main" / "resources" / "envoy.yaml").value, "envoy.yaml")
+        runRaw("rm -v /etc/nginx/nginx.conf")
+        copy(baseDirectory(_ / "build" / "nginx").value, "/etc/nginx/")
+        copy(baseDirectory(_ / "build" / "envoy.yaml").value, "envoy.yaml")
+        copy(baseDirectory(_ / "build" / "start.sh" ).value, "start.sh")
 
         add(artifact, artifactTargetPath)
-
-        runRaw("rm -v /etc/nginx/nginx.conf")
-        copy(baseDirectory(_ / "site" / "conf").value, "/etc/nginx/")
         copy(baseDirectory(_ / "site" / "build").value, "/usr/share/nginx/html/")
-        copy(baseDirectory(_ / "site" / "build").value, "/var/www/html/")
-
-        copy(baseDirectory(_ / "start.sh" ).value, "start.sh")
-        runRaw("chmod +x start.sh")
 
         entryPoint("/usr/bin/dumb-init", "--")
         cmd("./start.sh", artifactTargetPath)
@@ -64,7 +59,7 @@ lazy val root = project
     )
   )
   .settings(
-    addCommandAlias("dockerize", ";compile;build;docker")
+    addCommandAlias("dockerize", ";compile;build;docker") //todo add test command
   )
 
 lazy val service = project
