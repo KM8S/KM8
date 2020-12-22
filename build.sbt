@@ -61,7 +61,7 @@ lazy val kafkamate = project
     )
   )
   .settings(
-    addCommandAlias("dockerize", ";compile;build;docker") //todo add test command
+    addCommandAlias("dockerize", ";compile;test;build;docker")
   )
 
 lazy val service = project
