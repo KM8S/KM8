@@ -49,7 +49,7 @@ import zio.system.System
       def readClusters: Task[ClusterProperties] =
         for {
           b <- Task(os.exists(configFilepath))
-          _ <- Task(os.write(configFilepath, ClusterProperties(List.empty).toJsonPretty, createFolders = true)).unless(b)
+          _ <- Task(os.write.over(configFilepath, ClusterProperties(List.empty).toJsonPretty, createFolders = true)).unless(b)
           s <- Task(os.read(configFilepath))
           r <- ZIO.fromEither(s.fromJson[ClusterProperties]).mapError(new Exception(_))
         } yield r

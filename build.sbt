@@ -1,7 +1,7 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
 lazy val ProjectName = "kafkamate"
-lazy val ProjectOrganization = "cipriansofronia"
+lazy val ProjectOrganization = "csofronia"
 lazy val ProjectVersion = "0.1.0"
 lazy val ProjectScalaVersion = "2.13.3"
 
