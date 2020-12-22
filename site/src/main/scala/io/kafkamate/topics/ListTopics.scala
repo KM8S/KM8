@@ -36,7 +36,7 @@ import bridges.reactrouter.ReactRouterDOM
     }
 
   private val topicsGrpcClient =
-    TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
+    TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
     val params = ReactRouterDOM.useParams().toMap

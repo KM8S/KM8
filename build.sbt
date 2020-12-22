@@ -1,8 +1,68 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
+lazy val ProjectName = "kafkamate"
+lazy val ProjectOrganization = "csofronia"
+lazy val ProjectVersion = "0.1.0"
+lazy val ProjectScalaVersion = "2.13.3"
+
 lazy val ZIOVersion  = "1.0.3"
 lazy val GrpcVersion = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
+
+lazy val kafkamate = project
+  .in(file("."))
+  .aggregate(service, site)
+  .settings(
+    name := ProjectName,
+    organization := ProjectOrganization,
+    version := ProjectVersion
+  )
+  .enablePlugins(DockerPlugin)
+  .disablePlugins(RevolverPlugin)
+  .settings(
+    docker := (docker dependsOn (assembly in service)).value,
+    dockerfile in docker := {
+      val artifact: File = (assemblyOutputPath in assembly in service).value
+      val artifactTargetPath = s"/app/${artifact.name}"
+
+      new Dockerfile {
+        from("openjdk:8-jre")
+        maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
+
+        env("KAFKAMATE_ENV", "prod")
+        expose(8080, 61234, 9000)
+
+        runRaw("apt-get update")
+        runRaw("apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
+        runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
+        runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
+        runRaw("""add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """)
+        runRaw("apt-get update")
+        runRaw("apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
+
+        runRaw("rm -v /etc/nginx/nginx.conf")
+        copy(baseDirectory(_ / "build" / "nginx").value, "/etc/nginx/")
+        copy(baseDirectory(_ / "build" / "envoy.yaml").value, "envoy.yaml")
+        copy(baseDirectory(_ / "build" / "start.sh" ).value, "start.sh")
+
+        add(artifact, artifactTargetPath)
+        copy(baseDirectory(_ / "site" / "build").value, "/usr/share/nginx/html/")
+
+        entryPoint("/usr/bin/dumb-init", "--")
+        cmd("./start.sh", artifactTargetPath)
+      }
+    },
+    imageNames in docker := Seq(
+      ImageName(s"${organization.value}/${name.value}:latest"),
+      ImageName(
+        repository = s"${organization.value}/${name.value}",
+        tag = Some(version.value)
+      )
+    )
+  )
+  .settings(
+    addCommandAlias("dockerize", ";compile;test;build;docker")
+  )
 
 lazy val service = project
   .in(file("service"))
@@ -43,6 +103,16 @@ lazy val service = project
     )
   )
   .dependsOn(common.jvm)
+  .settings(
+    assemblyMergeStrategy in assembly := {
+      case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.concat
+      case "module-info.class" => MergeStrategy.discard
+      case x =>
+        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        oldStrategy(x)
+    },
+    test in assembly := {} //todo remove this
+  )
 
 lazy val site = project
   .in(file("site"))
@@ -129,8 +199,8 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   )
 
 lazy val sharedSettings = Seq(
-  version := "0.3.0",
-  scalaVersion := "2.13.3",
+  version := ProjectVersion,
+  scalaVersion := ProjectScalaVersion,
   scalacOptions ++= Seq(
     "-Ymacro-annotations"
   ),

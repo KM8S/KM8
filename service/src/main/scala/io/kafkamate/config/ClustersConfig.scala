@@ -4,8 +4,10 @@ package config
 import zio._
 import zio.json._
 import zio.macros.accessible
+import zio.system.System
 
 @accessible object ClustersConfig {
+  import ConfigPathService._
 
   type ClustersConfigService = Has[Service]
 
@@ -33,20 +35,23 @@ import zio.macros.accessible
         all <- readClusters
         cs <- ZIO
           .fromOption(all.clusters.find(_.id == clusterId))
-          .orElseFail(new Throwable(s"Cluster ($clusterId) doesn't exist..!"))
+          .orElseFail(new Exception(s"Cluster ($clusterId) doesn't exist..!"))
       } yield cs
   }
 
-  lazy val liveLayer: ULayer[ClustersConfigService] = ZLayer.succeed {
+  lazy val liveLayer: ULayer[ClustersConfigService] =
+    System.live >>> ConfigPathService.liveLayer >>> configLayer
+
+  lazy val configLayer: URLayer[HasConfigPath, ClustersConfigService] = ZLayer.fromService { configPath =>
     new Service {
-      private val configFilepath = os.pwd / os.up / "clusters.json"
+      private val configFilepath = configPath.path
 
       def readClusters: Task[ClusterProperties] =
         for {
           b <- Task(os.exists(configFilepath))
-          _ <- ZIO.fail(new Throwable(s"$configFilepath does not exist!")).unless(b)
+          _ <- Task(os.write.over(configFilepath, ClusterProperties(List.empty).toJsonPretty, createFolders = true)).unless(b)
           s <- Task(os.read(configFilepath))
-          r <- ZIO.fromEither(s.fromJson[ClusterProperties]).mapError(new Throwable(_))
+          r <- ZIO.fromEither(s.fromJson[ClusterProperties]).mapError(new Exception(_))
         } yield r
 
       def writeClusters(cluster: ClusterSettings): Task[Unit] =
@@ -59,7 +64,7 @@ import zio.macros.accessible
       def deleteCluster(clusterId: String): Task[ClusterProperties] =
         for {
           c <- readClusters
-          ls <- ZIO.filterNot(c.clusters)(s => Task(s.id == clusterId))
+          ls <- ZIO.filterNotPar(c.clusters)(s => Task(s.id == clusterId))
           json = ClusterProperties(ls).toJsonPretty
           _ <- Task(os.write.over(configFilepath, json, createFolders = true))
           r <- readClusters

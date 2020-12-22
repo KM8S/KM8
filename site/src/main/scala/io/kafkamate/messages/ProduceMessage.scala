@@ -17,7 +17,7 @@ import bridges.reactrouter.ReactRouterDOM
   type Props = Unit
 
   private val messagesGrpcClient =
-    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
+    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
     val (shouldMakeRequest, setRequestAction) = useState(false)

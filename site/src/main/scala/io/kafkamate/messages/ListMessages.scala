@@ -48,7 +48,7 @@ import bridges.reactrouter.ReactRouterDOM
     }
 
   private val messagesGrpcClient =
-    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
+    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   private val consumer =
     MessagesConsumer(messagesGrpcClient)

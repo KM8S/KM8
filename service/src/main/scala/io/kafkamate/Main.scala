@@ -3,9 +3,9 @@ package io.kafkamate
 import scalapb.zio_grpc.{ServerMain, ServiceList}
 import zio.ZEnv
 
-import config.ClustersConfig
+import config._
 import grpc._
-import kafka.KafkaExplorer
+import kafka._
 
 object Main extends ServerMain {
 

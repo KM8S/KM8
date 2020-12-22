@@ -30,7 +30,7 @@ import slinky.web.html._
     }
 
   private val clustersGrpcClient =
-    ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel("http://localhost:8081"))
+    ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
     val (brokersState, topicDispatch) = useReducer(brokersReducer, BrokersState())
