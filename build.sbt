@@ -88,11 +88,11 @@ lazy val service = project
     libraryDependencies ++= Seq(
       "dev.zio"                         %% "zio-kafka"                          % "0.13.0+2-7ce016c2",
       "dev.zio"                         %% "zio-json"                           % "0.0.1",
+      "dev.zio"                         %% "zio-logging-slf4j"                  % "0.5.4",
       "com.lihaoyi"                     %% "os-lib"                             % "0.7.1",
       "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,
       "io.grpc"                         %  "grpc-netty"                         % GrpcVersion,
       "com.fasterxml.jackson.module"    %% "jackson-module-scala"               % "2.10.0",
-      "com.github.mlangc"               %% "slf4zio"                            % "1.0.0",
       "net.logstash.logback"            %  "logstash-logback-encoder"           % "6.3",
       "ch.qos.logback"                  %  "logback-classic"                    % "1.2.3",
       "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.6.0" % Test
@@ -111,7 +111,7 @@ lazy val service = project
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)
     },
-    test in assembly := {} //todo remove this
+    test in assembly := {}
   )
 
 lazy val site = project

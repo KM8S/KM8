@@ -3,6 +3,7 @@ package config
 
 import zio._
 import zio.json._
+import zio.logging._
 import zio.macros.accessible
 import zio.system.System
 
@@ -39,37 +40,51 @@ import zio.system.System
       } yield cs
   }
 
-  lazy val liveLayer: ULayer[ClustersConfigService] =
-    System.live >>> ConfigPathService.liveLayer >>> configLayer
+  lazy val liveLayer: URLayer[Logging, ClustersConfigService] =
+    (System.live >>> ConfigPathService.liveLayer) ++ ZLayer.requires[Logging] >>> configLayer
 
-  lazy val configLayer: URLayer[HasConfigPath, ClustersConfigService] = ZLayer.fromService { configPath =>
-    new Service {
-      private val configFilepath = configPath.path
+  lazy val configLayer: URLayer[HasConfigPath with Logging, ClustersConfigService] =
+    ZLayer.fromServices[ConfigPath, Logger[String], Service] { case (configPath, log) =>
+      new Service {
+        private val configFilepath = configPath.path
+        private val emptyProperties = ClusterProperties(List.empty)
 
-      def readClusters: Task[ClusterProperties] =
-        for {
-          b <- Task(os.exists(configFilepath))
-          _ <- Task(os.write.over(configFilepath, ClusterProperties(List.empty).toJsonPretty, createFolders = true)).unless(b)
-          s <- Task(os.read(configFilepath))
-          r <- ZIO.fromEither(s.fromJson[ClusterProperties]).mapError(new Exception(_))
-        } yield r
+        case class ParseException(message: String) extends Exception(message)
 
-      def writeClusters(cluster: ClusterSettings): Task[Unit] =
-        for {
-          c <- readClusters
-          json = c.copy(clusters = c.clusters :+ cluster).toJsonPretty
-          _ <- Task(os.write.over(configFilepath, json, createFolders = true))
-        } yield ()
+        private def writeJson(json: String) =
+          Task(os.write.over(configFilepath, json, createFolders = true))
 
-      def deleteCluster(clusterId: String): Task[ClusterProperties] =
-        for {
-          c <- readClusters
-          ls <- ZIO.filterNotPar(c.clusters)(s => Task(s.id == clusterId))
-          json = ClusterProperties(ls).toJsonPretty
-          _ <- Task(os.write.over(configFilepath, json, createFolders = true))
-          r <- readClusters
-        } yield r
-    }
+        def readClusters: Task[ClusterProperties] =
+          for {
+            b <- Task(os.exists(configFilepath))
+            _ <- writeJson(emptyProperties.toJsonPretty).unless(b)
+            s <- Task(os.read(configFilepath))
+            r <- ZIO
+              .fromEither(s.fromJson[ClusterProperties])
+              .mapError(ParseException)
+              .catchSome {
+                case e: ParseException =>
+                  log.warn(s"Parsing error: ${e.getMessage}") *>
+                    writeJson(emptyProperties.toJsonPretty).as(emptyProperties)
+              }
+          } yield r
+
+        def writeClusters(cluster: ClusterSettings): Task[Unit] =
+          for {
+            c <- readClusters
+            json = c.copy(clusters = c.clusters :+ cluster).toJsonPretty
+            _ <- writeJson(json)
+          } yield ()
+
+        def deleteCluster(clusterId: String): Task[ClusterProperties] =
+          for {
+            c <- readClusters
+            ls <- ZIO.filterNotPar(c.clusters)(s => Task(s.id == clusterId))
+            json = ClusterProperties(ls).toJsonPretty
+            _ <- writeJson(json)
+            r <- readClusters
+          } yield r
+      }
   }
 
 }

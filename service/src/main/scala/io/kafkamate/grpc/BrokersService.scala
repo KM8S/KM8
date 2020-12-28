@@ -3,18 +3,20 @@ package grpc
 
 import io.grpc.Status
 import zio.{ZEnv, ZIO}
+import zio.logging._
 
 import brokers._
-import kafka.KafkaExplorer
+import kafka._
+import utils._
 
 object BrokersService {
-  type Env = ZEnv with KafkaExplorer.HasKafkaExplorer
+  type Env = ZEnv with KafkaExplorer.HasKafkaExplorer with Logging
 
   object GrpcService extends ZioBrokers.RBrokersService[Env] {
     def getBrokers(request: BrokerRequest): ZIO[Env, Status, BrokerResponse] =
       KafkaExplorer
         .listBrokers(request.clusterId)
-        .tapError(e => zio.UIO(println(s"---------------------- Get brokers error: ${e.getMessage}")))
-        .bimap(Status.fromThrowable, r => BrokerResponse(r))
+        .tapError(e => log.error(s"Get brokers error: ${e.getMessage}"))
+        .bimap(GRPCStatus.fromThrowable, r => BrokerResponse(r))
   }
 }

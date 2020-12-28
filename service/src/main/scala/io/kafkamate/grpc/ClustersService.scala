@@ -4,13 +4,15 @@ package grpc
 import scala.util.Random
 
 import io.grpc.Status
-import zio.{UIO, ZEnv, ZIO}
+import zio.{UIO, ZEnv, ZIO, Cause}
+import zio.logging._
 
 import config._, ClustersConfig._
 import clusters._
+import utils._
 
 object ClustersService {
-  type Env = ZEnv with ClustersConfigService
+  type Env = ZEnv with ClustersConfigService with Logging
 
   object GrpcService extends ZioClusters.RClustersService[Env] {
     def genRandStr(length: Int): UIO[String] =
@@ -22,8 +24,8 @@ object ClustersService {
         hosts = request.address.split(",").toList
         c <- ClustersConfig
           .writeClusters(ClusterSettings(clusterId, request.name, hosts))
-          .tapError(e => zio.console.putStrLn(s"---------------------- Add cluster error: ${e.getMessage}"))
-          .bimap(Status.fromThrowable, _ => request)
+          .tapError(e => log.error(s"Add cluster error: ${e.getMessage}"))
+          .bimap(GRPCStatus.fromThrowable, _ => request)
       } yield c
 
     private def toClusterResponse(r: ClusterProperties) =
@@ -32,13 +34,13 @@ object ClustersService {
     def getClusters(request: ClusterRequest): ZIO[Env, Status, ClusterResponse] =
       ClustersConfig
         .readClusters
-        .tapError(e => zio.console.putStrLn(s"---------------------- Got clusters error: ${e.getMessage}"))
-        .bimap(Status.fromThrowable, toClusterResponse)
+        .tapError(e => log.error(s"Get clusters error: ${e.getMessage}"))
+        .bimap(GRPCStatus.fromThrowable, toClusterResponse)
 
     def deleteCluster(request: ClusterDetails): ZIO[Env, Status, ClusterResponse] =
       ClustersConfig
         .deleteCluster(request.id)
-        .tapError(e => zio.console.putStrLn(s"---------------------- Delete cluster error: ${e.getMessage}"))
-        .bimap(Status.fromThrowable, toClusterResponse)
+        .tapError(e => log.error(s"Delete cluster error: ${e.getMessage}"))
+        .bimap(GRPCStatus.fromThrowable, toClusterResponse)
   }
 }

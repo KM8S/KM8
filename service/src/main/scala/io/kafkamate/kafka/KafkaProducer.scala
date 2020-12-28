@@ -2,10 +2,11 @@ package io.kafkamate
 package kafka
 
 import zio._
+import zio.blocking._
 import zio.kafka.serde._
 import zio.kafka.producer._
-import zio.blocking.Blocking
 import zio.macros.accessible
+import zio.logging._
 
 import config._, ClustersConfig._
 
@@ -38,6 +39,6 @@ import config._, ClustersConfig._
       }
     }
 
-  lazy val liveLayer: ULayer[KafkaProducer] =
+  lazy val liveLayer: URLayer[Logging, KafkaProducer] =
     ClustersConfig.liveLayer >>> kafkaProducerLayer
 }

@@ -6,6 +6,7 @@ import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration._
 import zio.kafka.admin._
+import zio.logging._
 import zio.macros.accessible
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.clients.admin.AdminClientConfig
@@ -104,7 +105,7 @@ import brokers.BrokerDetails
       }
     }
 
-  lazy val liveLayer: ULayer[HasKafkaExplorer] =
+  lazy val liveLayer: URLayer[Logging, HasKafkaExplorer] =
     ClustersConfig.liveLayer >>> kafkaExplorerLayer
 
 }

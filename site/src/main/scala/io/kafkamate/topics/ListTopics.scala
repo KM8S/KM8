@@ -18,21 +18,24 @@ import bridges.reactrouter.ReactRouterDOM
   type Props = Unit
 
   case class TopicsState(
-    refreshPage: Boolean = false,
+    refresh: Boolean = true,
     topics: List[TopicDetails] = List.empty,
-    topic$Modal: (String, String) = ("", "")
+    toDeleteTopicAndModalId: (String, String) = ("", ""),
+    error: Option[String] = None
   )
 
   sealed trait TopicsAction
   case class NewTopics(items: List[TopicDetails] = List.empty) extends TopicsAction
   case class SetToDelete(name: String, id: String) extends TopicsAction
   case object ShouldRefresh extends TopicsAction
+  case class SetError(err: String) extends TopicsAction
 
   private def topicsReducer(state: TopicsState, action: TopicsAction): TopicsState =
     action match {
-      case NewTopics(topics) => state.copy(topics = topics)
-      case SetToDelete(name, id) => state.copy(topic$Modal = (name, id))
-      case ShouldRefresh => state.copy(refreshPage = !state.refreshPage, topic$Modal = ("", ""))
+      case NewTopics(topics) => state.copy(topics = topics, refresh = false)
+      case SetToDelete(name, id) => state.copy(toDeleteTopicAndModalId = (name, id))
+      case SetError(err) => state.copy(error = Some(err), refresh = false)
+      case ShouldRefresh => state.copy(refresh = true, toDeleteTopicAndModalId = ("", ""), error = None)
     }
 
   private val topicsGrpcClient =
@@ -46,19 +49,23 @@ import bridges.reactrouter.ReactRouterDOM
 
     useEffect(
       () => {
-        topicsGrpcClient
-          .getTopics(GetTopicsRequest(clusterId))
-          .onComplete {
-            case Success(v) => topicDispatch(NewTopics(v.topics.toList))
-            case Failure(e) => topicDispatch(NewTopics(List(TopicDetails("Could not get topics.")))); println("Error receiving topics: " + e)
-          }
+        if (topicsState.refresh)
+          topicsGrpcClient
+            .getTopics(GetTopicsRequest(clusterId))
+            .onComplete {
+              case Success(v) =>
+                topicDispatch(NewTopics(v.topics.toList))
+              case Failure(e) =>
+                topicDispatch(SetError(e.getMessage))
+                println("Error receiving topics: " + e)
+            }
       },
-      List(topicsState.refreshPage)
+      List(topicsState.refresh)
     )
 
     useEffect(
       () => {
-        topicsState.topic$Modal match {
+        topicsState.toDeleteTopicAndModalId match {
           case ("", _) => ()
           case (name, id) =>
             topicsGrpcClient
@@ -71,8 +78,47 @@ import bridges.reactrouter.ReactRouterDOM
               }
         }
       },
-      List(topicsState.topic$Modal)
+      List(topicsState.toDeleteTopicAndModalId)
     )
+
+    def renderLoader = {
+      div(className := "d-flex justify-content-center")(
+        div(className := "lds-facebook")(div(), div(), div())
+      )
+    }
+
+    def renderTable = {
+      div(className := "card-body table-responsive",
+        Link(to = Loc.fromLocation(clusterId, Loc.addTopic))(div(className:= "btn btn-primary mb-3")("Add topic")),
+        table(className := "table table-hover",
+          thead(
+            tr(
+              th("Name"),
+              th("Partitions"),
+              th("Replication factor"),
+              th("Cleanup Policy"),
+              th("Action")
+            )
+          ),
+          tbody(
+            topicsState.topics.zipWithIndex.map { case (topicDetails, idx) =>
+              tr(key := idx.toString)(
+                td(Link(to = Loc.fromTopicList(clusterId, topicDetails.name))(topicDetails.name)),
+                td(topicDetails.partitions.toString),
+                td(topicDetails.replication.toString),
+                td(topicDetails.cleanupPolicy),
+                td(renderDelete(idx.toString, topicDetails))
+              )
+            }
+          )
+        )
+      )
+    }
+
+    def renderError =
+      div(className := "d-flex justify-content-center",
+        h3("Could not load topics!")
+      )
 
     def renderDelete(idx: String, topicDetails: TopicDetails) = {
       val modalId = s"modalNr$idx"
@@ -100,31 +146,11 @@ import bridges.reactrouter.ReactRouterDOM
     }
 
     div(className := "App")(
-      div(className := "card-body table-responsive",
-        Link(to = Loc.fromLocation(clusterId, Loc.addTopic))(div(className:= "btn btn-primary mb-3")("Add topic")),
-        table(className := "table table-hover",
-          thead(
-            tr(
-              th("Name"),
-              th("Partitions"),
-              th("Replication factor"),
-              th("Cleanup Policy"),
-              th("Action")
-            )
-          ),
-          tbody(
-            topicsState.topics.zipWithIndex.map { case (topicDetails, idx) =>
-              tr(key := idx.toString)(
-                td(Link(to = Loc.fromTopicList(clusterId, topicDetails.name))(topicDetails.name)),
-                td(topicDetails.partitions.toString),
-                td(topicDetails.replication.toString),
-                td(topicDetails.cleanupPolicy),
-                td(renderDelete(idx.toString, topicDetails))
-              )
-            }
-          )
-        )
-      )
+      if (topicsState.refresh) renderLoader
+      else topicsState.error match {
+        case None => renderTable
+        case _    => renderError
+      }
     )
   }
 }
