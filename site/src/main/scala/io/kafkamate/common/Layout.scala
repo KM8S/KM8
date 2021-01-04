@@ -1,4 +1,5 @@
 package io.kafkamate
+package common
 
 import slinky.core.annotations.react
 import slinky.core.facade.Fragment
@@ -54,7 +55,7 @@ object ReactLogo extends js.Object
         id := "navbarSupportedContent",
         ul(
           className := "navbar-nav mr-auto",
-          createRegularMenuItem("100", "Clusters", Loc.clusters),
+          createOptionalRegularMenuItem(clusterId)("100", clusterId.getOrElse("Clusters"), Loc.clusters),
           createOptionalRegularMenuItem(clusterId)("200", "Brokers", Loc.brokers),
           createOptionalRegularMenuItem(clusterId)("300", "Topics", Loc.topics)
         )

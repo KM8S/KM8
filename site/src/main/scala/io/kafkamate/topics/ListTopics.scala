@@ -13,6 +13,7 @@ import slinky.reactrouter.Link
 import slinky.web.html._
 
 import bridges.reactrouter.ReactRouterDOM
+import common._
 
 @react object ListTopics {
   type Props = Unit
@@ -25,14 +26,14 @@ import bridges.reactrouter.ReactRouterDOM
   )
 
   sealed trait TopicsAction
-  case class NewTopics(items: List[TopicDetails] = List.empty) extends TopicsAction
+  case class SetTopics(items: List[TopicDetails] = List.empty) extends TopicsAction
   case class SetToDelete(name: String, id: String) extends TopicsAction
   case object ShouldRefresh extends TopicsAction
   case class SetError(err: String) extends TopicsAction
 
   private def topicsReducer(state: TopicsState, action: TopicsAction): TopicsState =
     action match {
-      case NewTopics(topics) => state.copy(topics = topics, refresh = false)
+      case SetTopics(topics) => state.copy(topics = topics, refresh = false)
       case SetToDelete(name, id) => state.copy(toDeleteTopicAndModalId = (name, id))
       case SetError(err) => state.copy(error = Some(err), refresh = false)
       case ShouldRefresh => state.copy(refresh = true, toDeleteTopicAndModalId = ("", ""), error = None)
@@ -54,9 +55,9 @@ import bridges.reactrouter.ReactRouterDOM
             .getTopics(GetTopicsRequest(clusterId))
             .onComplete {
               case Success(v) =>
-                topicDispatch(NewTopics(v.topics.toList))
+                topicDispatch(SetTopics(v.topics.toList))
               case Failure(e) =>
-                topicDispatch(SetError(e.getMessage))
+                topicDispatch(SetError("Could not load topics!"))
                 println("Error receiving topics: " + e)
             }
       },
@@ -80,12 +81,6 @@ import bridges.reactrouter.ReactRouterDOM
       },
       List(topicsState.toDeleteTopicAndModalId)
     )
-
-    def renderLoader = {
-      div(className := "d-flex justify-content-center")(
-        div(className := "lds-facebook")(div(), div(), div())
-      )
-    }
 
     def renderTable = {
       div(className := "card-body table-responsive",
@@ -115,11 +110,6 @@ import bridges.reactrouter.ReactRouterDOM
       )
     }
 
-    def renderError =
-      div(className := "d-flex justify-content-center",
-        h3("Could not load topics!")
-      )
-
     def renderDelete(idx: String, topicDetails: TopicDetails) = {
       val modalId = s"modalNr$idx"
       div(
@@ -146,11 +136,11 @@ import bridges.reactrouter.ReactRouterDOM
     }
 
     div(className := "App")(
-      if (topicsState.refresh) renderLoader
-      else topicsState.error match {
-        case None => renderTable
-        case _    => renderError
-      }
+      Loader.render(
+        topicsState.refresh,
+        topicsState.error,
+        renderTable
+      )
     )
   }
 }

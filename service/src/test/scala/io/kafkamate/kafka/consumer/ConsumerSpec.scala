@@ -10,18 +10,22 @@ import zio.duration._
 import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test.environment._
+import zio.logging._
+import zio.console._
 import zio.test.{DefaultRunnableSpec, _}
 
 object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
   import KafkaConsumer._
   import messages._
 
-  val testLayer: ZLayer[Any, TestFailure[Throwable], Clock with Blocking with StringProducer with KafkaConsumer] =
+  val testLayer: Layer[TestFailure[Throwable], Clock with Blocking with Logging with StringProducer with KafkaConsumer] =
     (Clock.live >+>
+      Console.live >+>
       Blocking.live >+>
       KafkaEmbedded.Kafka.embedded >+>
       stringProducer >+>
       testConfigLayer >+>
+      Main.liveLoggingLayer >+>
       KafkaConsumer.kafkaConsumerLayer).mapError(TestFailure.fail)
 
   override def spec: ZSpec[TestEnvironment, Throwable] =

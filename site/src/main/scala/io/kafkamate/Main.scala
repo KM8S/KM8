@@ -10,6 +10,7 @@ import scala.scalajs.js.annotation.{JSExportTopLevel, JSImport}
 import scala.scalajs.LinkingInfo
 
 import bridges.reactrouter.HashRouter
+import common.Router
 
 
 @JSImport("resources/index.css", JSImport.Default)

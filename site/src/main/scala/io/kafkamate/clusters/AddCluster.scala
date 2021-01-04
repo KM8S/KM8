@@ -12,6 +12,8 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Redirect
 import slinky.web.html._
 
+import common._
+
 @react object AddCluster {
   type Props = Unit
 

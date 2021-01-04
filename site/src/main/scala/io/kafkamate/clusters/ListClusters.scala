@@ -11,37 +11,43 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Link
 import slinky.web.html._
 
+import common._
+
 @react object ListClusters {
   type Props = Unit
 
-  case class BrokersState(
+  case class ClustersState(
     items: List[ClusterDetails] = List.empty,
+    refresh: Boolean = true,
+    error: Option[String] = None,
     toDelete: Option[String] = None
   )
 
   sealed trait BrokersAction
-  case class NewItems(items: List[ClusterDetails] = List.empty) extends BrokersAction
-  case class DeleteItem(id: String) extends BrokersAction
+  case class SetItems(items: List[ClusterDetails] = List.empty) extends BrokersAction
+  case class SetError(e: String) extends BrokersAction
+  case class SetDeleteItem(id: String) extends BrokersAction
 
-  private def brokersReducer(state: BrokersState, action: BrokersAction): BrokersState =
+  private def clustersReducer(state: ClustersState, action: BrokersAction): ClustersState =
     action match {
-      case NewItems(items) => if (items.isEmpty) state.copy(items = List(ClusterDetails(name = "No clusters"))) else state.copy(items = items)
-      case DeleteItem(id) => state.copy(toDelete = Some(id))
+      case SetItems(items) => state.copy(items = items, refresh = false, error = None)
+      case SetError(e) => state.copy(items = List.empty, refresh = false, error = Some(e))
+      case SetDeleteItem(id) => state.copy(toDelete = Some(id))
     }
 
   private val clustersGrpcClient =
     ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
-    val (brokersState, topicDispatch) = useReducer(brokersReducer, BrokersState())
+    val (clustersState, clustersDispatch) = useReducer(clustersReducer, ClustersState())
 
     useEffect(
       () => {
         clustersGrpcClient
           .getClusters(ClusterRequest())
           .onComplete {
-            case Success(v) => topicDispatch(NewItems(v.brokers.toList))
-            case Failure(e) => topicDispatch(NewItems(List(ClusterDetails("Could not get clusters.")))); println("Error receiving brokers: " + e)
+            case Success(v) => clustersDispatch(SetItems(v.brokers.toList))
+            case Failure(e) => clustersDispatch(SetError("Could not get clusters!")); println("Error receiving clusters: " + e)
           }
       },
       List.empty
@@ -49,18 +55,18 @@ import slinky.web.html._
 
     useEffect(
       () => {
-        if (brokersState.toDelete.isDefined)
+        if (clustersState.toDelete.isDefined)
           clustersGrpcClient
-            .deleteCluster(ClusterDetails(brokersState.toDelete.get))
+            .deleteCluster(ClusterDetails(clustersState.toDelete.get))
             .onComplete {
-              case Success(v) => topicDispatch(NewItems(v.brokers.toList))
-              case Failure(e) => topicDispatch(NewItems(List(ClusterDetails("Could not delete cluster.")))); println("Error receiving brokers: " + e)
+              case Success(v) => clustersDispatch(SetItems(v.brokers.toList))
+              case Failure(e) => println("Error deleting cluster: " + e) //todo err
             }
       },
-      List(brokersState.toDelete)
+      List(clustersState.toDelete)
     )
 
-    div(className := "App")(
+    def renderClusters =
       div(className := "container card-body table-responsive",
         Link(to = Loc.addCluster)(div(className:= "btn btn-primary mb-3")("Add cluster")),
         table(className := "table table-hover",
@@ -73,16 +79,23 @@ import slinky.web.html._
             )
           ),
           tbody(
-            brokersState.items.zipWithIndex.map { case (cluster, idx) =>
+            clustersState.items.zipWithIndex.map { case (cluster, idx) =>
               tr(key := idx.toString)(
                 td(Link(to = Loc.fromLocation(cluster.id, Loc.topics))(cluster.id)),
                 td(cluster.name),
                 td(cluster.address),
-                td(button(className:= "btn btn-danger fa", onClick := { () => topicDispatch(DeleteItem(cluster.id)) })("Delete"))
+                td(button(className:= "btn btn-danger fa", onClick := { () => clustersDispatch(SetDeleteItem(cluster.id)) })("Delete"))
               )
             }
           )
         )
+      )
+
+    div(className := "App")(
+      Loader.render(
+        clustersState.refresh,
+        clustersState.error,
+        renderClusters
       )
     )
   }

@@ -11,18 +11,25 @@ import slinky.core.facade.Hooks._
 import slinky.web.html._
 
 import bridges.reactrouter.ReactRouterDOM
+import common._
 
 @react object ListBrokers {
   type Props = Unit
 
-  case class BrokersState(items: List[BrokerDetails] = List.empty)
+  case class BrokersState(
+    refresh: Boolean = true,
+    errors: Option[String] = None,
+    items: List[BrokerDetails] = List.empty
+  )
 
   sealed trait BrokersAction
-  case class NewItems(items: List[BrokerDetails] = List.empty) extends BrokersAction
+  case class SetItems(items: List[BrokerDetails] = List.empty) extends BrokersAction
+  case class SetError(e: String) extends BrokersAction
 
   private def brokersReducer(state: BrokersState, action: BrokersAction): BrokersState =
     action match {
-      case NewItems(items) => state.copy(items = items)
+      case SetItems(items) => state.copy(items = items, errors = None, refresh = false)
+      case SetError(e) => state.copy(errors = Some(e), items = List.empty, refresh = false)
     }
 
   private val topicsGrpcClient =
@@ -38,14 +45,14 @@ import bridges.reactrouter.ReactRouterDOM
         topicsGrpcClient
           .getBrokers(BrokerRequest(clusterId))
           .onComplete {
-            case Success(v) => topicDispatch(NewItems(v.brokers.toList))
-            case Failure(e) => topicDispatch(NewItems(List(BrokerDetails(-1)))); println("Error receiving brokers: " + e)
+            case Success(v) => topicDispatch(SetItems(v.brokers.toList))
+            case Failure(e) => topicDispatch(SetError("Could not load brokers!")); println("Error receiving brokers: " + e)
           }
       },
       List.empty
     )
 
-    div(className := "App")(
+    def renderBrokers =
       div(className := "container card-body table-responsive", //todo add cluster name
         table(className := "table table-hover",
           thead(
@@ -63,6 +70,13 @@ import bridges.reactrouter.ReactRouterDOM
             }
           )
         )
+      )
+
+    div(className := "App")(
+      Loader.render(
+        listState.refresh,
+        listState.errors,
+        renderBrokers
       )
     )
   }

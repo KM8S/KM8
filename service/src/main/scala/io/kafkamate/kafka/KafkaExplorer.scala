@@ -34,13 +34,13 @@ import brokers.BrokerDetails
           ZLayer.fromManaged {
             for {
               cs <- clustersConfigService.getCluster(clusterId).toManaged_
-              client <- AdminClient.make(AdminClientSettings(cs.hosts, 10.seconds, Map.empty))
+              client <- AdminClient.make(AdminClientSettings(cs.hosts, 2.seconds, Map.empty))
             } yield client
           }
 
         private implicit class AdminClientProvider[A](eff: RIO[HasAdminClient with Blocking, A]) {
           def withAdminClient(clusterId: String): RIO[Blocking with Clock, A] = eff
-            .timeoutFail(new Exception("Timed out"))(5.seconds)
+            .timeoutFail(new Exception("Timed out"))(6.seconds)
             .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
         }
 

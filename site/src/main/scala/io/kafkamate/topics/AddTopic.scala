@@ -13,6 +13,7 @@ import slinky.reactrouter.Redirect
 import slinky.web.html._
 
 import bridges.reactrouter.ReactRouterDOM
+import common._
 
 @react object AddTopic {
   type Props = Unit

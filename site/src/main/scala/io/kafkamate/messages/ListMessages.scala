@@ -12,6 +12,7 @@ import slinky.web.html._
 import org.scalajs.dom.{Event, html}
 
 import bridges.reactrouter.ReactRouterDOM
+import common._
 
 @react object ListMessages {
   type Props = Unit

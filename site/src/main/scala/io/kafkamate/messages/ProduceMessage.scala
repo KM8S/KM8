@@ -12,6 +12,7 @@ import slinky.core.facade.Hooks._
 import slinky.web.html._
 
 import bridges.reactrouter.ReactRouterDOM
+import common._
 
 @react object ProduceMessage {
   type Props = Unit
