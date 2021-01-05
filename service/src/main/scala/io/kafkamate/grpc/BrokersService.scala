@@ -17,6 +17,6 @@ object BrokersService {
       KafkaExplorer
         .listBrokers(request.clusterId)
         .tapError(e => log.error(s"Get brokers error: ${e.getMessage}"))
-        .bimap(GRPCStatus.fromThrowable, r => BrokerResponse(r))
+        .bimap(GRPCStatus.fromThrowable, BrokerResponse(_))
   }
 }

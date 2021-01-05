@@ -24,7 +24,8 @@ import common._
     val (shouldMakeRequest, setRequestAction) = useState(false)
     val (messageKey, setKey)                  = useState("")
     val (messageValue, setValue)              = useState("")
-    val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
+    val (successMsgs, setSuccessMsgs)         = useState(Option.empty[String])
+    val (errorMsgs, setErrorMsgs)             = useState(Option.empty[String])
 
     val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
@@ -48,11 +49,12 @@ import common._
               case Success(_) =>
                 println("Message produced")
                 setRequestAction(false)
+                setSuccessMsgs(Some(s"Message produced for key: $messageKey"))
 
               case Failure(e) =>
                 println("Error producing message: " + e)
                 setRequestAction(false)
-                setErrorMsgs(List(e.getMessage))
+                setErrorMsgs(Some(e.getMessage))
             }
       },
       List(shouldMakeRequest)
@@ -92,6 +94,10 @@ import common._
             onChange := (handleValue(_))
           )
         ),
+        successMsgs.zipWithIndex.map {
+          case (msg, idx) =>
+            div(key := idx.toString, className := "alert alert-success", role := "alert", msg)
+        },
         errorMsgs.zipWithIndex.map {
           case (msg, idx) =>
             div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
@@ -100,7 +106,7 @@ import common._
       )
 
     div(className := "App")(
-      h2(s"Topic $topicName"),
+      h1(topicName),
       br(),
       div(
         className := "card",

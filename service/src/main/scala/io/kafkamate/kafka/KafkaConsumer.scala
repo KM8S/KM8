@@ -16,15 +16,15 @@ import zio.kafka.serde.Deserializer
 import zio.macros.accessible
 
 import config._, ClustersConfig._
-import messages.Message
+import messages._
 
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
   type Env = Clock with Blocking with Logging
 
   trait Service {
-    def consumeN(topic: String, nrOfMessages: Long)(clusterId: String): RIO[Env, List[Message]]
-    def consumeStream(topic: String, maxResults: Long)(clusterId: String): ZStream[Env, Throwable, Message]
+    def consumeN(topic: String, nrOfMessages: Long, offsetStrategy: String)(clusterId: String): RIO[Env, List[Message]]
+    def consumeStream(request: ConsumeRequest): ZStream[Env, Throwable, Message]
   }
 
   lazy val kafkaConsumerLayer: URLayer[ClustersConfigService, KafkaConsumer] =
@@ -37,24 +37,32 @@ import messages.Message
     new Service {
       private lazy val timeout: Duration = 1000.millis
 
-      private def consumerSettings(config: ClusterSettings): ConsumerSettings = {
-        val uuid = UUID.randomUUID().toString
-        ConsumerSettings(config.hosts)
-          .withGroupId(s"group-kafkamate-$uuid")
-          .withClientId(s"client-kafkamate-$uuid")
-          .withOffsetRetrieval(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))
-          .withCloseTimeout(10.seconds)
-      }
+      private def extractOffsetStrategy(offsetValue: String): AutoOffsetStrategy =
+        offsetValue match {
+          case "latest" => AutoOffsetStrategy.Latest
+          case _        => AutoOffsetStrategy.Earliest
+        }
 
-      private def makeConsumerLayer(clusterId: String): RLayer[Clock with Blocking, Consumer] =
+      private def consumerSettings(config: ClusterSettings, offsetStrategy: String): Task[ConsumerSettings] =
+        Task {
+          val uuid = UUID.randomUUID().toString
+          ConsumerSettings(config.hosts)
+            .withGroupId(s"group-kafkamate-$uuid")
+            .withClientId(s"client-kafkamate-$uuid")
+            .withOffsetRetrieval(OffsetRetrieval.Auto(extractOffsetStrategy(offsetStrategy)))
+            .withCloseTimeout(10.seconds)
+        }
+
+      private def makeConsumerLayer(clusterId: String, offsetStrategy: String): RLayer[Clock with Blocking, Consumer] =
         ZLayer.fromManaged {
           for {
             cs <- clustersConfigService.getCluster(clusterId).toManaged_
-            consumer <- Consumer.make(consumerSettings(cs))
+            settings <- consumerSettings(cs, offsetStrategy).toManaged_
+            consumer <- Consumer.make(settings)
           } yield consumer
         }
 
-      def consumeN(topic: String, nrOfMessages: Long)(clusterId: String): RIO[Env, List[Message]] = {
+      def consumeN(topic: String, nrOfMessages: Long, offsetStrategy: String)(clusterId: String): RIO[Env, List[Message]] = {
         val consumer =
           for {
             _ <- Consumer.subscribe(Subscription.topics(topic))
@@ -67,22 +75,29 @@ import messages.Message
               .runCollect
               .map(_.map(v => Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value)))
           } yield records.toList
-        consumer.provideSomeLayer[Env](makeConsumerLayer(clusterId))
+        consumer.provideSomeLayer[Env](makeConsumerLayer(clusterId, offsetStrategy))
       }
 
       private def untilExists(endOffsets: Map[TopicPartition, Long],
                               cr: CommittableRecord[String, String]): Boolean =
         endOffsets.exists(o => o._1 == cr.offset.topicPartition && o._2 == 1 + cr.offset.offset)
 
-      def consumeStream(topic: String, maxResults: Long)(clusterId: String): ZStream[Env, Throwable, Message] = {
+      def consumeStream(request: ConsumeRequest): ZStream[Env, Throwable, Message] = {
         val stream = Consumer
-          .subscribeAnd(Subscription.topics(topic))
+          .subscribeAnd(Subscription.topics(request.topicName))
           .plainStream(Deserializer.string, Deserializer.string)
           .map(v => Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value))
 
-        val result = if (maxResults <= 0L) stream else stream.take(maxResults)
+        val withLimit = if (request.maxResults <= 0L) stream else stream.take(request.maxResults)
 
-        result.provideSomeLayer[Clock with Blocking](makeConsumerLayer(clusterId))
+        val withFilter =
+          if (request.filterKeyword.isEmpty) withLimit
+          else withLimit.filter(m =>
+            m.key.contains(request.filterKeyword) ||
+              m.value.contains(request.filterKeyword)
+          )
+
+        withFilter.provideSomeLayer[Clock with Blocking](makeConsumerLayer(request.clusterId, request.offsetStrategy))
       }
     }
 }

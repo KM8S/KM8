@@ -38,7 +38,7 @@ object ReactLogo extends js.Object
       Link(to = Loc.home)(
         className := "navbar-brand",
         //img(src := ReactLogo.asInstanceOf[String], className := "App-logo d-inline-block align-top", alt := ""),
-        "KafkaMate"
+        "kafkamate"
       ),
       button(
         className := "navbar-toggler",
@@ -56,8 +56,8 @@ object ReactLogo extends js.Object
         ul(
           className := "navbar-nav mr-auto",
           createOptionalRegularMenuItem(clusterId)("100", clusterId.getOrElse("Clusters"), Loc.clusters),
-          createOptionalRegularMenuItem(clusterId)("200", "Brokers", Loc.brokers),
-          createOptionalRegularMenuItem(clusterId)("300", "Topics", Loc.topics)
+          createOptionalRegularMenuItem(clusterId)("200", "brokers", Loc.brokers),
+          createOptionalRegularMenuItem(clusterId)("300", "topics", Loc.topics)
         )
       )
     )

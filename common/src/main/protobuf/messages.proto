@@ -8,6 +8,8 @@ message ConsumeRequest {
   string clusterId = 1;
   string topicName = 2;
   uint64 maxResults = 3;
+  string offsetStrategy = 4;
+  string filterKeyword = 5;
 }
 
 message ProduceRequest {

@@ -25,13 +25,17 @@ import common._
   case class ConsumerState(
     streamData: Boolean = false,
     items: List[Item] = List.empty,
-    maxResults: Long = 0L
+    maxResults: Long = 0L,
+    offsetStrategy: String = "earliest",
+    filterKeyword: String = ""
   )
 
   sealed trait ConsumerAction
   case object StreamToggle extends ConsumerAction
   case class SetMaxResults(maxResults: Long) extends ConsumerAction
-  case class NewItem(item: Item) extends ConsumerAction
+  case class SetOffsetStrategy(strategy: String) extends ConsumerAction
+  case class SetFilter(word: String) extends ConsumerAction
+  case class AddItem(item: Item) extends ConsumerAction
 
 
   private def consumerReducer(prevState: ConsumerState, action: ConsumerAction): ConsumerState =
@@ -45,7 +49,9 @@ import common._
             items = List.empty
           )
       case SetMaxResults(max) => prevState.copy(maxResults = max)
-      case NewItem(item) => prevState.copy(items = prevState.items :+ item)
+      case SetOffsetStrategy(v) => prevState.copy(offsetStrategy = v)
+      case SetFilter(v) => prevState.copy(filterKeyword = v)
+      case AddItem(item) => prevState.copy(items = prevState.items :+ item)
     }
 
   private val messagesGrpcClient =
@@ -61,16 +67,26 @@ import common._
 
     val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
 
+    def handleOffsetStrategy(e: SyntheticEvent[html.Select, Event]): Unit = consumerDispatch(SetOffsetStrategy(e.target.value))
     def handleMaxResults(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetMaxResults(e.target.value.toLong))
+    def handleFilter(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetFilter(e.target.value))
 
-    def onMessage(v: Message): Unit = consumerDispatch(NewItem(Item.fromMessage(v)))
+    def onMessage(v: Message): Unit = consumerDispatch(AddItem(Item.fromMessage(v)))
     def onError(t: Throwable): Unit = consumerDispatch(StreamToggle) //todo display an error
     val onCompleted = () => consumerDispatch(StreamToggle)
 
     useEffect(
       () => {
         if (consumerState.streamData)
-          consumer.start(ConsumeRequest(clusterId, topicName, consumerState.maxResults))(onMessage, onError, onCompleted)
+          consumer.start(
+            ConsumeRequest(
+              clusterId,
+              topicName,
+              consumerState.maxResults,
+              consumerState.offsetStrategy,
+              consumerState.filterKeyword
+            )
+          )(onMessage, onError, onCompleted)
         else
           consumer.stop()
 
@@ -81,12 +97,25 @@ import common._
     )
 
     div(className := "App")(
-      h2(s"Topic $topicName"),
+      div(className := "container", h1(topicName)),
       br(),
       div(className := "container table-responsive",
         div(className := "mb-3",
           label(className := "inline")(
             div(
+              span(className := "badge badge-default")("Offset Strategy"),
+              select(
+                className := "form-control",
+                id := "form-cleanupPolicy-label1",
+                onChange := (handleOffsetStrategy(_))
+              )(
+                option(value := "earliest")("earliest"),
+                option(value := "latest")("latest")
+              )
+            )
+          ),
+          label(className := "inline")(
+            div(className := "pl-2",
               span(className := "badge badge-default")("Max results (0 == Inf)"),
               input(
                 `type` := "number",
@@ -96,6 +125,18 @@ import common._
                 max := "5000000",
                 value := consumerState.maxResults.toString,
                 onChange := (handleMaxResults(_))
+              )
+            )
+          ),
+          label(className := "inline")(
+            div(className := "pl-2",
+              span(className := "badge badge-default")("Filter (empty == all)"),
+              input(
+                `type` := "text",
+                className := "form-control",
+                placeholder := "keyword",
+                value := consumerState.filterKeyword,
+                onChange := (handleFilter(_))
               )
             )
           ),

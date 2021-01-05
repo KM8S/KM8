@@ -32,13 +32,11 @@ lazy val kafkamate = project
         env("KAFKAMATE_ENV", "prod")
         expose(8080, 61234, 9000)
 
-        runRaw("apt-get update")
-        runRaw("apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
+        runRaw("apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
         runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
         runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
         runRaw("""add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """)
-        runRaw("apt-get update")
-        runRaw("apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
+        runRaw("apt-get update && apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
 
         runRaw("rm -v /etc/nginx/nginx.conf")
         copy(baseDirectory(_ / "build" / "nginx").value, "/etc/nginx/")
