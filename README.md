@@ -26,3 +26,10 @@ We need also to start the Envoy proxy to forward the browser's gRPC-Web requests
 ```bash
 ➜ docker run -d -v "$(pwd)"/build/envoy.yaml:/etc/envoy/envoy.yaml:ro --network host envoyproxy/envoy:v1.15.0
 ```
+
+
+
+### KAFKA TRADEMARK DISCLAIMER
+KAFKA is a registered trademark of The Apache Software Foundation and
+has been licensed for use by kafkamate. kafkamate has no
+affiliation with and is not endorsed by The Apache Software Foundation.
