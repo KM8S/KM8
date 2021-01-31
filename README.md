@@ -8,7 +8,7 @@ Web GUI Kafka Tool to consume and produce messages (WIP)
 ```
 Now go to your browser and access `http://localhost:8080`. That's it! :rocket:
 
-This mount `-v /your/path/to/kafkamate.json:/kafkamate.json` is needed if you want to persist your cluster configuration.
+This mount `-v /your/path/to/kafkamate.json:/kafkamate.json` is needed if you want to persist your kafka cluster configuration.
 If this is skipped then it will start with no configuration. 
 
 ### Run locally

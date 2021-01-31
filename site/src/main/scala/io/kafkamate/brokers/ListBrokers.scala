@@ -53,7 +53,7 @@ import common._
     )
 
     def renderBrokers =
-      div(className := "container card-body table-responsive", //todo add cluster name
+      div(className := "container card-body table-responsive",
         table(className := "table table-hover",
           thead(
             tr(

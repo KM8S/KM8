@@ -3,9 +3,9 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 lazy val ProjectName = "kafkamate"
 lazy val ProjectOrganization = "csofronia"
 lazy val ProjectVersion = "0.1.0"
-lazy val ProjectScalaVersion = "2.13.3"
+lazy val ProjectScalaVersion = "2.13.4"
 
-lazy val ZIOVersion  = "1.0.3"
+lazy val ZIOVersion  = "1.0.4"
 lazy val GrpcVersion = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 
@@ -84,7 +84,7 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                         %% "zio-kafka"                          % "0.13.0+2-7ce016c2",
+      "dev.zio"                         %% "zio-kafka"                          % "0.14.0",
       "dev.zio"                         %% "zio-json"                           % "0.0.1",
       "dev.zio"                         %% "zio-logging-slf4j"                  % "0.5.4",
       "com.lihaoyi"                     %% "os-lib"                             % "0.7.1",
@@ -209,7 +209,7 @@ lazy val sharedSettings = Seq(
     "dev.zio"                         %%% "zio-test"                           % ZIOVersion % Test,
     "dev.zio"                         %%% "zio-test-sbt"                       % ZIOVersion % Test,
   ),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   //,bloopExportJarClassifiers in Global := Some(Set("sources"))
 )
