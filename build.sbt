@@ -5,7 +5,7 @@ lazy val ProjectOrganization = "csofronia"
 lazy val ProjectVersion = "0.1.0"
 lazy val ProjectScalaVersion = "2.13.4"
 
-lazy val ZIOVersion  = "1.0.4"
+lazy val ZIOVersion  = "1.0.3"
 lazy val GrpcVersion = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 

@@ -47,12 +47,12 @@ import common._
             .produceMessage(ProduceRequest(clusterId, topicName, messageKey, messageValue))
             .onComplete {
               case Success(_) =>
-                println("Message produced")
+                Util.logMessage("Message produced")
                 setRequestAction(false)
                 setSuccessMsgs(Some(s"Message produced for key: $messageKey"))
 
               case Failure(e) =>
-                println("Error producing message: " + e)
+                Util.logMessage("Error producing message: " + e)
                 setRequestAction(false)
                 setErrorMsgs(Some(e.getMessage))
             }

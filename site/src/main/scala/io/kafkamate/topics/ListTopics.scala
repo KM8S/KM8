@@ -18,26 +18,39 @@ import common._
 @react object ListTopics {
   type Props = Unit
 
-  case class TopicsState(
-    refresh: Boolean = true,
-    topics: List[TopicDetails] = List.empty,
-    toDeleteTopicAndModalId: (String, String) = ("", ""),
+  case class DeleteTopicState(
+    topicName: Option[String] = None,
+    modalId: Option[String] = None,
     error: Option[String] = None
   )
 
-  sealed trait TopicsAction
-  case class SetTopics(items: List[TopicDetails] = List.empty) extends TopicsAction
-  case class SetToDelete(name: String, id: String) extends TopicsAction
-  case object ShouldRefresh extends TopicsAction
-  case class SetError(err: String) extends TopicsAction
+  case class TopicsState(
+    refresh: Boolean = true,
+    topics: List[TopicDetails] = List.empty,
+    listingError: Option[String] = None,
+    deleteTopic: DeleteTopicState = DeleteTopicState()
+  )
 
-  private def topicsReducer(state: TopicsState, action: TopicsAction): TopicsState =
+  sealed trait TopicsEvent
+  case object RefreshEvent extends TopicsEvent
+  case class SetTopicsEvent(items: List[TopicDetails] = List.empty) extends TopicsEvent
+  case class SetListingErrorEvent(err: String) extends TopicsEvent
+  case class SetToDeleteEvent(topicName: String, modalId: String) extends TopicsEvent
+  case class CancelDeleteEvent(modalId: Option[String]) extends TopicsEvent
+  case class SetDeleteErrorEvent(err: String) extends TopicsEvent
+
+  private def topicsReducer(state: TopicsState, action: TopicsEvent): TopicsState =
     action match {
-      case SetTopics(topics) => state.copy(topics = topics, refresh = false)
-      case SetToDelete(name, id) => state.copy(toDeleteTopicAndModalId = (name, id))
-      case SetError(err) => state.copy(error = Some(err), refresh = false)
-      case ShouldRefresh => state.copy(refresh = true, toDeleteTopicAndModalId = ("", ""), error = None)
+      case RefreshEvent => state.copy(refresh = true, listingError = None, deleteTopic = DeleteTopicState())
+      case SetTopicsEvent(topics) => state.copy(topics = topics, refresh = false)
+      case SetListingErrorEvent(err) => state.copy(listingError = Some(err), refresh = false)
+      case SetToDeleteEvent(topicName, modalId) => state.copy(deleteTopic = DeleteTopicState(Some(topicName), Some(modalId)))
+      case CancelDeleteEvent(maybeModalId) => state.copy(deleteTopic = DeleteTopicState(None, maybeModalId))
+      case SetDeleteErrorEvent(err) => state.copy(deleteTopic = state.deleteTopic.copy(error = Some(err)))
     }
+
+  /*private def toggleModal(modalId: String) =
+    js.eval("$('" + s"#$modalId" + "').modal('toggle')")*/
 
   private val topicsGrpcClient =
     TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
@@ -46,7 +59,7 @@ import common._
     val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
-    val (topicsState, topicDispatch) = useReducer(topicsReducer, TopicsState())
+    val (topicsState, dispatchEvent) = useReducer(topicsReducer, TopicsState())
 
     useEffect(
       () => {
@@ -55,10 +68,10 @@ import common._
             .getTopics(GetTopicsRequest(clusterId))
             .onComplete {
               case Success(v) =>
-                topicDispatch(SetTopics(v.topics.toList))
+                dispatchEvent(SetTopicsEvent(v.topics.toList))
               case Failure(e) =>
-                topicDispatch(SetError("Could not load topics!"))
-                println("Error receiving topics: " + e)
+                Util.logMessage("Error receiving topics: " + e)
+                dispatchEvent(SetListingErrorEvent("Could not load topics!"))
             }
       },
       List(topicsState.refresh)
@@ -66,20 +79,25 @@ import common._
 
     useEffect(
       () => {
-        topicsState.toDeleteTopicAndModalId match {
-          case ("", _) => ()
-          case (name, id) =>
+        topicsState.deleteTopic match {
+          case DeleteTopicState(None, Some(modalId), _) =>
+            DeleteModal.toggleModal(modalId)
+            dispatchEvent(CancelDeleteEvent(None))
+          case DeleteTopicState(Some(topicName), Some(modalId), None) =>
             topicsGrpcClient
-              .deleteTopic(DeleteTopicRequest(clusterId, name))
+              .deleteTopic(DeleteTopicRequest(clusterId, topicName))
               .onComplete {
                 case Success(_) =>
-                  js.eval("$('" + s"#$id" + "').modal('toggle')")
-                  topicDispatch(ShouldRefresh)
-                case Failure(_) => () //todo
+                  DeleteModal.toggleModal(modalId)
+                  dispatchEvent(RefreshEvent)
+                case Failure(e) =>
+                  Util.logMessage(s"Delete topic error: ${e.getMessage}")
+                  dispatchEvent(SetDeleteErrorEvent(s"Could not delete topic $topicName"))
               }
+          case _ => ()
         }
       },
-      List(topicsState.toDeleteTopicAndModalId)
+      List(topicsState.deleteTopic)
     )
 
     def renderTable = {
@@ -111,9 +129,29 @@ import common._
     }
 
     def renderDelete(idx: String, topicDetails: TopicDetails) = {
-      val modalId = s"modalNr$idx"
+      val body = div(
+        p(s"Are you sure you want to delete ${topicDetails.name} topic?"),
+        p("Keep in mind that the topic will be deleted eventually, not immediately!"),
+      )
+      DeleteModal.renderDeleteModal(
+        idx,
+        topicDetails.name,
+        body,
+        topicsState.deleteTopic.error,
+        modalId => dispatchEvent(SetToDeleteEvent(topicDetails.name, modalId)),
+        modalId => dispatchEvent(CancelDeleteEvent(Some(modalId)))
+      )
+    }
+
+    /*def renderDelete(idx: String, topicDetails: TopicDetails) = {
+      val modalId = s"topicModalNr$idx"
       div(
-        button(className:= "btn btn-danger fa", data-"toggle" := "modal", data-"target" := s"#$modalId")("Delete"),
+        button(
+          className:= "btn btn-danger fa",
+          data-"toggle" := "modal",
+          data-"backdrop" := "static",
+          data-"keyboard" := "false",
+          data-"target" := s"#$modalId")("Delete"),
         div(className := "modal fade", id := modalId, role := "dialog",
           div(className := "modal-dialog modal-dialog-centered", role := "document",
             div(className := "modal-content",
@@ -122,23 +160,28 @@ import common._
               ),
               div(className := "modal-body")(
                 p(s"Are you sure you want to delete ${topicDetails.name} topic?"),
-                p("Keep in mind that the topic will be deleted eventually, not immediately!")
+                p("Keep in mind that the topic will be deleted eventually, not immediately!"),
+                topicsState.deleteTopic.error.zipWithIndex.map {
+                  case (msg, idx) =>
+                    div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
+                }
               ),
               div(className := "modal-footer")(
-                button(className := "btn btn-secondary", data-"dismiss" := "modal")("Cancel"),
+                button(className := "btn btn-secondary",
+                  onClick := (() => dispatchEvent(CancelDeleteEvent(Some(modalId)))))("Cancel"),
                 button(className := "btn btn-danger",
-                  onClick := (() => topicDispatch(SetToDelete(topicDetails.name, modalId))))("Delete")
+                  onClick := (() => dispatchEvent(SetToDeleteEvent(topicDetails.name, modalId))))("Delete")
               )
             )
           )
         )
       )
-    }
+    }*/
 
     div(className := "App")(
       Loader.render(
         topicsState.refresh,
-        topicsState.error,
+        topicsState.listingError,
         renderTable
       )
     )

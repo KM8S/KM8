@@ -47,7 +47,9 @@ import common._
           .getClusters(ClusterRequest())
           .onComplete {
             case Success(v) => clustersDispatch(SetItems(v.brokers.toList))
-            case Failure(e) => clustersDispatch(SetError("Could not get clusters!")); println("Error receiving clusters: " + e)
+            case Failure(e) =>
+              Util.logMessage("Error receiving clusters: " + e)
+              clustersDispatch(SetError("Could not get clusters!"))
           }
       },
       List.empty
@@ -60,11 +62,35 @@ import common._
             .deleteCluster(ClusterDetails(clustersState.toDelete.get))
             .onComplete {
               case Success(v) => clustersDispatch(SetItems(v.brokers.toList))
-              case Failure(e) => println("Error deleting cluster: " + e) //todo err
+              case Failure(e) => Util.logMessage("Error deleting cluster: " + e) //todo err
             }
       },
       List(clustersState.toDelete)
     )
+
+    /*def renderDelete(idx: String, clusterDetails: ClusterDetails) = {
+      val modalId = s"modalNr$idx"
+      div(
+        button(className:= "btn btn-danger fa", data-"toggle" := "modal", data-"target" := s"#$modalId")("Delete"),
+        div(className := "modal fade", id := modalId, role := "dialog",
+          div(className := "modal-dialog modal-dialog-centered", role := "document",
+            div(className := "modal-content",
+              div(className :="modal-header",
+                h5(className := "modal-title")(clusterDetails.name)
+              ),
+              div(className := "modal-body")(
+                p(s"Are you sure you want to delete ${clusterDetails.name}?")
+              ),
+              div(className := "modal-footer")(
+                button(className := "btn btn-secondary", data-"dismiss" := "modal")("Cancel"),
+                button(className := "btn btn-danger",
+                  onClick := (() => topicDispatch(SetToDelete(clusterDetails.name, modalId))))("Delete")
+              )
+            )
+          )
+        )
+      )
+    }*/
 
     def renderClusters =
       div(className := "container card-body table-responsive",

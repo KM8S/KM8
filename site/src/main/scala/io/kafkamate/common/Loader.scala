@@ -16,10 +16,10 @@ object Loader {
       h3(error)
     )
 
-  def render(shouldRefresh: Boolean, errors: Option[String], default: ReactElement): ReactElement =
+  def render(shouldRefresh: Boolean, loadingError: Option[String], loadingSuccess: ReactElement): ReactElement =
     if (shouldRefresh) renderLoader
-    else errors match {
-      case None => default
+    else loadingError match {
+      case None => loadingSuccess
       case Some(v) => renderError(v)
     }
 

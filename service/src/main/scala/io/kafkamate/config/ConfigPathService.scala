@@ -21,7 +21,6 @@ object ConfigPathService {
         case Some("prod") => ConfigPath(os.root / FileName)
         case _            => ConfigPath(os.pwd / FileName)
       }
-      .tap(v => UIO(println(s"Clusters file path: ${v.path}")))
       .toLayer
       .orDie
 

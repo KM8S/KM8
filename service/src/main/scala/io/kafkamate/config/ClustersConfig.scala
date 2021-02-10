@@ -47,9 +47,8 @@ import zio.system.System
     ZLayer.fromServices[ConfigPath, Logger[String], Service] { case (configPath, log) =>
       new Service {
         private val configFilepath = configPath.path
-        private val emptyProperties = ClusterProperties(List.empty)
-
-        case class ParseException(message: String) extends Exception(message)
+        private def emptyProperties = ClusterProperties(List.empty)
+        private def emptyPropertiesJson = emptyProperties.toJsonPretty
 
         private def writeJson(json: String) =
           Task(os.write.over(configFilepath, json, createFolders = true))
@@ -57,15 +56,13 @@ import zio.system.System
         def readClusters: Task[ClusterProperties] =
           for {
             b <- Task(os.exists(configFilepath))
-            _ <- writeJson(emptyProperties.toJsonPretty).unless(b)
+            _ <- writeJson(emptyPropertiesJson).unless(b)
             s <- Task(os.read(configFilepath))
             r <- ZIO
               .fromEither(s.fromJson[ClusterProperties])
-              .mapError(ParseException)
-              .catchSome {
-                case e: ParseException =>
-                  log.warn(s"Parsing error: ${e.getMessage}") *>
-                    writeJson(emptyProperties.toJsonPretty).as(emptyProperties)
+              .catchAll { err =>
+                log.warn(s"Parsing error: $err") *>
+                  writeJson(emptyPropertiesJson).as(emptyProperties)
               }
           } yield r
 

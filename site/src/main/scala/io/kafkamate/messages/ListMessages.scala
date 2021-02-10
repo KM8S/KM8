@@ -170,7 +170,7 @@ import common._
                 th(idx.toString),
                 td(item.offset.toString),
                 td(item.partition.toString),
-                td(item.timestamp.toString),
+                td(item.timestamp.toString), //todo display it nicer
                 td(item.key),
                 td(item.value)
               )

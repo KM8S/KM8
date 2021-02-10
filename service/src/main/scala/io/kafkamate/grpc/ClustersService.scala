@@ -4,7 +4,7 @@ package grpc
 import scala.util.Random
 
 import io.grpc.Status
-import zio.{UIO, ZEnv, ZIO, Cause}
+import zio.{UIO, ZEnv, ZIO}
 import zio.logging._
 
 import config._, ClustersConfig._

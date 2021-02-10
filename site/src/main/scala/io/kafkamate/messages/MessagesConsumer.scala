@@ -3,6 +3,8 @@ package messages
 
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 
+import common._
+
 case class MessagesConsumer(
   service: MessagesServiceGrpcWeb.MessagesService[_]
 ) {
@@ -18,13 +20,13 @@ case class MessagesConsumer(
         onMessage(value)
 
       def onError(throwable: Throwable): Unit = {
-        println(s"Failed consuming messages: ${throwable.getMessage}")
+        Util.logMessage(s"Failed consuming messages: ${throwable.getMessage}")
         onFailure(throwable)
         stop()
       }
 
       def onCompleted(): Unit = {
-        println("Finished consuming messages!")
+        Util.logMessage("Finished consuming messages!")
         onTerminated()
         stop()
       }
@@ -37,18 +39,18 @@ case class MessagesConsumer(
   ): Unit =
     stream =
       if (stream == null) {
-        println("Starting to read the stream...")
+        Util.logMessage("Starting to read the stream...")
         service.consumeMessages(request, newStreamObs(onMessage, onError, onCompleted))
       } else {
-        println("Stream already started!")
+        Util.logMessage("Stream already started!")
         stream
       }
 
   def stop(): Unit =
-    if (stream == null) println("Stream already stopped!")
+    if (stream == null) Util.logMessage("Stream already stopped!")
     else {
       stream.cancel()
       stream = null
-      println("Stream canceled!")
+      Util.logMessage("Stream canceled!")
     }
 }

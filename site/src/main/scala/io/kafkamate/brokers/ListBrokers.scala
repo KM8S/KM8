@@ -46,7 +46,9 @@ import common._
           .getBrokers(BrokerRequest(clusterId))
           .onComplete {
             case Success(v) => topicDispatch(SetItems(v.brokers.toList))
-            case Failure(e) => topicDispatch(SetError("Could not load brokers!")); println("Error receiving brokers: " + e)
+            case Failure(e) =>
+              Util.logMessage("Error receiving brokers: " + e)
+              topicDispatch(SetError("Could not load brokers!"))
           }
       },
       List.empty
