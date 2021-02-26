@@ -10,6 +10,7 @@ message AddTopicRequest {
   int32 partitions = 3;
   int32 replication = 4;
   string cleanupPolicy = 5;
+  string retentionMs = 6;
 }
 
 message GetTopicsRequest {
@@ -26,7 +27,8 @@ message TopicDetails {
   int32 partitions = 2;
   int32 replication = 3;
   string cleanupPolicy = 4;
-  uint64 size = 5;
+  string retentionMs = 5;
+  uint64 size = 6;
 }
 
 message TopicResponse {

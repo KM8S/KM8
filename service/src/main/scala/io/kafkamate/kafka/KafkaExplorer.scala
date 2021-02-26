@@ -9,7 +9,6 @@ import zio.kafka.admin._
 import zio.logging._
 import zio.macros.accessible
 import org.apache.kafka.common.config.ConfigResource
-import org.apache.kafka.clients.admin.AdminClientConfig
 
 import config._, ClustersConfig._
 import topics._
@@ -19,6 +18,9 @@ import brokers.BrokerDetails
 
   type HasKafkaExplorer = Has[Service]
   type HasAdminClient = Has[AdminClient]
+
+  val CleanupPolicyKey = "cleanup.policy"
+  val RetentionMsKey = "retention.ms"
 
   trait Service {
     def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
@@ -68,17 +70,21 @@ import brokers.BrokerDetails
               ac.listTopics()
                 .map(_.keys.toList)
                 .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("__"))))
-                .flatMap(ac.describeTopics(_))
-                .map(
-                  _.map { case (name, description) =>
+                .flatMap(ls => ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(new ConfigResource(ConfigResource.Type.TOPIC, _))))
+                .map { case (nameDescriptionMap, topicConfigMap) =>
+                  val configs = topicConfigMap.map { case (res, conf) => (res.name(), conf) }
+                  nameDescriptionMap.map { case (name, description) =>
+                    val conf = configs.get(name).map(_.entries)
+                    def getConfig(key: String) = conf.flatMap(_.get(key).map(_.value())).getOrElse("unknown")
                     TopicDetails(
-                      name,
-                      description.partitions.size,
-                      description.partitions.headOption.map(_.replicas.size).getOrElse(0),
-                      "delete" //todo fix this
+                      name = name,
+                      partitions = description.partitions.size,
+                      replication = description.partitions.headOption.map(_.replicas.size).getOrElse(0),
+                      cleanupPolicy = getConfig(CleanupPolicyKey),
+                      retentionMs = getConfig(RetentionMsKey)
                     )
                   }.toList.sortBy(_.name)
-                )
+                }
             }
             .withAdminClient(clusterId)
 
@@ -87,7 +93,7 @@ import brokers.BrokerDetails
             .accessM[HasAdminClient with Blocking] { env =>
               env
                 .get[AdminClient]
-                .createTopic(AdminClient.NewTopic(req.name, req.partitions, req.replication.toShort))
+                .createTopic(AdminClient.NewTopic(req.name, req.partitions, req.replication.toShort, Map(CleanupPolicyKey -> req.cleanupPolicy)))
                 .as(TopicDetails(req.name, req.partitions, req.replication, req.cleanupPolicy))
             }
             .withAdminClient(req.clusterId)

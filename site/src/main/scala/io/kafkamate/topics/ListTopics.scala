@@ -71,6 +71,7 @@ import common._
               th("Partitions"),
               th("Replication factor"),
               th("Cleanup Policy"),
+              th("Retention (ms)"),
               th("Action")
             )
           ),
@@ -81,6 +82,7 @@ import common._
                 td(topicDetails.partitions.toString),
                 td(topicDetails.replication.toString),
                 td(topicDetails.cleanupPolicy),
+                td(topicDetails.retentionMs),
                 td(renderDelete(idx.toString, topicDetails))
               )
             }
