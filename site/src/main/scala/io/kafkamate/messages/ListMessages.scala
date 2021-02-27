@@ -7,7 +7,6 @@ import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
-import slinky.reactrouter.Link
 import slinky.web.html._
 import org.scalajs.dom.{Event, html}
 
@@ -23,35 +22,34 @@ import common._
       Item(m.offset, m.partition, m.timestamp, m.key, m.value)
   }
   case class ConsumerState(
-    streamData: Boolean = false,
+    isStreaming: Boolean = false,
     items: List[Item] = List.empty,
+    error: Option[String] = None,
     maxResults: Long = 0L,
     offsetStrategy: String = "earliest",
     filterKeyword: String = ""
   )
 
-  sealed trait ConsumerAction
-  case object StreamToggle extends ConsumerAction
-  case class SetMaxResults(maxResults: Long) extends ConsumerAction
-  case class SetOffsetStrategy(strategy: String) extends ConsumerAction
-  case class SetFilter(word: String) extends ConsumerAction
-  case class AddItem(item: Item) extends ConsumerAction
+  sealed trait ConsumerEvent
+  case class SetStreamingEvent(bool: Boolean, error: Option[String] = None) extends ConsumerEvent
+  case class SetMaxResultsEvent(maxResults: Long) extends ConsumerEvent
+  case class SetOffsetStrategyEvent(strategy: String) extends ConsumerEvent
+  case class SetFilterEvent(word: String) extends ConsumerEvent
+  case class AddItemEvent(item: Item) extends ConsumerEvent
 
 
-  private def consumerReducer(prevState: ConsumerState, action: ConsumerAction): ConsumerState =
-    action match {
-      case StreamToggle =>
-        if (prevState.streamData)
-          prevState.copy(streamData = ! prevState.streamData)
-        else
-          prevState.copy(
-            streamData = ! prevState.streamData,
-            items = List.empty
-          )
-      case SetMaxResults(max) => prevState.copy(maxResults = max)
-      case SetOffsetStrategy(v) => prevState.copy(offsetStrategy = v)
-      case SetFilter(v) => prevState.copy(filterKeyword = v)
-      case AddItem(item) => prevState.copy(items = prevState.items :+ item)
+  private def consumerReducer(prevState: ConsumerState, event: ConsumerEvent): ConsumerState =
+    event match {
+      case SetStreamingEvent(bool, err) =>
+        prevState.copy(
+          isStreaming = bool,
+          items = if (bool) List.empty else prevState.items,
+          error = err
+        )
+      case SetMaxResultsEvent(max) => prevState.copy(maxResults = max)
+      case SetOffsetStrategyEvent(v) => prevState.copy(offsetStrategy = v)
+      case SetFilterEvent(v) => prevState.copy(filterKeyword = v)
+      case AddItemEvent(item) => prevState.copy(items = prevState.items :+ item)
     }
 
   private val messagesGrpcClient =
@@ -67,17 +65,18 @@ import common._
 
     val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
 
-    def handleOffsetStrategy(e: SyntheticEvent[html.Select, Event]): Unit = consumerDispatch(SetOffsetStrategy(e.target.value))
-    def handleMaxResults(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetMaxResults(e.target.value.toLong))
-    def handleFilter(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetFilter(e.target.value))
+    def handleOffsetStrategy(e: SyntheticEvent[html.Select, Event]): Unit = consumerDispatch(SetOffsetStrategyEvent(e.target.value))
+    def handleMaxResults(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetMaxResultsEvent(e.target.value.toLong))
+    def handleFilter(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetFilterEvent(e.target.value))
 
-    def onMessage(v: Message): Unit = consumerDispatch(AddItem(Item.fromMessage(v)))
-    def onError(t: Throwable): Unit = consumerDispatch(StreamToggle) //todo display an error
-    val onCompleted = () => consumerDispatch(StreamToggle)
+    def onMessage(v: Message): Unit = consumerDispatch(AddItemEvent(Item.fromMessage(v)))
+    def onError(t: Throwable): Unit =
+      consumerDispatch(SetStreamingEvent(false, Some("There was an error processing this request!")))
+    val onCompleted = () => consumerDispatch(SetStreamingEvent(false))
 
     useEffect(
       () => {
-        if (consumerState.streamData)
+        if (consumerState.isStreaming)
           consumer.start(
             ConsumeRequest(
               clusterId,
@@ -90,10 +89,9 @@ import common._
         else
           consumer.stop()
 
-        /** This is an example on how to clean up the effect */
         () => consumer.stop()
       },
-      List(consumerState.streamData)
+      List(consumerState.isStreaming)
     )
 
     div(className := "App")(
@@ -142,15 +140,15 @@ import common._
           ),
           label(className := "inline")(
             div(className := "pl-3",
-              if (!consumerState.streamData)
-                button(className:= "btn btn-success fa fa-play", onClick := { () => consumerDispatch(StreamToggle) })(" Read")
+              if (!consumerState.isStreaming)
+                button(className:= "btn btn-success fa fa-play", onClick := { () => consumerDispatch(SetStreamingEvent(true)) })(" Read")
               else
-                button(className:= "btn btn-danger fa fa-stop", onClick := { () => consumerDispatch(StreamToggle) })(" Stop")
+                button(className:= "btn btn-danger fa fa-stop", onClick := { () => consumerDispatch(SetStreamingEvent(false)) })(" Stop")
             )
           ),
           a(`type` := "button",
             style := js.Dynamic.literal(marginTop = "29px", float = "right"),
-            className := "btn btn-secondary fa fa-plus",
+            className := "btn btn-primary fa fa-plus",
             href := s"#${Loc.fromTopicAdd(clusterId, topicName)}", target := "_blank")(" Add new message")
         ),
         table(className := "table table-hover",
@@ -176,7 +174,11 @@ import common._
               )
             }
           )
-        )
+        ),
+        consumerState.error.zipWithIndex.map {
+          case (msg, idx) =>
+            div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
+        },
       )
     )
   }

@@ -90,14 +90,14 @@ import messages._
 
         val withLimit = if (request.maxResults <= 0L) stream else stream.take(request.maxResults)
 
-        val withFilter =
+        val withLimitFilter =
           if (request.filterKeyword.isEmpty) withLimit
           else withLimit.filter(m =>
             m.key.contains(request.filterKeyword) ||
               m.value.contains(request.filterKeyword)
           )
 
-        withFilter.provideSomeLayer[Clock with Blocking](makeConsumerLayer(request.clusterId, request.offsetStrategy))
+        withLimitFilter.provideSomeLayer[Clock with Blocking](makeConsumerLayer(request.clusterId, request.offsetStrategy))
       }
     }
 }
