@@ -64,7 +64,7 @@ object ReactLogo extends js.Object
 
   val component = FunctionalComponent[Props] { props =>
     val location = ReactRouterDOM.useLocation()
-    val clusterId = location.pathname.split("/").lift(2) //todo smth better
+    val clusterId = location.pathname.split("/").lift(2)
 
     Fragment(
       navPath(clusterId),

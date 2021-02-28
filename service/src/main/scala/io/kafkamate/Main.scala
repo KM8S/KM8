@@ -17,7 +17,6 @@ object Main extends ServerMain {
       format = LogFormat.ColoredLogFormat()
     ) >>> Logging.withRootLoggerName("kafkamate")
 
-  //todo test with multiple kafka versions
   override def services: ServiceList[ZEnv] =
     ServiceList
       .add(ClustersService.GrpcService)
