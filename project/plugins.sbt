@@ -18,10 +18,12 @@ addSbtPlugin("se.marcuslonnberg" % "sbt-docker" % "1.8.0")
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.15.0")
 
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
+
 libraryDependencies ++= Seq(
-  "com.thesamet.scalapb"            %% "compilerplugin"             % "0.10.8",
-  "com.thesamet.scalapb.grpcweb"    %% "scalapb-grpcweb-code-gen"   % "0.4.1+21-1dbb6ad7-SNAPSHOT",
-  "com.thesamet.scalapb.zio-grpc"   %% "zio-grpc-codegen"           % "0.4.0"
+  "com.thesamet.scalapb"          %% "compilerplugin"           % "0.10.8",
+  "com.thesamet.scalapb.grpcweb"  %% "scalapb-grpcweb-code-gen" % "0.4.1+21-1dbb6ad7-SNAPSHOT",
+  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen"         % "0.4.0"
 )
 
 // For Scala.js:

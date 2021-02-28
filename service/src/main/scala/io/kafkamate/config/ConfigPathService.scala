@@ -7,7 +7,7 @@ import system.System
 
 object ConfigPathService {
 
-  lazy val EnvKey = "KAFKAMATE_ENV"
+  lazy val EnvKey   = "KAFKAMATE_ENV"
   lazy val FileName = "kafkamate.json"
 
   case class ConfigPath(path: os.Path)

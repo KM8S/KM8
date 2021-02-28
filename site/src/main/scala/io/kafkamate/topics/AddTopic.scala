@@ -22,7 +22,7 @@ import common._
     TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
-    val params = ReactRouterDOM.useParams().toMap
+    val params    = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
     val (shouldRedirect, setRedirect)         = useState(false)
@@ -44,7 +44,7 @@ import common._
     }
 
     useEffect(
-      () => {
+      () =>
         if (shouldMakeRequest)
           topicsGrpcClient
             .addTopic(AddTopicRequest(clusterId, topicName, partitions, replication, cleanupPolicy))
@@ -55,8 +55,7 @@ import common._
               case Failure(e) =>
                 setRequestAction(false)
                 setErrorMsgs(List(e.getMessage))
-            }
-      },
+            },
       List(shouldMakeRequest)
     )
 
@@ -121,14 +120,13 @@ import common._
             option(value := "compact")("compact")
           )
         ),
-        errorMsgs.zipWithIndex.map {
-          case (msg, idx) =>
-            div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
+        errorMsgs.zipWithIndex.map { case (msg, idx) =>
+          div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
         },
         button(`type` := "submit", className := "btn btn-secondary", "Add")
       )
 
-    def addTopic() = {
+    def addTopic() =
       div(
         className := "container w-50 p-4",
         div(
@@ -140,7 +138,6 @@ import common._
           )
         )
       )
-    }
 
     if (shouldRedirect)
       Redirect(to = Loc.fromLocation(clusterId, Loc.topics))

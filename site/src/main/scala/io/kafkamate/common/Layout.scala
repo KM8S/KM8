@@ -63,14 +63,12 @@ object ReactLogo extends js.Object
     )
 
   val component = FunctionalComponent[Props] { props =>
-    val location = ReactRouterDOM.useLocation()
+    val location  = ReactRouterDOM.useLocation()
     val clusterId = location.pathname.split("/").lift(2)
 
     Fragment(
       navPath(clusterId),
-      div(className := "container",
-        div(className := "main-content mt", role := "main", props.content)
-      )
+      div(className := "container", div(className := "main-content mt", role := "main", props.content))
     )
   }
 }

@@ -20,7 +20,7 @@ import messages._
 
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
-  type Env = Clock with Blocking with Logging
+  type Env           = Clock with Blocking with Logging
 
   trait Service {
     def consumeN(topic: String, nrOfMessages: Long, offsetStrategy: String)(clusterId: String): RIO[Env, List[Message]]
@@ -56,30 +56,31 @@ import messages._
       private def makeConsumerLayer(clusterId: String, offsetStrategy: String): RLayer[Clock with Blocking, Consumer] =
         ZLayer.fromManaged {
           for {
-            cs <- clustersConfigService.getCluster(clusterId).toManaged_
+            cs       <- clustersConfigService.getCluster(clusterId).toManaged_
             settings <- consumerSettings(cs, offsetStrategy).toManaged_
             consumer <- Consumer.make(settings)
           } yield consumer
         }
 
-      def consumeN(topic: String, nrOfMessages: Long, offsetStrategy: String)(clusterId: String): RIO[Env, List[Message]] = {
+      def consumeN(topic: String, nrOfMessages: Long, offsetStrategy: String)(
+        clusterId: String
+      ): RIO[Env, List[Message]] = {
         val consumer =
           for {
-            _ <- Consumer.subscribe(Subscription.topics(topic))
+            _          <- Consumer.subscribe(Subscription.topics(topic))
             endOffsets <- Consumer.assignment.repeatUntil(_.nonEmpty).flatMap(Consumer.endOffsets(_, timeout))
-            _ <- log.info( s"End offsets: $endOffsets")
+            _          <- log.info(s"End offsets: $endOffsets")
             records <- Consumer
-              .plainStream(Deserializer.string, Deserializer.string)
-              .takeUntil(cr => untilExists(endOffsets, cr))
-              .take(nrOfMessages)
-              .runCollect
-              .map(_.map(v => Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value)))
+                         .plainStream(Deserializer.string, Deserializer.string)
+                         .takeUntil(cr => untilExists(endOffsets, cr))
+                         .take(nrOfMessages)
+                         .runCollect
+                         .map(_.map(v => Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value)))
           } yield records.toList
         consumer.provideSomeLayer[Env](makeConsumerLayer(clusterId, offsetStrategy))
       }
 
-      private def untilExists(endOffsets: Map[TopicPartition, Long],
-                              cr: CommittableRecord[String, String]): Boolean =
+      private def untilExists(endOffsets: Map[TopicPartition, Long], cr: CommittableRecord[String, String]): Boolean =
         endOffsets.exists(o => o._1 == cr.offset.topicPartition && o._2 == 1 + cr.offset.offset)
 
       def consumeStream(request: ConsumeRequest): ZStream[Env, Throwable, Message] = {
@@ -92,12 +93,15 @@ import messages._
 
         val withLimitFilter =
           if (request.filterKeyword.isEmpty) withLimit
-          else withLimit.filter(m =>
-            m.key.contains(request.filterKeyword) ||
-              m.value.contains(request.filterKeyword)
-          )
+          else
+            withLimit.filter(m =>
+              m.key.contains(request.filterKeyword) ||
+                m.value.contains(request.filterKeyword)
+            )
 
-        withLimitFilter.provideSomeLayer[Clock with Blocking](makeConsumerLayer(request.clusterId, request.offsetStrategy))
+        withLimitFilter.provideSomeLayer[Clock with Blocking](
+          makeConsumerLayer(request.clusterId, request.offsetStrategy)
+        )
       }
     }
 }

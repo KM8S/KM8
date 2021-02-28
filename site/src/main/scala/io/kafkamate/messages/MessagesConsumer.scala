@@ -37,14 +37,13 @@ case class MessagesConsumer(
     onError: Throwable => Unit,
     onCompleted: () => Unit
   ): Unit =
-    stream =
-      if (stream == null) {
-        Util.logMessage("Starting to read the stream...")
-        service.consumeMessages(request, newStreamObs(onMessage, onError, onCompleted))
-      } else {
-        Util.logMessage("Stream already started!")
-        stream
-      }
+    stream = if (stream == null) {
+      Util.logMessage("Starting to read the stream...")
+      service.consumeMessages(request, newStreamObs(onMessage, onError, onCompleted))
+    } else {
+      Util.logMessage("Stream already started!")
+      stream
+    }
 
   def stop(): Unit =
     if (stream == null) Util.logMessage("Stream already stopped!")

@@ -23,13 +23,13 @@ import common._
   )
 
   sealed trait ClustersEvent
-  case object RefreshEvent extends ClustersEvent
+  case object RefreshEvent                                 extends ClustersEvent
   case class SetClustersEvent(items: List[ClusterDetails]) extends ClustersEvent
-  case class SetListingErrorEvent(e: String) extends ClustersEvent
+  case class SetListingErrorEvent(e: String)               extends ClustersEvent
 
   private def clustersReducer(state: ClustersState, action: ClustersEvent): ClustersState =
     action match {
-      case RefreshEvent => state.copy(refresh = true, listingError = None)
+      case RefreshEvent            => state.copy(refresh = true, listingError = None)
       case SetClustersEvent(items) => state.copy(clusters = items, refresh = false, listingError = None)
       case SetListingErrorEvent(e) => state.copy(clusters = List.empty, refresh = false, listingError = Some(e))
     }
@@ -41,7 +41,7 @@ import common._
     val (clustersState, clustersDispatch) = useReducer(clustersReducer, ClustersState())
 
     useEffect(
-      () => {
+      () =>
         if (clustersState.refresh)
           clustersGrpcClient
             .getClusters(ClusterRequest())
@@ -51,8 +51,7 @@ import common._
               case Failure(e) =>
                 Util.logMessage("Error receiving clusters: " + e)
                 clustersDispatch(SetListingErrorEvent("Could not get clusters!"))
-            }
-      },
+            },
       List(clustersState.refresh)
     )
 
@@ -60,19 +59,23 @@ import common._
       val body = div(
         p(s"Are you sure you want to delete ${clusterDetails.name} cluster from kafkamate?")
       )
-      DeleteItemModal.component(DeleteItemModal.Props(
-        idx,
-        clusterDetails.name,
-        body,
-        () => clustersGrpcClient.deleteCluster(ClusterDetails(clusterDetails.id)),
-        () => clustersDispatch(RefreshEvent)
-      ))
+      DeleteItemModal.component(
+        DeleteItemModal.Props(
+          idx,
+          clusterDetails.name,
+          body,
+          () => clustersGrpcClient.deleteCluster(ClusterDetails(clusterDetails.id)),
+          () => clustersDispatch(RefreshEvent)
+        )
+      )
     }
 
     def renderClusters =
-      div(className := "container card-body table-responsive",
-        Link(to = Loc.addCluster)(div(className:= "btn btn-primary mb-3")("Add cluster")),
-        table(className := "table table-hover",
+      div(
+        className := "container card-body table-responsive",
+        Link(to = Loc.addCluster)(div(className := "btn btn-primary mb-3")("Add cluster")),
+        table(
+          className := "table table-hover",
           thead(
             tr(
               th("Id"),

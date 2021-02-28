@@ -21,11 +21,11 @@ import common._
     ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
-    val (shouldRedirect, setRedirect) = useState(false)
+    val (shouldRedirect, setRedirect)         = useState(false)
     val (shouldMakeRequest, setRequestAction) = useState(false)
-    val (clusterName, setClusterName) = useState("")
-    val (address, setAddress)         = useState("")
-    val (errorMsgs, setErrorMsgs)     = useState(List.empty[String])
+    val (clusterName, setClusterName)         = useState("")
+    val (address, setAddress)                 = useState("")
+    val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
 
     def handleClusterName(e: SyntheticEvent[html.Input, Event]): Unit = setClusterName(e.target.value)
     def handleAddress(e: SyntheticEvent[html.Input, Event]): Unit     = setAddress(e.target.value)
@@ -36,7 +36,7 @@ import common._
     }
 
     useEffect(
-      () => {
+      () =>
         if (shouldMakeRequest)
           clustersGrpcClient
             .addCluster(ClusterDetails("", clusterName, address))
@@ -47,8 +47,7 @@ import common._
               case Failure(e) =>
                 setRequestAction(false)
                 setErrorMsgs(List(e.getMessage))
-            }
-      },
+            },
       List(shouldMakeRequest)
     )
 
@@ -87,14 +86,13 @@ import common._
             onChange := (handleAddress(_))
           )
         ),
-        errorMsgs.zipWithIndex.map {
-          case (msg, idx) =>
-            div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
+        errorMsgs.zipWithIndex.map { case (msg, idx) =>
+          div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
         },
         button(`type` := "submit", className := "btn btn-secondary", "Add")
       )
 
-    def addCluster() = {
+    def addCluster() =
       div(
         className := "container w-50 p-4",
         div(
@@ -106,7 +104,6 @@ import common._
           )
         )
       )
-    }
 
     if (shouldRedirect)
       Redirect(to = Loc.clusters)

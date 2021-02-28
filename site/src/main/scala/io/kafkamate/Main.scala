@@ -12,7 +12,6 @@ import scala.scalajs.LinkingInfo
 import bridges.reactrouter.HashRouter
 import common.Router
 
-
 @JSImport("resources/index.css", JSImport.Default)
 @js.native
 object IndexCSS extends js.Object

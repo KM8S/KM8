@@ -12,15 +12,14 @@ object Loader {
     )
 
   private def renderError(error: String): ReactElement =
-    div(className := "d-flex justify-content-center",
-      h3(error)
-    )
+    div(className := "d-flex justify-content-center", h3(error))
 
   def render(shouldRefresh: Boolean, loadingError: Option[String], loadingSuccess: ReactElement): ReactElement =
     if (shouldRefresh) renderLoader
-    else loadingError match {
-      case None => loadingSuccess
-      case Some(v) => renderError(v)
-    }
+    else
+      loadingError match {
+        case None    => loadingSuccess
+        case Some(v) => renderError(v)
+      }
 
 }

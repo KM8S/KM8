@@ -36,11 +36,11 @@ trait HelperSpec {
       }
 
   def produceMany(
-       topic: String,
-       kvs: Iterable[(String, String)]
-     ): RIO[Blocking with StringProducer, Chunk[RecordMetadata]] =
+    topic: String,
+    kvs: Iterable[(String, String)]
+  ): RIO[Blocking with StringProducer, Chunk[RecordMetadata]] =
     Producer
-      .produceChunk[Any, String, String](Chunk.fromIterable(kvs.map {
-        case (k, v) => new ProducerRecord(topic, k, v)
+      .produceChunk[Any, String, String](Chunk.fromIterable(kvs.map { case (k, v) =>
+        new ProducerRecord(topic, k, v)
       }))
 }

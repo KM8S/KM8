@@ -34,7 +34,8 @@ import config._, ClustersConfig._
 
         def produce(topic: String, key: String, value: String)(clusterId: String): RIO[Blocking, Unit] =
           Producer
-            .produce[Any, String, String](topic, key, value).unit
+            .produce[Any, String, String](topic, key, value)
+            .unit
             .provideSomeLayer[Blocking](producerLayer(clusterId))
       }
     }

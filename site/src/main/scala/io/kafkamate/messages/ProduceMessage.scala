@@ -27,12 +27,12 @@ import common._
     val (successMsgs, setSuccessMsgs)         = useState(Option.empty[String])
     val (errorMsgs, setErrorMsgs)             = useState(Option.empty[String])
 
-    val params = ReactRouterDOM.useParams().toMap
+    val params    = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
-    def handleKey(e: SyntheticEvent[html.Input, Event]): Unit       = setKey(e.target.value)
-    def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit  = setValue(e.target.value)
+    def handleKey(e: SyntheticEvent[html.Input, Event]): Unit      = setKey(e.target.value)
+    def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit = setValue(e.target.value)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
@@ -41,7 +41,7 @@ import common._
     }
 
     useEffect(
-      () => {
+      () =>
         if (shouldMakeRequest)
           messagesGrpcClient
             .produceMessage(ProduceRequest(clusterId, topicName, messageKey, messageValue))
@@ -55,8 +55,7 @@ import common._
                 Util.logMessage("Error producing message: " + e)
                 setRequestAction(false)
                 setErrorMsgs(Some(e.getMessage))
-            }
-      },
+            },
       List(shouldMakeRequest)
     )
 
@@ -94,13 +93,11 @@ import common._
             onChange := (handleValue(_))
           )
         ),
-        successMsgs.zipWithIndex.map {
-          case (msg, idx) =>
-            div(key := idx.toString, className := "alert alert-success", role := "alert", msg)
+        successMsgs.zipWithIndex.map { case (msg, idx) =>
+          div(key := idx.toString, className := "alert alert-success", role := "alert", msg)
         },
-        errorMsgs.zipWithIndex.map {
-          case (msg, idx) =>
-            div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
+        errorMsgs.zipWithIndex.map { case (msg, idx) =>
+          div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
         },
         button(`type` := "submit", className := "btn btn-secondary", "Add")
       )

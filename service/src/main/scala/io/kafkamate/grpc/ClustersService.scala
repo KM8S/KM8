@@ -21,19 +21,18 @@ object ClustersService {
     def addCluster(request: ClusterDetails): ZIO[Env, Status, ClusterDetails] =
       for {
         clusterId <- genRandStr(6).map(str => s"${request.name.trim}-$str")
-        hosts = request.address.split(",").toList
+        hosts      = request.address.split(",").toList
         c <- ClustersConfig
-          .writeClusters(ClusterSettings(clusterId, request.name, hosts))
-          .tapError(e => log.error(s"Add cluster error: ${e.getMessage}"))
-          .bimap(GRPCStatus.fromThrowable, _ => request)
+               .writeClusters(ClusterSettings(clusterId, request.name, hosts))
+               .tapError(e => log.error(s"Add cluster error: ${e.getMessage}"))
+               .bimap(GRPCStatus.fromThrowable, _ => request)
       } yield c
 
     private def toClusterResponse(r: ClusterProperties) =
       ClusterResponse(r.clusters.map(c => ClusterDetails(c.id, c.name, c.hostsString)))
 
     def getClusters(request: ClusterRequest): ZIO[Env, Status, ClusterResponse] =
-      ClustersConfig
-        .readClusters
+      ClustersConfig.readClusters
         .tapError(e => log.error(s"Get clusters error: ${e.getMessage}"))
         .bimap(GRPCStatus.fromThrowable, toClusterResponse)
 

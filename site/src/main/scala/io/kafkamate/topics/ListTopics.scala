@@ -25,14 +25,14 @@ import common._
   )
 
   sealed trait TopicsEvent
-  case object RefreshEvent extends TopicsEvent
+  case object RefreshEvent                             extends TopicsEvent
   case class SetTopicsEvent(items: List[TopicDetails]) extends TopicsEvent
-  case class SetListingErrorEvent(err: String) extends TopicsEvent
+  case class SetListingErrorEvent(err: String)         extends TopicsEvent
 
   private def topicsReducer(state: TopicsState, action: TopicsEvent): TopicsState =
     action match {
-      case RefreshEvent => state.copy(refresh = true, listingError = None)
-      case SetTopicsEvent(topics) => state.copy(topics = topics, refresh = false)
+      case RefreshEvent              => state.copy(refresh = true, listingError = None)
+      case SetTopicsEvent(topics)    => state.copy(topics = topics, refresh = false)
       case SetListingErrorEvent(err) => state.copy(listingError = Some(err), refresh = false)
     }
 
@@ -40,13 +40,13 @@ import common._
     TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
-    val params = ReactRouterDOM.useParams().toMap
+    val params    = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
     val (topicsState, dispatchEvent) = useReducer(topicsReducer, TopicsState())
 
     useEffect(
-      () => {
+      () =>
         if (topicsState.refresh)
           topicsGrpcClient
             .getTopics(GetTopicsRequest(clusterId))
@@ -56,15 +56,16 @@ import common._
               case Failure(e) =>
                 Util.logMessage("Error receiving topics: " + e)
                 dispatchEvent(SetListingErrorEvent("Could not load topics!"))
-            }
-      },
+            },
       List(topicsState.refresh)
     )
 
-    def renderTable = {
-      div(className := "card-body table-responsive",
-        Link(to = Loc.fromLocation(clusterId, Loc.addTopic))(div(className:= "btn btn-primary mb-3")("Add topic")),
-        table(className := "table table-hover",
+    def renderTable =
+      div(
+        className := "card-body table-responsive",
+        Link(to = Loc.fromLocation(clusterId, Loc.addTopic))(div(className := "btn btn-primary mb-3")("Add topic")),
+        table(
+          className := "table table-hover",
           thead(
             tr(
               th("Name"),
@@ -89,20 +90,21 @@ import common._
           )
         )
       )
-    }
 
     def renderDelete(idx: String, topicDetails: TopicDetails) = {
       val body = div(
         p(s"Are you sure you want to delete ${topicDetails.name} topic?"),
-        p("Keep in mind that the topic will be deleted eventually, not immediately!"),
+        p("Keep in mind that the topic will be deleted eventually, not immediately!")
       )
-      DeleteItemModal.component(DeleteItemModal.Props(
-        idx,
-        topicDetails.name,
-        body,
-        () => topicsGrpcClient.deleteTopic(DeleteTopicRequest(clusterId, topicDetails.name)),
-        () => dispatchEvent(RefreshEvent)
-      ))
+      DeleteItemModal.component(
+        DeleteItemModal.Props(
+          idx,
+          topicDetails.name,
+          body,
+          () => topicsGrpcClient.deleteTopic(DeleteTopicRequest(clusterId, topicDetails.name)),
+          () => dispatchEvent(RefreshEvent)
+        )
+      )
     }
 
     div(className := "App")(

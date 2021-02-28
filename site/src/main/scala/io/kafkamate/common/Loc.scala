@@ -9,14 +9,14 @@ object Loc {
   val clusterIdKey = "clusterId"
   val topicNameKey = "topicName"
 
-  val home           =  "/"
-  val addCluster     =  "/add-cluster"
-  val clusters       =  "/clusters"
-  val brokers        = s"/clusters/:$clusterIdKey(.*)/brokers"
-  val topics         = s"/clusters/:$clusterIdKey(.*)/topics"
-  val addTopic       = s"/clusters/:$clusterIdKey(.*)/topics/new-topic"
-  val listMessages   = s"/clusters/:$clusterIdKey(.*)/topics/consume/:$topicNameKey(.*)"
-  val addMessage     = s"/clusters/:$clusterIdKey(.*)/topics/produce/:$topicNameKey(.*)"
+  val home         = "/"
+  val addCluster   = "/add-cluster"
+  val clusters     = "/clusters"
+  val brokers      = s"/clusters/:$clusterIdKey(.*)/brokers"
+  val topics       = s"/clusters/:$clusterIdKey(.*)/topics"
+  val addTopic     = s"/clusters/:$clusterIdKey(.*)/topics/new-topic"
+  val listMessages = s"/clusters/:$clusterIdKey(.*)/topics/consume/:$topicNameKey(.*)"
+  val addMessage   = s"/clusters/:$clusterIdKey(.*)/topics/produce/:$topicNameKey(.*)"
 
   def fromLocation(clusterId: String, location: String): String = {
     val fromPathData = PathToRegexp.compile(location)

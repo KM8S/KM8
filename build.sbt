@@ -1,12 +1,12 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
-lazy val ProjectName = "kafkamate"
+lazy val ProjectName         = "kafkamate"
 lazy val ProjectOrganization = "csofronia"
-lazy val ProjectVersion = "0.1.0"
+lazy val ProjectVersion      = "0.1.0"
 lazy val ProjectScalaVersion = "2.13.4"
 
-lazy val ZIOVersion  = "1.0.3"
-lazy val GrpcVersion = "1.31.1"
+lazy val ZIOVersion    = "1.0.3"
+lazy val GrpcVersion   = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 
 lazy val kafkamate = project
@@ -22,7 +22,7 @@ lazy val kafkamate = project
   .settings(
     docker := (docker dependsOn (assembly in service)).value,
     dockerfile in docker := {
-      val artifact: File = (assemblyOutputPath in assembly in service).value
+      val artifact: File     = (assemblyOutputPath in assembly in service).value
       val artifactTargetPath = s"/app/${artifact.name}"
 
       new Dockerfile {
@@ -32,16 +32,20 @@ lazy val kafkamate = project
         env("KAFKAMATE_ENV", "prod")
         expose(8080, 61234, 9000)
 
-        runRaw("apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common")
+        runRaw(
+          "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common"
+        )
         runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
         runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
-        runRaw("""add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """)
+        runRaw(
+          """add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """
+        )
         runRaw("apt-get update && apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
 
         runRaw("rm -v /etc/nginx/nginx.conf")
         copy(baseDirectory(_ / "build" / "nginx").value, "/etc/nginx/")
         copy(baseDirectory(_ / "build" / "envoy.yaml").value, "envoy.yaml")
-        copy(baseDirectory(_ / "build" / "start.sh" ).value, "start.sh")
+        copy(baseDirectory(_ / "build" / "start.sh").value, "start.sh")
 
         add(artifact, artifactTargetPath)
         copy(baseDirectory(_ / "site" / "build").value, "/usr/share/nginx/html/")
@@ -70,7 +74,8 @@ lazy val service = project
     scalacOptions ++= Seq(
       "-unchecked",
       "-deprecation",
-      "-encoding", "utf8",
+      "-encoding",
+      "utf8",
       "-target:jvm-1.8",
       "-feature",
       "-language:_",
@@ -84,27 +89,27 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                         %% "zio-kafka"                          % "0.14.0",
-      "dev.zio"                         %% "zio-json"                           % "0.0.1",
-      "dev.zio"                         %% "zio-logging-slf4j"                  % "0.5.4",
-      "com.lihaoyi"                     %% "os-lib"                             % "0.7.1",
-      "com.thesamet.scalapb"            %% "scalapb-runtime-grpc"               % scalapb.compiler.Version.scalapbVersion,
-      "io.grpc"                         %  "grpc-netty"                         % GrpcVersion,
-      "com.fasterxml.jackson.module"    %% "jackson-module-scala"               % "2.10.0",
-      "net.logstash.logback"            %  "logstash-logback-encoder"           % "6.3",
-      "ch.qos.logback"                  %  "logback-classic"                    % "1.2.3",
-      "io.github.embeddedkafka"         %% "embedded-kafka"                     % "2.6.0" % Test
+      "dev.zio"                      %% "zio-kafka"                % "0.14.0",
+      "dev.zio"                      %% "zio-json"                 % "0.0.1",
+      "dev.zio"                      %% "zio-logging-slf4j"        % "0.5.4",
+      "com.lihaoyi"                  %% "os-lib"                   % "0.7.1",
+      "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"     % scalapb.compiler.Version.scalapbVersion,
+      "io.grpc"                       % "grpc-netty"               % GrpcVersion,
+      "com.fasterxml.jackson.module" %% "jackson-module-scala"     % "2.10.0",
+      "net.logstash.logback"          % "logstash-logback-encoder" % "6.3",
+      "ch.qos.logback"                % "logback-classic"          % "1.2.3",
+      "io.github.embeddedkafka"      %% "embedded-kafka"           % "2.6.0" % Test
     ),
     PB.targets in Compile := Seq(
-      scalapb.gen(grpc = true) -> (sourceManaged in Compile).value,
-      scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value,
+      scalapb.gen(grpc = true)          -> (sourceManaged in Compile).value,
+      scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value
     )
   )
   .dependsOn(common.jvm)
   .settings(
     assemblyMergeStrategy in assembly := {
       case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.concat
-      case "module-info.class" => MergeStrategy.discard
+      case "module-info.class"                             => MergeStrategy.discard
       case x =>
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)
@@ -124,16 +129,16 @@ lazy val site = project
       else Nil
     },
     version in webpack := "4.43.0",
-    version in startWebpackDevServer:= "3.11.0",
+    version in startWebpackDevServer := "3.11.0",
     libraryDependencies ++= Seq(
-      "me.shadaj" %%% "slinky-core" % SlinkyVersion,
-      "me.shadaj" %%% "slinky-web" % SlinkyVersion,
-      "me.shadaj" %%% "slinky-native" % SlinkyVersion,
-      "me.shadaj" %%% "slinky-hot" % SlinkyVersion,
-      "me.shadaj" %%% "slinky-react-router" % SlinkyVersion,
-      "me.shadaj" %%% "slinky-scalajsreact-interop" % SlinkyVersion,
-      //"com.github.oen9" %%% "slinky-bridge-react-konva" % "0.1.1",
-      "org.scalatest" %%% "scalatest" % "3.1.1" % Test
+      "me.shadaj"     %%% "slinky-core"                 % SlinkyVersion,
+      "me.shadaj"     %%% "slinky-web"                  % SlinkyVersion,
+      "me.shadaj"     %%% "slinky-native"               % SlinkyVersion,
+      "me.shadaj"     %%% "slinky-hot"                  % SlinkyVersion,
+      "me.shadaj"     %%% "slinky-react-router"         % SlinkyVersion,
+      "me.shadaj"     %%% "slinky-scalajsreact-interop" % SlinkyVersion,
+      "org.scalatest" %%% "scalatest"                   % "3.1.1" % Test
+      //"com.github.oen9" %%% "slinky-bridge-react-konva"   % "0.1.1",
     ),
     npmDependencies in Compile ++= Seq(
       "react"            -> "16.13.1",
@@ -141,17 +146,17 @@ lazy val site = project
       "react-proxy"      -> "1.1.8",
       "react-router-dom" -> "5.2.0",
       "path-to-regexp"   -> "3.0.0",
+      "use-image"        -> "1.0.6"
       //"react-konva"      -> "16.13.0-3",
       //"konva"            -> "4.2.2",
-      "use-image"        -> "1.0.6"
     ),
     npmDevDependencies in Compile ++= Seq(
-      "file-loader" -> "6.0.0",
-      "style-loader" -> "1.2.1",
-      "css-loader" -> "3.5.3",
+      "file-loader"         -> "6.0.0",
+      "style-loader"        -> "1.2.1",
+      "css-loader"          -> "3.5.3",
       "html-webpack-plugin" -> "4.3.0",
       "copy-webpack-plugin" -> "5.1.1",
-      "webpack-merge" -> "4.2.2"
+      "webpack-merge"       -> "4.2.2"
     ),
     webpackResources := baseDirectory.value / "webpack" * "*",
     webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack" / "webpack-fastopt.config.js"),
@@ -179,19 +184,19 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   )
   .jvmSettings(
     libraryDependencies ++= Seq(
-      "com.thesamet.scalapb"  %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-      "io.grpc"               %  "grpc-netty"           % GrpcVersion
+      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+      "io.grpc"               % "grpc-netty"           % GrpcVersion
     ),
     PB.targets in Compile := Seq(
-      scalapb.gen(grpc = true) -> (sourceManaged in Compile).value,
-      scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value,
+      scalapb.gen(grpc = true)          -> (sourceManaged in Compile).value,
+      scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value
     )
   )
   .jsSettings(
     // publish locally and update the version for test
     libraryDependencies += "com.thesamet.scalapb.grpcweb" %%% "scalapb-grpcweb" % scalapb.grpcweb.BuildInfo.version,
     PB.targets in Compile := Seq(
-      scalapb.gen(grpc = false) -> (sourceManaged in Compile).value,
+      scalapb.gen(grpc = false)            -> (sourceManaged in Compile).value,
       scalapb.grpcweb.GrpcWebCodeGenerator -> (sourceManaged in Compile).value
     )
   )
@@ -203,11 +208,11 @@ lazy val sharedSettings = Seq(
     "-Ymacro-annotations"
   ),
   libraryDependencies ++= Seq(
-    "dev.zio"                         %%% "zio"                                % ZIOVersion,
-    "dev.zio"                         %%% "zio-macros"                         % ZIOVersion,
-    "io.circe"                        %%% "circe-generic"                      % "0.13.0",
-    "dev.zio"                         %%% "zio-test"                           % ZIOVersion % Test,
-    "dev.zio"                         %%% "zio-test-sbt"                       % ZIOVersion % Test,
+    "dev.zio"  %%% "zio"           % ZIOVersion,
+    "dev.zio"  %%% "zio-macros"    % ZIOVersion,
+    "io.circe" %%% "circe-generic" % "0.13.0",
+    "dev.zio"  %%% "zio-test"      % ZIOVersion % Test,
+    "dev.zio"  %%% "zio-test-sbt"  % ZIOVersion % Test
   ),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))

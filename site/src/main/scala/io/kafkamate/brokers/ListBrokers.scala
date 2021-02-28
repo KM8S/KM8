@@ -24,12 +24,12 @@ import common._
 
   sealed trait BrokersAction
   case class SetItems(items: List[BrokerDetails] = List.empty) extends BrokersAction
-  case class SetError(e: String) extends BrokersAction
+  case class SetError(e: String)                               extends BrokersAction
 
   private def brokersReducer(state: BrokersState, action: BrokersAction): BrokersState =
     action match {
       case SetItems(items) => state.copy(items = items, errors = None, refresh = false)
-      case SetError(e) => state.copy(errors = Some(e), items = List.empty, refresh = false)
+      case SetError(e)     => state.copy(errors = Some(e), items = List.empty, refresh = false)
     }
 
   private val topicsGrpcClient =
@@ -37,11 +37,11 @@ import common._
 
   val component = FunctionalComponent[Props] { _ =>
     val (listState, topicDispatch) = useReducer(brokersReducer, BrokersState())
-    val params = ReactRouterDOM.useParams().toMap
-    val clusterId = params.getOrElse(Loc.clusterIdKey, "")
+    val params                     = ReactRouterDOM.useParams().toMap
+    val clusterId                  = params.getOrElse(Loc.clusterIdKey, "")
 
     useEffect(
-      () => {
+      () =>
         topicsGrpcClient
           .getBrokers(BrokerRequest(clusterId))
           .onComplete {
@@ -49,14 +49,15 @@ import common._
             case Failure(e) =>
               Util.logMessage("Error receiving brokers: " + e)
               topicDispatch(SetError("Could not load brokers!"))
-          }
-      },
+          },
       List.empty
     )
 
     def renderBrokers =
-      div(className := "container card-body table-responsive",
-        table(className := "table table-hover",
+      div(
+        className := "container card-body table-responsive",
+        table(
+          className := "table table-hover",
           thead(
             tr(
               th("Id"),

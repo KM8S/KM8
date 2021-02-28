@@ -17,10 +17,10 @@ import brokers.BrokerDetails
 @accessible object KafkaExplorer {
 
   type HasKafkaExplorer = Has[Service]
-  type HasAdminClient = Has[AdminClient]
+  type HasAdminClient   = Has[AdminClient]
 
   val CleanupPolicyKey = "cleanup.policy"
-  val RetentionMsKey = "retention.ms"
+  val RetentionMsKey   = "retention.ms"
 
   trait Service {
     def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
@@ -35,7 +35,7 @@ import brokers.BrokerDetails
         private def adminClientLayer(clusterId: String): TaskLayer[HasAdminClient] =
           ZLayer.fromManaged {
             for {
-              cs <- clustersConfigService.getCluster(clusterId).toManaged_
+              cs     <- clustersConfigService.getCluster(clusterId).toManaged_
               client <- AdminClient.make(AdminClientSettings(cs.hosts, 2.seconds, Map.empty))
             } yield client
           }
@@ -53,10 +53,10 @@ import brokers.BrokerDetails
               for {
                 (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id())
                 brokers = nodes.map { n =>
-                  val nodeId = n.id()
-                  if (controllerId != nodeId) BrokerDetails(nodeId)
-                  else BrokerDetails(nodeId, isController = true)
-                }
+                            val nodeId = n.id()
+                            if (controllerId != nodeId) BrokerDetails(nodeId)
+                            else BrokerDetails(nodeId, isController = true)
+                          }
                 //resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
                 //_ <- ac.describeConfigs(resources)
               } yield brokers
@@ -70,11 +70,13 @@ import brokers.BrokerDetails
               ac.listTopics()
                 .map(_.keys.toList)
                 .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("__"))))
-                .flatMap(ls => ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(new ConfigResource(ConfigResource.Type.TOPIC, _))))
+                .flatMap(ls =>
+                  ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(new ConfigResource(ConfigResource.Type.TOPIC, _)))
+                )
                 .map { case (nameDescriptionMap, topicConfigMap) =>
                   val configs = topicConfigMap.map { case (res, conf) => (res.name(), conf) }
                   nameDescriptionMap.map { case (name, description) =>
-                    val conf = configs.get(name).map(_.entries)
+                    val conf                   = configs.get(name).map(_.entries)
                     def getConfig(key: String) = conf.flatMap(_.get(key).map(_.value())).getOrElse("unknown")
                     TopicDetails(
                       name = name,
@@ -93,7 +95,14 @@ import brokers.BrokerDetails
             .accessM[HasAdminClient with Blocking] { env =>
               env
                 .get[AdminClient]
-                .createTopic(AdminClient.NewTopic(req.name, req.partitions, req.replication.toShort, Map(CleanupPolicyKey -> req.cleanupPolicy)))
+                .createTopic(
+                  AdminClient.NewTopic(
+                    req.name,
+                    req.partitions,
+                    req.replication.toShort,
+                    Map(CleanupPolicyKey -> req.cleanupPolicy)
+                  )
+                )
                 .as(TopicDetails(req.name, req.partitions, req.replication, req.cleanupPolicy))
             }
             .withAdminClient(req.clusterId)
