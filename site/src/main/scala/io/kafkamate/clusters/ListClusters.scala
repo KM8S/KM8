@@ -17,22 +17,21 @@ import common._
   type Props = Unit
 
   case class ClustersState(
-    items: List[ClusterDetails] = List.empty,
     refresh: Boolean = true,
-    error: Option[String] = None,
-    toDelete: Option[String] = None
+    clusters: List[ClusterDetails] = List.empty,
+    listingError: Option[String] = None
   )
 
-  sealed trait BrokersAction
-  case class SetItems(items: List[ClusterDetails] = List.empty) extends BrokersAction
-  case class SetError(e: String) extends BrokersAction
-  case class SetDeleteItem(id: String) extends BrokersAction
+  sealed trait ClustersEvent
+  case object RefreshEvent extends ClustersEvent
+  case class SetClustersEvent(items: List[ClusterDetails]) extends ClustersEvent
+  case class SetListingErrorEvent(e: String) extends ClustersEvent
 
-  private def clustersReducer(state: ClustersState, action: BrokersAction): ClustersState =
+  private def clustersReducer(state: ClustersState, action: ClustersEvent): ClustersState =
     action match {
-      case SetItems(items) => state.copy(items = items, refresh = false, error = None)
-      case SetError(e) => state.copy(items = List.empty, refresh = false, error = Some(e))
-      case SetDeleteItem(id) => state.copy(toDelete = Some(id))
+      case RefreshEvent => state.copy(refresh = true, listingError = None)
+      case SetClustersEvent(items) => state.copy(clusters = items, refresh = false, listingError = None)
+      case SetListingErrorEvent(e) => state.copy(clusters = List.empty, refresh = false, listingError = Some(e))
     }
 
   private val clustersGrpcClient =
@@ -43,28 +42,32 @@ import common._
 
     useEffect(
       () => {
-        clustersGrpcClient
-          .getClusters(ClusterRequest())
-          .onComplete {
-            case Success(v) => clustersDispatch(SetItems(v.brokers.toList))
-            case Failure(e) => clustersDispatch(SetError("Could not get clusters!")); println("Error receiving clusters: " + e)
-          }
-      },
-      List.empty
-    )
-
-    useEffect(
-      () => {
-        if (clustersState.toDelete.isDefined)
+        if (clustersState.refresh)
           clustersGrpcClient
-            .deleteCluster(ClusterDetails(clustersState.toDelete.get))
+            .getClusters(ClusterRequest())
             .onComplete {
-              case Success(v) => clustersDispatch(SetItems(v.brokers.toList))
-              case Failure(e) => println("Error deleting cluster: " + e) //todo err
+              case Success(v) =>
+                clustersDispatch(SetClustersEvent(v.brokers.toList))
+              case Failure(e) =>
+                Util.logMessage("Error receiving clusters: " + e)
+                clustersDispatch(SetListingErrorEvent("Could not get clusters!"))
             }
       },
-      List(clustersState.toDelete)
+      List(clustersState.refresh)
     )
+
+    def renderDelete(idx: String, clusterDetails: ClusterDetails) = {
+      val body = div(
+        p(s"Are you sure you want to delete ${clusterDetails.name} cluster from kafkamate?")
+      )
+      DeleteItemModal.component(DeleteItemModal.Props(
+        idx,
+        clusterDetails.name,
+        body,
+        () => clustersGrpcClient.deleteCluster(ClusterDetails(clusterDetails.id)),
+        () => clustersDispatch(RefreshEvent)
+      ))
+    }
 
     def renderClusters =
       div(className := "container card-body table-responsive",
@@ -79,12 +82,12 @@ import common._
             )
           ),
           tbody(
-            clustersState.items.zipWithIndex.map { case (cluster, idx) =>
+            clustersState.clusters.zipWithIndex.map { case (cluster, idx) =>
               tr(key := idx.toString)(
                 td(Link(to = Loc.fromLocation(cluster.id, Loc.topics))(cluster.id)),
                 td(cluster.name),
                 td(cluster.address),
-                td(button(className:= "btn btn-danger fa", onClick := { () => clustersDispatch(SetDeleteItem(cluster.id)) })("Delete"))
+                td(renderDelete(idx.toString, cluster))
               )
             }
           )
@@ -94,7 +97,7 @@ import common._
     div(className := "App")(
       Loader.render(
         clustersState.refresh,
-        clustersState.error,
+        clustersState.listingError,
         renderClusters
       )
     )
