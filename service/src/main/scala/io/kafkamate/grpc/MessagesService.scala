@@ -6,6 +6,7 @@ import zio.{URLayer, ZEnv, ZIO, ZLayer}
 import zio.stream.ZStream
 import zio.logging._
 
+import config.ClustersConfig._
 import kafka.KafkaConsumer
 import kafka.KafkaProducer
 import messages._
@@ -14,8 +15,11 @@ import utils._
 object MessagesService {
   type Env = ZEnv with KafkaConsumer.KafkaConsumer with KafkaProducer.KafkaProducer with Logging
 
-  lazy val liveLayer: URLayer[ZEnv with Logging, Env] =
-    ZEnv.any ++ KafkaProducer.liveLayer ++ KafkaConsumer.liveLayer ++ ZLayer.requires[Logging]
+  lazy val liveLayer: URLayer[ZEnv with Logging with ClustersConfigService, Env] =
+    ZEnv.any ++
+      ZLayer.requires[Logging] ++
+      ZLayer.requires[ClustersConfigService] >+>
+      KafkaProducer.liveLayer ++ KafkaConsumer.liveLayer
 
   object GrpcService extends ZioMessages.RMessagesService[Env] {
     override def produceMessage(request: ProduceRequest): ZIO[Env, Status, ProduceResponse] =

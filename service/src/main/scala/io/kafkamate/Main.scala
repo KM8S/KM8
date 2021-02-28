@@ -3,11 +3,12 @@ package io.kafkamate
 import scalapb.zio_grpc.{ServerMain, ServiceList}
 import zio.{ZEnv, URLayer}
 import zio.logging._
+import zio.console.Console
+import zio.clock.Clock
+
 import config._
 import grpc._
 import kafka._
-import zio.clock.Clock
-import zio.console.Console
 
 object Main extends ServerMain {
 
@@ -26,8 +27,9 @@ object Main extends ServerMain {
       .provideLayer(
         ZEnv.live >+>
           liveLoggingLayer >+>
-          MessagesService.liveLayer ++
-          ClustersConfig.liveLayer ++
+          ConfigPathService.liveLayer >+>
+          ClustersConfig.liveLayer >+>
+          MessagesService.liveLayer >+>
           KafkaExplorer.liveLayer
       )
 

@@ -6,7 +6,6 @@ import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration._
 import zio.kafka.admin._
-import zio.logging._
 import zio.macros.accessible
 import org.apache.kafka.common.config.ConfigResource
 
@@ -29,7 +28,7 @@ import brokers.BrokerDetails
     def deleteTopic(req: DeleteTopicRequest): RIO[Blocking with Clock, DeleteTopicResponse]
   }
 
-  lazy val kafkaExplorerLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
+  lazy val liveLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
     ZLayer.fromService { clustersConfigService =>
       new Service {
         private def adminClientLayer(clusterId: String): TaskLayer[HasAdminClient] =
@@ -119,8 +118,5 @@ import brokers.BrokerDetails
 
       }
     }
-
-  lazy val liveLayer: URLayer[Logging, HasKafkaExplorer] =
-    ClustersConfig.liveLayer >>> kafkaExplorerLayer
 
 }

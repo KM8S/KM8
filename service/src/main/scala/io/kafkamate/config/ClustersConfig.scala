@@ -5,7 +5,6 @@ import zio._
 import zio.json._
 import zio.logging._
 import zio.macros.accessible
-import zio.system.System
 
 @accessible object ClustersConfig {
   import ConfigPathService._
@@ -36,14 +35,11 @@ import zio.system.System
         all <- readClusters
         cs <- ZIO
                 .fromOption(all.clusters.find(_.id == clusterId))
-                .orElseFail(new Exception(s"Cluster ($clusterId) doesn't exist..!"))
+                .orElseFail(new Exception(s"Cluster ($clusterId) doesn't exist!"))
       } yield cs
   }
 
-  lazy val liveLayer: URLayer[Logging, ClustersConfigService] =
-    (System.live >>> ConfigPathService.liveLayer) ++ ZLayer.requires[Logging] >>> configLayer
-
-  lazy val configLayer: URLayer[HasConfigPath with Logging, ClustersConfigService] =
+  lazy val liveLayer: URLayer[HasConfigPath with Logging, ClustersConfigService] =
     ZLayer.fromServices[ConfigPath, Logger[String], Service] { case (configPath, log) =>
       new Service {
         private val configFilepath      = configPath.path

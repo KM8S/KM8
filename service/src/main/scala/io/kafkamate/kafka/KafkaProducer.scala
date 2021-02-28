@@ -6,7 +6,6 @@ import zio.blocking._
 import zio.kafka.serde._
 import zio.kafka.producer._
 import zio.macros.accessible
-import zio.logging._
 
 import config._, ClustersConfig._
 
@@ -17,7 +16,7 @@ import config._, ClustersConfig._
     def produce(topic: String, key: String, value: String)(clusterId: String): RIO[Blocking, Unit]
   }
 
-  lazy val kafkaProducerLayer: URLayer[ClustersConfigService, KafkaProducer] =
+  lazy val liveLayer: URLayer[ClustersConfigService, KafkaProducer] =
     ZLayer.fromService { clusterConfigService =>
       new Service {
         lazy val serdeLayer: ULayer[Has[Serializer[Any, String]]] =
@@ -40,6 +39,4 @@ import config._, ClustersConfig._
       }
     }
 
-  lazy val liveLayer: URLayer[Logging, KafkaProducer] =
-    ClustersConfig.liveLayer >>> kafkaProducerLayer
 }

@@ -27,11 +27,8 @@ import messages._
     def consumeStream(request: ConsumeRequest): ZStream[Env, Throwable, Message]
   }
 
-  lazy val kafkaConsumerLayer: URLayer[ClustersConfigService, KafkaConsumer] =
+  lazy val liveLayer: URLayer[ClustersConfigService, KafkaConsumer] =
     ZLayer.fromService(createService)
-
-  lazy val liveLayer: URLayer[Logging, KafkaConsumer] =
-    ClustersConfig.liveLayer >>> kafkaConsumerLayer
 
   private def createService(clustersConfigService: ClustersConfig.Service): Service =
     new Service {

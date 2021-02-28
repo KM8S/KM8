@@ -28,7 +28,7 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
       stringProducer >+>
       testConfigLayer >+>
       Main.liveLoggingLayer >+>
-      KafkaConsumer.kafkaConsumerLayer).mapError(TestFailure.fail)
+      KafkaConsumer.liveLayer).mapError(TestFailure.fail)
 
   override def spec: ZSpec[TestEnvironment, Throwable] =
     suite("Kafka Consumer")(
