@@ -50,7 +50,7 @@ import zio.system.System
         private def emptyProperties = ClusterProperties(List.empty)
         private def emptyPropertiesJson = emptyProperties.toJsonPretty
 
-        private def writeJson(json: String) =
+        private def writeJson(json: => String) =
           Task(os.write.over(configFilepath, json, createFolders = true))
 
         def readClusters: Task[ClusterProperties] =

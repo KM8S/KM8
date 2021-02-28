@@ -22,12 +22,12 @@ import common._
     listingError: Option[String] = None
   )
 
-  sealed trait ClustersAction
-  case object RefreshEvent extends ClustersAction
-  case class SetClustersEvent(items: List[ClusterDetails]) extends ClustersAction
-  case class SetListingErrorEvent(e: String) extends ClustersAction
+  sealed trait ClustersEvent
+  case object RefreshEvent extends ClustersEvent
+  case class SetClustersEvent(items: List[ClusterDetails]) extends ClustersEvent
+  case class SetListingErrorEvent(e: String) extends ClustersEvent
 
-  private def clustersReducer(state: ClustersState, action: ClustersAction): ClustersState =
+  private def clustersReducer(state: ClustersState, action: ClustersEvent): ClustersState =
     action match {
       case RefreshEvent => state.copy(refresh = true, listingError = None)
       case SetClustersEvent(items) => state.copy(clusters = items, refresh = false, listingError = None)
