@@ -2,6 +2,7 @@ package io.kafkamate
 package messages
 
 import scala.scalajs.js
+import scala.scalajs.js.Date
 
 import scalapb.grpc.Channels
 import slinky.core._
@@ -168,7 +169,7 @@ import common._
                 th(idx.toString),
                 td(item.offset.toString),
                 td(item.partition.toString),
-                td(item.timestamp.toString), //todo display it nicer
+                td(new Date(item.timestamp).toUTCString()),
                 td(item.key),
                 td(item.value)
               )
