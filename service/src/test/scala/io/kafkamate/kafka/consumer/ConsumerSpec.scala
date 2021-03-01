@@ -17,6 +17,7 @@ import util.{HelperSpec, KafkaEmbedded}
 
 object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
   import KafkaConsumer._
+  import utils.Logger
   import messages._
 
   val testLayer
@@ -27,7 +28,7 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
       KafkaEmbedded.Kafka.embedded >+>
       stringProducer >+>
       testConfigLayer >+>
-      Main.liveLoggingLayer >+>
+      Logger.liveLayer >+>
       KafkaConsumer.liveLayer).mapError(TestFailure.fail)
 
   override def spec: ZSpec[TestEnvironment, Throwable] =

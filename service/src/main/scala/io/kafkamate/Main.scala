@@ -1,22 +1,16 @@
 package io.kafkamate
 
 import scalapb.zio_grpc.{ServerMain, ServiceList}
-import zio.{ZEnv, URLayer}
-import zio.logging._
-import zio.console.Console
-import zio.clock.Clock
+import zio.ZEnv
 
 import config._
 import grpc._
 import kafka._
+import utils._
 
 object Main extends ServerMain {
 
-  val liveLoggingLayer: URLayer[Console with Clock, Logging] =
-    Logging.console(
-      logLevel = LogLevel.Info,
-      format = LogFormat.ColoredLogFormat()
-    ) >>> Logging.withRootLoggerName("kafkamate")
+  override def port: Int = 61235
 
   override def services: ServiceList[ZEnv] =
     ServiceList
@@ -26,7 +20,7 @@ object Main extends ServerMain {
       .add(MessagesService.GrpcService)
       .provideLayer(
         ZEnv.live >+>
-          liveLoggingLayer >+>
+          Logger.liveLayer >+>
           ConfigPathService.liveLayer >+>
           ClustersConfig.liveLayer >+>
           MessagesService.liveLayer >+>
