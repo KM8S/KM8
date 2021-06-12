@@ -20,10 +20,16 @@ addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.15.0")
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
 
+addSbtPlugin("ch.epfl.scala" % "sbt-scala3-migrate" % "0.4.3")
+
 libraryDependencies ++= Seq(
-  "com.thesamet.scalapb"          %% "compilerplugin"           % "0.10.8",
-  "com.thesamet.scalapb.grpcweb"  %% "scalapb-grpcweb-code-gen" % "0.4.1+21-1dbb6ad7-SNAPSHOT",
-  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen"         % "0.4.0"
+  "com.thesamet.scalapb"           % "compilerplugin_2.13"            % "0.11.3",
+  "com.thesamet.scalapb.grpcweb"   % "scalapb-grpcweb-code-gen_2.13"  % "0.6.4",
+  "com.thesamet.scalapb.zio-grpc"  % "zio-grpc-codegen_2.13"          % "0.5.0"
+)
+
+dependencyOverrides ++= Seq(
+  "com.thesamet.scalapb"           % "protoc-bridge_2.13"             % "0.9.2"
 )
 
 // For Scala.js:

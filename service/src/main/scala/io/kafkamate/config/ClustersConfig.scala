@@ -4,9 +4,8 @@ package config
 import zio._
 import zio.json._
 import zio.logging._
-import zio.macros.accessible
 
-@accessible object ClustersConfig {
+object ClustersConfig {
   import ConfigPathService._
 
   type ClustersConfigService = Has[Service]

@@ -3,9 +3,9 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 lazy val ProjectName         = "kafkamate"
 lazy val ProjectOrganization = "csofronia"
 lazy val ProjectVersion      = "0.1.0"
-lazy val ProjectScalaVersion = "2.13.4"
+lazy val ProjectScalaVersion = "2.13.6"
 
-lazy val ZIOVersion    = "1.0.3"
+lazy val ZIOVersion    = "1.0.9"
 lazy val GrpcVersion   = "1.31.1"
 lazy val SlinkyVersion = "0.6.6"
 
@@ -76,7 +76,7 @@ lazy val service = project
       "-deprecation",
       "-encoding",
       "utf8",
-      "-target:jvm-1.8",
+      //"-target:jvm-1.8",
       "-feature",
       "-language:_",
       "-Ywarn-dead-code",
@@ -86,19 +86,20 @@ lazy val service = project
       "-Xlint",
       //"-Xfatal-warnings",,
       "-Xlint:-byname-implicit",
-      "-Xlog-reflective-calls"
+      "-Xlog-reflective-calls",
+      "-Ykind-projector"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                      %% "zio-kafka"                % "0.14.0",
-      "dev.zio"                      %% "zio-json"                 % "0.0.1",
-      "dev.zio"                      %% "zio-logging-slf4j"        % "0.5.4",
-      "com.lihaoyi"                  %% "os-lib"                   % "0.7.1",
+      "dev.zio"                       % "zio-kafka_2.13"           % "0.14.0",
+      "dev.zio"                       % "zio-json_2.13"            % "0.0.1",
+      "dev.zio"                      %% "zio-logging-slf4j"        % "0.5.10",
+      "com.lihaoyi"                  %% "os-lib"                   % "0.7.8",
       "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"     % scalapb.compiler.Version.scalapbVersion,
       "io.grpc"                       % "grpc-netty"               % GrpcVersion,
-      "com.fasterxml.jackson.module" %% "jackson-module-scala"     % "2.10.0",
+      "com.fasterxml.jackson.module"  % "jackson-module-scala_2.13" % "2.10.0",
       "net.logstash.logback"          % "logstash-logback-encoder" % "6.3",
       "ch.qos.logback"                % "logback-classic"          % "1.2.3",
-      "io.github.embeddedkafka"      %% "embedded-kafka"           % "2.6.0" % Test
+      "io.github.embeddedkafka"       % "embedded-kafka_2.13"      % "2.6.0" % Test
     ),
     PB.targets in Compile := Seq(
       scalapb.gen(grpc = true)          -> (sourceManaged in Compile).value,
@@ -177,14 +178,14 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   .settings(sharedSettings)
   .disablePlugins(RevolverPlugin)
   .settings(
-    libraryDependencies += "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion,
+    libraryDependencies += "com.thesamet.scalapb" % "scalapb-runtime_2.13" % scalapb.compiler.Version.scalapbVersion,
     PB.protoSources in Compile := Seq(
       (baseDirectory in ThisBuild).value / "common" / "src" / "main" / "protobuf"
     )
   )
   .jvmSettings(
     libraryDependencies ++= Seq(
-      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+      "com.thesamet.scalapb"  % "scalapb-runtime-grpc_2.13" % scalapb.compiler.Version.scalapbVersion,
       "io.grpc"               % "grpc-netty"           % GrpcVersion
     ),
     PB.targets in Compile := Seq(
@@ -204,17 +205,16 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
 lazy val sharedSettings = Seq(
   version := ProjectVersion,
   scalaVersion := ProjectScalaVersion,
-  scalacOptions ++= Seq(
-    "-Ymacro-annotations"
-  ),
+//  scalacOptions ++= Seq(
+//    "-Ymacro-annotations"
+//  ),
   libraryDependencies ++= Seq(
     "dev.zio"  %%% "zio"           % ZIOVersion,
-    "dev.zio"  %%% "zio-macros"    % ZIOVersion,
-    "io.circe" %%% "circe-generic" % "0.13.0",
+    "io.circe" %%% "circe-generic" % "0.14.1",
     "dev.zio"  %%% "zio-test"      % ZIOVersion % Test,
     "dev.zio"  %%% "zio-test-sbt"  % ZIOVersion % Test
   ),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
+  //addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
   //,bloopExportJarClassifiers in Global := Some(Set("sources"))
 )
