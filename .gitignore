@@ -9,6 +9,7 @@ lib_managed/
 src_managed/
 project/boot/
 project/plugins/project/
+project/project/
 project/activator-sbt*
 .sbtopts
 .js

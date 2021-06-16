@@ -84,7 +84,7 @@ lazy val service = project
       "-Ywarn-numeric-widen",
       "-Ywarn-value-discard",
       "-Xlint",
-      //"-Xfatal-warnings",,
+      //"-Xfatal-warnings",
       "-Xlint:-byname-implicit",
       "-Xlog-reflective-calls"
     ),

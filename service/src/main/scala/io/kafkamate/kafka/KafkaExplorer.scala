@@ -68,7 +68,7 @@ import brokers.BrokerDetails
               val ac = env.get[AdminClient]
               ac.listTopics()
                 .map(_.keys.toList)
-                .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("__"))))
+                .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("_"))))
                 .flatMap(ls =>
                   ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(new ConfigResource(ConfigResource.Type.TOPIC, _)))
                 )
