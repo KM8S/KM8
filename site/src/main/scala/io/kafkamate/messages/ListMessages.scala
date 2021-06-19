@@ -12,6 +12,7 @@ import slinky.web.html._
 import org.scalajs.dom.{Event, html}
 
 import bridges.reactrouter.ReactRouterDOM
+import io.kafkamate.messages.MessageFormat
 import common._
 
 @react object ListMessages {
@@ -28,13 +29,15 @@ import common._
     error: Option[String] = None,
     maxResults: Long = 0L,
     offsetStrategy: String = "earliest",
-    filterKeyword: String = ""
+    filterKeyword: String = "",
+    messageFormat: MessageFormat = MessageFormat.STRING
   )
 
   sealed trait ConsumerEvent
   case class SetStreamingEvent(bool: Boolean, error: Option[String] = None) extends ConsumerEvent
   case class SetMaxResultsEvent(maxResults: Long)                           extends ConsumerEvent
   case class SetOffsetStrategyEvent(strategy: String)                       extends ConsumerEvent
+  case class SetMessageFormat(messageFormat: String)                        extends ConsumerEvent
   case class SetFilterEvent(word: String)                                   extends ConsumerEvent
   case class AddItemEvent(item: Item)                                       extends ConsumerEvent
 
@@ -48,6 +51,10 @@ import common._
         )
       case SetMaxResultsEvent(max)   => prevState.copy(maxResults = max)
       case SetOffsetStrategyEvent(v) => prevState.copy(offsetStrategy = v)
+      case SetMessageFormat(v)       => prevState.copy(messageFormat = v match {
+        case MessageFormat.PROTOBUF.name => MessageFormat.PROTOBUF
+        case _ => MessageFormat.STRING
+      })
       case SetFilterEvent(v)         => prevState.copy(filterKeyword = v)
       case AddItemEvent(item)        => prevState.copy(items = prevState.items :+ item)
     }
@@ -65,6 +72,8 @@ import common._
 
     val (consumerState, consumerDispatch) = useReducer(consumerReducer, ConsumerState())
 
+    def handleMessageFormat(e: SyntheticEvent[html.Select, Event]): Unit =
+      consumerDispatch(SetMessageFormat(e.target.value))
     def handleOffsetStrategy(e: SyntheticEvent[html.Select, Event]): Unit =
       consumerDispatch(SetOffsetStrategyEvent(e.target.value))
     def handleMaxResults(e: SyntheticEvent[html.Input, Event]): Unit =
@@ -85,7 +94,8 @@ import common._
               topicName,
               consumerState.maxResults,
               consumerState.offsetStrategy,
-              consumerState.filterKeyword
+              consumerState.filterKeyword,
+              consumerState.messageFormat
             )
           )(onMessage, onError, onCompleted)
         else
@@ -105,6 +115,20 @@ import common._
           className := "mb-3",
           label(className := "inline")(
             div(
+              span(className := "badge badge-default")("Message Format"),
+              select(
+                className := "form-control",
+                id := "form-message-format-label1",
+                onChange := (handleMessageFormat(_))
+              )(
+                option(value := MessageFormat.STRING.name)(MessageFormat.STRING.name),
+                option(value := MessageFormat.PROTOBUF.name)(MessageFormat.PROTOBUF.name)
+              )
+            )
+          ),
+          label(className := "inline")(
+            div(
+              className := "pl-2",
               span(className := "badge badge-default")("Offset Strategy"),
               select(
                 className := "form-control",

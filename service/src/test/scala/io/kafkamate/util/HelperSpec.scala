@@ -27,7 +27,7 @@ trait HelperSpec {
       ZLayer.fromService[Kafka.Service, ClustersConfig.Service] { kafka =>
         new ClustersConfig.Service {
           def readClusters: Task[ClusterProperties] =
-            Task(ClusterProperties(List(ClusterSettings("test-id", "test", kafka.bootstrapServers))))
+            Task(ClusterProperties(List(ClusterSettings("test-id", "test", kafka.bootstrapServers, None))))
 
           def writeClusters(cluster: ClusterSettings): Task[Unit] = ???
 

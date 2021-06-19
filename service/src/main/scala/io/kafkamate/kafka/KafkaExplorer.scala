@@ -35,7 +35,7 @@ import brokers.BrokerDetails
           ZLayer.fromManaged {
             for {
               cs     <- clustersConfigService.getCluster(clusterId).toManaged_
-              client <- AdminClient.make(AdminClientSettings(cs.hosts, 2.seconds, Map.empty))
+              client <- AdminClient.make(AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty))
             } yield client
           }
 
