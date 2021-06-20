@@ -1,6 +1,8 @@
 # kafkamate
 
-Web GUI Kafka Tool to consume and produce messages (WIP)
+Web GUI Kafka Tool to consume and produce messages.
+
+Currently supports reading messages in STRING and PROTOBUF formats.
 
 ### Run kafkamate
 ```bash
