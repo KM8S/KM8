@@ -33,7 +33,7 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
 
   override def spec: ZSpec[TestEnvironment, Throwable] =
     suite("Kafka Consumer")(
-      testM("consume N messages from kafka") {
+      testM("consume messages from kafka") {
         for {
           topic   <- UIO("topic150")
           kvs      = (1 to 5).toList.map(i => (s"key$i", s"msg$i"))

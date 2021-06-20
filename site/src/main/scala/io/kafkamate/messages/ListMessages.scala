@@ -51,12 +51,13 @@ import common._
         )
       case SetMaxResultsEvent(max)   => prevState.copy(maxResults = max)
       case SetOffsetStrategyEvent(v) => prevState.copy(offsetStrategy = v)
-      case SetMessageFormat(v)       => prevState.copy(messageFormat = v match {
-        case MessageFormat.PROTOBUF.name => MessageFormat.PROTOBUF
-        case _ => MessageFormat.STRING
-      })
-      case SetFilterEvent(v)         => prevState.copy(filterKeyword = v)
-      case AddItemEvent(item)        => prevState.copy(items = prevState.items :+ item)
+      case SetMessageFormat(v) =>
+        prevState.copy(messageFormat = v match {
+          case MessageFormat.PROTOBUF.name => MessageFormat.PROTOBUF
+          case _                           => MessageFormat.STRING
+        })
+      case SetFilterEvent(v)  => prevState.copy(filterKeyword = v)
+      case AddItemEvent(item) => prevState.copy(items = prevState.items :+ item)
     }
 
   private val messagesGrpcClient =

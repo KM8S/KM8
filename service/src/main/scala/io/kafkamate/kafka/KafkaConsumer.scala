@@ -72,15 +72,18 @@ import messages._
         def consumer[T](valueDeserializer: Deserializer[Any, Try[T]]) = Consumer
           .subscribeAnd(Subscription.topics(request.topicName))
           .plainStream(Deserializer.string, valueDeserializer)
-          .collect { case v if v.value.isSuccess =>
-            Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value.get.toString)
+          .collect {
+            case v if v.value.isSuccess =>
+              Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value.get.toString)
           }
 
         val stream = request.messageFormat match {
           case PROTOBUF =>
             val protoSettings = clustersConfigService
               .getCluster(request.clusterId)
-              .flatMap(c => ZIO.fromOption(c.protoSerdeSettings).orElseFail(new Exception("SchemaRegistry url was not provided!")))
+              .flatMap(c =>
+                ZIO.fromOption(c.protoSerdeSettings).orElseFail(new Exception("SchemaRegistry url was not provided!"))
+              )
             ZStream
               .fromEffect(protoSettings)
               .flatMap(p => consumer(protobufDeserializer(p)))

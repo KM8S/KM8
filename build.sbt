@@ -101,6 +101,9 @@ lazy val service = project
       "ch.qos.logback"                % "logback-classic"          % "1.2.3",
       "io.github.embeddedkafka"      %% "embedded-kafka"           % "2.6.0" % Test
     ),
+    dependencyOverrides ++= Seq(
+      "org.apache.kafka" % "kafka-clients" % "2.6.0"
+    ),
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
     ),
