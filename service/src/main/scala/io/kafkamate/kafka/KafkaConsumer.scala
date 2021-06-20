@@ -82,7 +82,9 @@ import messages._
             val protoSettings = clustersConfigService
               .getCluster(request.clusterId)
               .flatMap(c =>
-                ZIO.fromOption(c.protoSerdeSettings).orElseFail(new Exception("SchemaRegistry url was not provided!"))
+                ZIO
+                  .fromOption(c.protoSerdeSettings)
+                  .orElseFail(new Exception("SchemaRegistry url was not provided!"))
               )
             ZStream
               .fromEffect(protoSettings)
