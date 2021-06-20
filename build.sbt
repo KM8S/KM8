@@ -115,8 +115,9 @@ lazy val service = project
   .dependsOn(common.jvm)
   .settings(
     assemblyMergeStrategy in assembly := {
-      case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.concat
-      case "module-info.class"                             => MergeStrategy.discard
+      case x if x endsWith "io.netty.versions.properties" => MergeStrategy.concat
+      case x if x endsWith "module-info.class"            => MergeStrategy.discard
+      case x if x endsWith ".proto"                       => MergeStrategy.discard
       case x =>
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)

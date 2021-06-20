@@ -27,6 +27,10 @@ We need also to start the Envoy proxy to forward the browser's gRPC-Web requests
 ➜ docker run --rm -d --net host -v "$(pwd)"/build/envoy.yaml:/etc/envoy/envoy.yaml:ro envoyproxy/envoy:v1.15.0
 ```
 
+### Build docker image
+```bash
+➜ sbt dockerize
+```
 
 
 ### KAFKA TRADEMARK DISCLAIMER
