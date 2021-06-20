@@ -24,11 +24,13 @@ import common._
     val (shouldRedirect, setRedirect)         = useState(false)
     val (shouldMakeRequest, setRequestAction) = useState(false)
     val (clusterName, setClusterName)         = useState("")
-    val (address, setAddress)                 = useState("")
+    val (hosts, setHosts)                     = useState("")
+    val (schemaRegistry, setSchemaRegistry)   = useState("")
     val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
 
-    def handleClusterName(e: SyntheticEvent[html.Input, Event]): Unit = setClusterName(e.target.value)
-    def handleAddress(e: SyntheticEvent[html.Input, Event]): Unit     = setAddress(e.target.value)
+    def handleClusterName(e: SyntheticEvent[html.Input, Event]): Unit    = setClusterName(e.target.value)
+    def handleHosts(e: SyntheticEvent[html.Input, Event]): Unit          = setHosts(e.target.value)
+    def handleSchemaRegistry(e: SyntheticEvent[html.Input, Event]): Unit = setSchemaRegistry(e.target.value)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
@@ -39,7 +41,7 @@ import common._
       () =>
         if (shouldMakeRequest)
           clustersGrpcClient
-            .addCluster(ClusterDetails("", clusterName, address))
+            .addCluster(ClusterDetails("", clusterName, hosts, schemaRegistry))
             .onComplete {
               case Success(_) =>
                 setRedirect(true)
@@ -58,14 +60,14 @@ import common._
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "name", id := "form-username-label")
+            span(className := "input-group-text", "name", id := "form-name-label")
           ),
           input(
             `type` := "text",
             className := "form-control",
-            placeholder := "Name",
-            aria - "label" := "Name",
-            aria - "describedby" := "form-username-label",
+            placeholder := "just a simple name",
+            aria - "label" := "name",
+            aria - "describedby" := "form-name-label",
             value := clusterName,
             onChange := (handleClusterName(_))
           )
@@ -74,16 +76,32 @@ import common._
           className := "input-group mb-3",
           div(
             className := "input-group-prepend",
-            span(className := "input-group-text", "address", id := "form-username-label")
+            span(className := "input-group-text", "hosts", id := "form-hosts-label")
           ),
           input(
             `type` := "text",
             className := "form-control",
-            placeholder := "Address",
-            aria - "label" := "Address",
-            aria - "describedby" := "form-password-label",
-            value := address,
-            onChange := (handleAddress(_))
+            placeholder := "comma separated kafka hosts",
+            aria - "label" := "hosts",
+            aria - "describedby" := "form-hosts-label",
+            value := hosts,
+            onChange := (handleHosts(_))
+          )
+        ),
+        div(
+          className := "input-group mb-3",
+          div(
+            className := "input-group-prepend",
+            span(className := "input-group-text", "schema registry url", id := "form-registry-label")
+          ),
+          input(
+            `type` := "text",
+            className := "form-control",
+            placeholder := "required only for protobuf decoder",
+            aria - "label" := "registry",
+            aria - "describedby" := "form-registry-label",
+            value := schemaRegistry,
+            onChange := (handleSchemaRegistry(_))
           )
         ),
         errorMsgs.zipWithIndex.map { case (msg, idx) =>

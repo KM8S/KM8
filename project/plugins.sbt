@@ -1,7 +1,5 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
-addSbtPlugin("org.duhemm" % "sbt-errors-summary" % "0.6.3")
-
 addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.2.0")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.4.0-RC1")
@@ -11,6 +9,8 @@ addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
+
+// addSbtPlugin("org.jmotor.sbt" % "sbt-dependency-updates" % "1.2.1")
 
 addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.34")
 

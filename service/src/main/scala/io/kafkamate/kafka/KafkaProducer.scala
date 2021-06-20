@@ -25,7 +25,7 @@ import config._, ClustersConfig._
         def settingsLayer(clusterId: String): TaskLayer[Has[ProducerSettings]] =
           clusterConfigService
             .getCluster(clusterId)
-            .map(c => ProducerSettings(c.hosts))
+            .map(c => ProducerSettings(c.kafkaHosts))
             .toLayer
 
         def producerLayer(clusterId: String): TaskLayer[Producer[Any, String, String]] =

@@ -80,7 +80,8 @@ import common._
             tr(
               th("Id"),
               th("Name"),
-              th("Address"),
+              th("Kafka Hosts"),
+              th("Schema Registry URL"),
               th("Action")
             )
           ),
@@ -89,7 +90,8 @@ import common._
               tr(key := idx.toString)(
                 td(Link(to = Loc.fromLocation(cluster.id, Loc.topics))(cluster.id)),
                 td(cluster.name),
-                td(cluster.address),
+                td(cluster.kafkaHosts),
+                td(cluster.schemaRegistryUrl),
                 td(renderDelete(idx.toString, cluster))
               )
             }

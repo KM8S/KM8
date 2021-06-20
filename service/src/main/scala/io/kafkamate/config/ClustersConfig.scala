@@ -11,8 +11,15 @@ import zio.macros.accessible
 
   type ClustersConfigService = Has[Service]
 
-  case class ClusterSettings(id: String, name: String, hosts: List[String]) {
-    val hostsString: String = hosts.mkString(",")
+  case class ProtoSerdeSettings(schemaRegistryUrl: String, private val _configs: Map[String, AnyRef] = Map.empty) {
+
+    val configs: Map[String, AnyRef] =
+      _configs ++ Map("schema.registry.url" -> schemaRegistryUrl)
+  }
+
+  case class ClusterSettings(id: String, name: String, kafkaHosts: List[String], schemaRegistryUrl: Option[String]) {
+    val kafkaHosts_ : String                           = kafkaHosts.mkString(",")
+    val protoSerdeSettings: Option[ProtoSerdeSettings] = schemaRegistryUrl.map(ProtoSerdeSettings(_))
   }
   object ClusterSettings {
     implicit val decoder: JsonDecoder[ClusterSettings] = DeriveJsonDecoder.gen[ClusterSettings]
