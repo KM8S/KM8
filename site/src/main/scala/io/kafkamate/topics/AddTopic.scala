@@ -31,12 +31,14 @@ import common._
     val (partitions, setPartitions)           = useState(1)
     val (replication, setReplication)         = useState(1)
     val (cleanupPolicy, setCleanupPolicy)     = useState("delete")
+    val (retention, setRetention)             = useState(BigDecimal("604800000"))
     val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
 
     def handleTopicName(e: SyntheticEvent[html.Input, Event]): Unit      = setTopicName(e.target.value)
     def handlePartitions(e: SyntheticEvent[html.Input, Event]): Unit     = setPartitions(e.target.value.toInt)
     def handleReplication(e: SyntheticEvent[html.Input, Event]): Unit    = setReplication(e.target.value.toInt)
     def handleCleanupPolicy(e: SyntheticEvent[html.Select, Event]): Unit = setCleanupPolicy(e.target.value)
+    def handleRetention(e: SyntheticEvent[html.Input, Event]): Unit      = setRetention(BigDecimal(e.target.value))
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
@@ -47,7 +49,7 @@ import common._
       () =>
         if (shouldMakeRequest)
           topicsGrpcClient
-            .addTopic(AddTopicRequest(clusterId, topicName, partitions, replication, cleanupPolicy))
+            .addTopic(AddTopicRequest(clusterId, topicName, partitions, replication, cleanupPolicy, retention.toString))
             .onComplete {
               case Success(_) =>
                 setRedirect(true)
@@ -118,6 +120,20 @@ import common._
           )(
             option(value := "delete")("delete"),
             option(value := "compact")("compact")
+          )
+        ),
+        div(
+          className := "input-group mb-3",
+          div(
+            className := "input-group-prepend",
+            span(className := "input-group-text", "retentionMs", id := "form-retention-label")
+          ),
+          input(
+            `type` := "number",
+            className := "form-control",
+            min := "1",
+            value := retention.toString,
+            onChange := (handleRetention(_))
           )
         ),
         errorMsgs.zipWithIndex.map { case (msg, idx) =>

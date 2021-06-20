@@ -99,7 +99,10 @@ import brokers.BrokerDetails
                     req.name,
                     req.partitions,
                     req.replication.toShort,
-                    Map(CleanupPolicyKey -> req.cleanupPolicy)
+                    Map(
+                      CleanupPolicyKey -> req.cleanupPolicy,
+                      RetentionMsKey   -> req.retentionMs
+                    )
                   )
                 )
                 .as(TopicDetails(req.name, req.partitions, req.replication, req.cleanupPolicy))
