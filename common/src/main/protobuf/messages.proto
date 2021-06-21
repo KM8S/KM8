@@ -10,6 +10,12 @@ message ConsumeRequest {
   uint64 maxResults = 3;
   string offsetStrategy = 4;
   string filterKeyword = 5;
+  MessageFormat messageFormat = 6;
+}
+
+enum MessageFormat {
+  STRING = 0;
+  PROTOBUF = 1;
 }
 
 message ProduceRequest {

@@ -33,13 +33,13 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
 
   override def spec: ZSpec[TestEnvironment, Throwable] =
     suite("Kafka Consumer")(
-      testM("consume N messages from kafka") {
+      testM("consume messages from kafka") {
         for {
           topic   <- UIO("topic150")
           kvs      = (1 to 5).toList.map(i => (s"key$i", s"msg$i"))
           _       <- produceMany(topic, kvs)
-          records <- KafkaConsumer.consumeN(topic, 5, "earliest")("test-id")
-        } yield assert(records.map(v => (v.key, v.value)))(equalTo(kvs.map(v => (v._1, v._2))))
+          records <- KafkaConsumer.consume(ConsumeRequest("test-id", topic, 5, "earliest", "")).runCollect
+        } yield assert(records.map(v => (v.key, v.value)).toList)(equalTo(kvs.map(v => (v._1, v._2))))
       }
     ).provideLayerShared(testLayer) @@ timeout(30.seconds)
 }

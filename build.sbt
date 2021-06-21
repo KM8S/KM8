@@ -84,22 +84,29 @@ lazy val service = project
       "-Ywarn-numeric-widen",
       "-Ywarn-value-discard",
       "-Xlint",
-      //"-Xfatal-warnings",,
+      //"-Xfatal-warnings",
       "-Xlint:-byname-implicit",
       "-Xlog-reflective-calls",
       "-Ykind-projector"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                       % "zio-kafka_2.13"           % "0.14.0",
-      "dev.zio"                       % "zio-json_2.13"            % "0.0.1",
-      "dev.zio"                      %% "zio-logging-slf4j"        % "0.5.10",
-      "com.lihaoyi"                  %% "os-lib"                   % "0.7.8",
-      "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"     % scalapb.compiler.Version.scalapbVersion,
-      "io.grpc"                       % "grpc-netty"               % GrpcVersion,
-      "com.fasterxml.jackson.module"  % "jackson-module-scala_2.13" % "2.10.0",
-      "net.logstash.logback"          % "logstash-logback-encoder" % "6.3",
-      "ch.qos.logback"                % "logback-classic"          % "1.2.3",
-      "io.github.embeddedkafka"       % "embedded-kafka_2.13"      % "2.6.0" % Test
+      "dev.zio"                      %% "zio-kafka_2.13"                 % "0.14.0",
+      "dev.zio"                      %% "zio-json_2.13"                  % "0.0.1",
+      "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.4",
+      "com.lihaoyi"                  %% "os-lib"                    % "0.7.1",
+      "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
+      "io.confluent"                  % "kafka-protobuf-serializer" % "6.1.1",
+      "io.grpc"                       % "grpc-netty"                % GrpcVersion,
+      "com.fasterxml.jackson.module" %% "jackson-module-scala_2.13"      % "2.10.0",
+      "net.logstash.logback"          % "logstash-logback-encoder"  % "6.3",
+      "ch.qos.logback"                % "logback-classic"           % "1.2.3",
+      "io.github.embeddedkafka"      %% "embedded-kafka_2.13"            % "2.6.0" % Test
+    ),
+    dependencyOverrides ++= Seq(
+      "org.apache.kafka" % "kafka-clients" % "2.6.0"
+    ),
+    resolvers ++= Seq(
+      "Confluent" at "https://packages.confluent.io/maven/"
     ),
     PB.targets in Compile := Seq(
       scalapb.gen(grpc = true)          -> (sourceManaged in Compile).value,
@@ -109,8 +116,9 @@ lazy val service = project
   .dependsOn(common.jvm)
   .settings(
     assemblyMergeStrategy in assembly := {
-      case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.concat
-      case "module-info.class"                             => MergeStrategy.discard
+      case x if x endsWith "io.netty.versions.properties" => MergeStrategy.concat
+      case x if x endsWith "module-info.class"            => MergeStrategy.discard
+      case x if x endsWith ".proto"                       => MergeStrategy.discard
       case x =>
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)

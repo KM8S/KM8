@@ -35,7 +35,7 @@ import brokers.BrokerDetails
           ZLayer.fromManaged {
             for {
               cs     <- clustersConfigService.getCluster(clusterId).toManaged_
-              client <- AdminClient.make(AdminClientSettings(cs.hosts, 2.seconds, Map.empty))
+              client <- AdminClient.make(AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty))
             } yield client
           }
 
@@ -68,7 +68,7 @@ import brokers.BrokerDetails
               val ac = env.get[AdminClient]
               ac.listTopics()
                 .map(_.keys.toList)
-                .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("__"))))
+                .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("_"))))
                 .flatMap(ls =>
                   ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(new ConfigResource(ConfigResource.Type.TOPIC, _)))
                 )
@@ -99,7 +99,10 @@ import brokers.BrokerDetails
                     req.name,
                     req.partitions,
                     req.replication.toShort,
-                    Map(CleanupPolicyKey -> req.cleanupPolicy)
+                    Map(
+                      CleanupPolicyKey -> req.cleanupPolicy,
+                      RetentionMsKey   -> req.retentionMs
+                    )
                   )
                 )
                 .as(TopicDetails(req.name, req.partitions, req.replication, req.cleanupPolicy))

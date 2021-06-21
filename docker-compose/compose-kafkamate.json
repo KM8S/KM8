@@ -1,0 +1,8 @@
+{
+  "clusters" : [{
+    "id" : "local-docker-compose-P97bAp",
+    "name" : "local-docker-compose",
+    "kafkaHosts" : ["kafka:29092"],
+    "schemaRegistryUrl" : "http://schema-registry:8081"
+  }]
+}

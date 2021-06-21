@@ -9,7 +9,8 @@ message ClusterRequest {}
 message ClusterDetails {
   string id = 1;
   string name = 2;
-  string address = 3;
+  string kafkaHosts = 3;
+  string schemaRegistryUrl = 4;
 }
 
 message ClusterResponse {

@@ -20,16 +20,19 @@ object ClustersService {
 
     def addCluster(request: ClusterDetails): ZIO[Env, Status, ClusterDetails] =
       for {
-        clusterId <- genRandStr(6).map(str => s"${request.name.trim}-$str")
-        hosts      = request.address.split(",").toList
+        clusterId     <- genRandStr(6).map(str => s"${request.name.trim}-$str")
+        hosts          = request.kafkaHosts.split(",").toList
+        schemaRegistry = Option.unless(request.schemaRegistryUrl.isEmpty)(request.schemaRegistryUrl)
         c <- ClustersConfig
-               .writeClusters(ClusterSettings(clusterId, request.name, hosts))
+               .writeClusters(ClusterSettings(clusterId, request.name, hosts, schemaRegistry))
                .tapError(e => log.error(s"Add cluster error: ${e.getMessage}"))
                .bimap(GRPCStatus.fromThrowable, _ => request)
       } yield c
 
     private def toClusterResponse(r: ClusterProperties) =
-      ClusterResponse(r.clusters.map(c => ClusterDetails(c.id, c.name, c.hostsString)))
+      ClusterResponse(
+        r.clusters.map(c => ClusterDetails(c.id, c.name, c.kafkaHosts_, c.schemaRegistryUrl.getOrElse("<empty>")))
+      )
 
     def getClusters(request: ClusterRequest): ZIO[Env, Status, ClusterResponse] =
       ClustersConfig.readClusters

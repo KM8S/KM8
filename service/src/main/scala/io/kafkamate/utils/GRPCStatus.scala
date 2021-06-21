@@ -6,6 +6,6 @@ import io.grpc.Status
 object GRPCStatus {
 
   def fromThrowable(e: Throwable): Status =
-    Status.INTERNAL.withDescription(e.getMessage).withCause(e)
+    Status.UNKNOWN.withDescription(e.getMessage).withCause(e)
 
 }

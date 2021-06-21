@@ -30,7 +30,7 @@ object MessagesService {
 
     override def consumeMessages(request: ConsumeRequest): ZStream[Env, Status, Message] =
       KafkaConsumer
-        .consumeStream(request)
+        .consume(request)
         .onError(e => log.error("Consumer error: \n" + e.prettyPrint))
         .mapError(GRPCStatus.fromThrowable)
   }

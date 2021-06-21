@@ -23,13 +23,13 @@ object KafkaEmbedded {
       override def stop(): UIO[Unit]              = UIO.unit
     }
 
-    val embedded: TaskLayer[Kafka] = ZLayer.fromManaged {
+    lazy val embedded: TaskLayer[Kafka] = ZLayer.fromManaged {
       implicit val embeddedKafkaConfig = EmbeddedKafkaConfig(
         customBrokerProperties = Map("group.min.session.timeout.ms" -> "500", "group.initial.rebalance.delay.ms" -> "0")
       )
-      ZManaged.make(ZIO.effect(EmbeddedKafkaService(EmbeddedKafka.start())))(_.stop())
+      ZManaged.make(Task(EmbeddedKafkaService(EmbeddedKafka.start())))(_.stop())
     }
 
-    val local: ULayer[Kafka] = ZLayer.succeed(DefaultLocal)
+    lazy val local: ULayer[Kafka] = ZLayer.succeed(DefaultLocal)
   }
 }
