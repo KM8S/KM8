@@ -17,8 +17,8 @@ trait HelperSpec {
   val producerSettings: URIO[Kafka, ProducerSettings] =
     ZIO.access[Kafka](_.get.bootstrapServers).map(ProducerSettings(_))
 
-  val stringProducer: ZLayer[Kafka, Throwable, StringProducer] =
-    (producerSettings.toLayer ++ ZLayer.succeed(Serde.string: Serializer[Any, String])) >>>
+  val stringProducer: ZLayer[Kafka with Blocking, Throwable, StringProducer] =
+    (Blocking.any ++ producerSettings.toLayer ++ ZLayer.succeed(Serde.string: Serializer[Any, String])) >>>
       Producer.live[Any, String, String]
 
   val testConfigLayer: URLayer[Clock with Blocking with Kafka, Clock with Blocking with ClustersConfigService] =

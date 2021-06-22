@@ -8,7 +8,7 @@ import common._
 case class MessagesConsumer(
   service: MessagesServiceGrpcWeb.MessagesService[_]
 ) {
-  private var stream: ClientCallStreamObserver = _
+  private var stream: ClientCallStreamObserver[_] = _
 
   private def newStreamObs(
     onMessage: Message => Unit,
@@ -48,7 +48,7 @@ case class MessagesConsumer(
   def stop(): Unit =
     if (stream == null) Util.logMessage("Stream already stopped!")
     else {
-      stream.cancel()
+      stream.cancel("Terminated", new Exception("Terminated"))
       stream = null
       Util.logMessage("Stream canceled!")
     }

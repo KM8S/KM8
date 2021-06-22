@@ -28,8 +28,8 @@ import config._, ClustersConfig._
             .map(c => ProducerSettings(c.kafkaHosts))
             .toLayer
 
-        def producerLayer(clusterId: String): TaskLayer[Producer[Any, String, String]] =
-          serdeLayer ++ settingsLayer(clusterId) >>> Producer.live[Any, String, String]
+        def producerLayer(clusterId: String): RLayer[Blocking, Producer[Any, String, String]] =
+          Blocking.any ++ serdeLayer ++ settingsLayer(clusterId) >>> Producer.live[Any, String, String]
 
         def produce(topic: String, key: String, value: String)(clusterId: String): RIO[Blocking, Unit] =
           Producer
