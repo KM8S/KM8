@@ -3,11 +3,11 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 lazy val ProjectName         = "kafkamate"
 lazy val ProjectOrganization = "csofronia"
 lazy val ProjectVersion      = "0.1.0"
-lazy val ProjectScalaVersion = "2.13.4"
+lazy val ProjectScalaVersion = "2.13.6"
 
-lazy val ZIOVersion    = "1.0.3"
-lazy val GrpcVersion   = "1.31.1"
-lazy val SlinkyVersion = "0.6.6"
+lazy val ZIOVersion    = "1.0.9"
+lazy val GrpcVersion   = "1.38.1"
+lazy val SlinkyVersion = "0.6.7"
 
 lazy val kafkamate = project
   .in(file("."))
@@ -89,20 +89,19 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                      %% "zio-kafka"                 % "0.14.0",
-      "dev.zio"                      %% "zio-json"                  % "0.0.1",
-      "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.4",
-      "com.lihaoyi"                  %% "os-lib"                    % "0.7.1",
+      "dev.zio"                      %% "zio-kafka"                 % "0.15.0",
+      "dev.zio"                      %% "zio-json"                  % "0.1.5",
+      "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.11",
+      "com.lihaoyi"                  %% "os-lib"                    % "0.7.8",
       "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
-      "io.confluent"                  % "kafka-protobuf-serializer" % "6.1.1",
-      "io.grpc"                       % "grpc-netty"                % GrpcVersion,
-      "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.10.0",
-      "net.logstash.logback"          % "logstash-logback-encoder"  % "6.3",
+      "io.confluent"                  % "kafka-protobuf-serializer" % "6.2.0",
+      //"com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.10.0",
+      "net.logstash.logback"          % "logstash-logback-encoder"  % "6.6",
       "ch.qos.logback"                % "logback-classic"           % "1.2.3",
-      "io.github.embeddedkafka"      %% "embedded-kafka"            % "2.6.0" % Test
+      "io.github.embeddedkafka"      %% "embedded-kafka"            % "2.8.0" % Test
     ),
     dependencyOverrides ++= Seq(
-      "org.apache.kafka" % "kafka-clients" % "2.6.0"
+      "org.apache.kafka" % "kafka-clients" % "2.8.0"
     ),
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
@@ -145,7 +144,7 @@ lazy val site = project
       "me.shadaj"     %%% "slinky-hot"                  % SlinkyVersion,
       "me.shadaj"     %%% "slinky-react-router"         % SlinkyVersion,
       "me.shadaj"     %%% "slinky-scalajsreact-interop" % SlinkyVersion,
-      "org.scalatest" %%% "scalatest"                   % "3.1.1" % Test
+      "org.scalatest" %%% "scalatest"                   % "3.2.9" % Test
       //"com.github.oen9" %%% "slinky-bridge-react-konva"   % "0.1.1",
     ),
     npmDependencies in Compile ++= Seq(
@@ -218,11 +217,11 @@ lazy val sharedSettings = Seq(
   libraryDependencies ++= Seq(
     "dev.zio"  %%% "zio"           % ZIOVersion,
     "dev.zio"  %%% "zio-macros"    % ZIOVersion,
-    "io.circe" %%% "circe-generic" % "0.13.0",
+    "io.circe" %%% "circe-generic" % "0.14.1",
     "dev.zio"  %%% "zio-test"      % ZIOVersion % Test,
     "dev.zio"  %%% "zio-test-sbt"  % ZIOVersion % Test
   ),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   //,bloopExportJarClassifiers in Global := Some(Set("sources"))
 )
