@@ -6,8 +6,8 @@ import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration._
 import zio.kafka.admin._
+import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
 import zio.macros.accessible
-import org.apache.kafka.common.config.ConfigResource
 
 import config._, ClustersConfig._
 import topics._
@@ -31,7 +31,7 @@ import brokers.BrokerDetails
   lazy val liveLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
     ZLayer.fromService { clustersConfigService =>
       new Service {
-        private def adminClientLayer(clusterId: String): TaskLayer[HasAdminClient] =
+        private def adminClientLayer(clusterId: String): RLayer[Blocking, HasAdminClient] =
           ZLayer.fromManaged {
             for {
               cs     <- clustersConfigService.getCluster(clusterId).toManaged_
@@ -50,9 +50,9 @@ import brokers.BrokerDetails
             .accessM[HasAdminClient with Blocking] { env =>
               val ac = env.get[AdminClient]
               for {
-                (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id())
+                (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id)
                 brokers = nodes.map { n =>
-                            val nodeId = n.id()
+                            val nodeId = n.id
                             if (controllerId != nodeId) BrokerDetails(nodeId)
                             else BrokerDetails(nodeId, isController = true)
                           }
@@ -70,10 +70,10 @@ import brokers.BrokerDetails
                 .map(_.keys.toList)
                 .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("_"))))
                 .flatMap(ls =>
-                  ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(new ConfigResource(ConfigResource.Type.TOPIC, _)))
+                  ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(ConfigResource(ConfigResourceType.Topic, _)))
                 )
                 .map { case (nameDescriptionMap, topicConfigMap) =>
-                  val configs = topicConfigMap.map { case (res, conf) => (res.name(), conf) }
+                  val configs = topicConfigMap.map { case (res, conf) => (res.name, conf) }
                   nameDescriptionMap.map { case (name, description) =>
                     val conf                   = configs.get(name).map(_.entries)
                     def getConfig(key: String) = conf.flatMap(_.get(key).map(_.value())).getOrElse("unknown")
