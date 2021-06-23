@@ -1,7 +1,7 @@
 package io.kafkamate
 package util
 
-import net.manub.embeddedkafka.{EmbeddedK, EmbeddedKafka, EmbeddedKafkaConfig}
+import io.github.embeddedkafka.{EmbeddedK, EmbeddedKafka, EmbeddedKafkaConfig}
 import zio._
 
 object KafkaEmbedded {

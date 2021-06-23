@@ -76,7 +76,7 @@ lazy val service = project
       "-deprecation",
       "-encoding",
       "utf8",
-      "-target:jvm-1.8",
+      // "-target:jvm-1.8",
       "-feature",
       "-language:_",
       "-Ywarn-dead-code",
