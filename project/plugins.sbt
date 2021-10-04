@@ -4,7 +4,7 @@ addSbtPlugin("ch.epfl.scala" % "sbt-missinglink" % "0.3.2")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.4.8-63-80fdb462")
 
-addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+// addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 
@@ -23,7 +23,7 @@ addSbtPlugin("ch.epfl.scala" % "sbt-scala3-migrate" % "0.4.5")
 libraryDependencies ++= Seq(
   "com.thesamet.scalapb"          %% "compilerplugin"           % "0.11.4",
   "com.thesamet.scalapb.grpcweb"  %% "scalapb-grpcweb-code-gen" % "0.6.4",
-  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen"         % "0.5.0"
+  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen"         % "0.5.0" cross CrossVersion.for3Use2_13
 )
 
 // For Scala.js:

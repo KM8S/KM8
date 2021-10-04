@@ -1,6 +1,18 @@
 version: "2"
 
 services:
+  kowl:
+    image: quay.io/cloudhut/kowl:v1.4.0
+    hostname: kowl
+    volumes:
+    - ${PWD}/config.yaml/:/etc/kowl/config.yaml
+    ports:
+    - "8090:8080"
+    entrypoint: ./kowl --config.filepath=/etc/kowl/config.yaml
+    depends_on:
+      - kafka
+      - schema-registry
+
   kafkamate:
     image: csofronia/kafkamate:latest
     hostname: kafkamate

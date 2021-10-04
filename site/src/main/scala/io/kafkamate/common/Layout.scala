@@ -27,7 +27,7 @@ object ReactLogo extends js.Object
   case class Props(content: ReactElement)
 
   private def createRegularMenuItem(idx: String, label: String, location: String) =
-    li(key := idx, className := "nav-item", NavLink(exact = true, to = location)(className := "nav-link", label))
+    li(key := idx, className := "nav-item", NavLink(NavLink.Props(exact = true, to = location))(className := "nav-link", label))
 
   private def createOptionalRegularMenuItem(clusterId: Option[String])(idx: String, label: String, location: String) =
     clusterId.map(id => createRegularMenuItem(idx, label, Loc.fromLocation(id, location)))

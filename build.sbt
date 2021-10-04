@@ -15,7 +15,8 @@ lazy val kafkamate = project
   .settings(
     name := ProjectName,
     organization := ProjectOrganization,
-    version := ProjectVersion
+    version := ProjectVersion,
+    scalaVersion := ProjectScalaVersion,
   )
   .enablePlugins(DockerPlugin)
   .disablePlugins(RevolverPlugin)
@@ -76,29 +77,26 @@ lazy val service = project
       "-deprecation",
       "-encoding",
       "utf8",
-      // "-target:jvm-1.8",
       "-feature",
       "-language:_",
-      "-Ywarn-dead-code",
-      "-Ywarn-macros:after",
-      "-Ywarn-numeric-widen",
-      "-Ywarn-value-discard",
-      "-Xlint",
-      //"-Xfatal-warnings",
-      "-Xlint:-byname-implicit",
-      "-Xlog-reflective-calls"
-    ),
+      // "-Ywarn-dead-code",
+      // "-Ywarn-numeric-widen",
+      // "-Ywarn-value-discard",
+      // "-Xlint",
+      //"-Xfatal-warnings", //this should stay
+      // "-Xlint:-byname-implicit",
+      // "-Xlog-reflective-calls"
+    ) ++ (if (scalaVersion.value.startsWith("3")) Seq("-explain-types", "-Ykind-projector") else Seq("-explaintypes", "-Wunused")),
     libraryDependencies ++= Seq(
-      "dev.zio"                      %% "zio-kafka"                 % "0.15.0",
-      "dev.zio"                      %% "zio-json"                  % "0.1.5",
+      "dev.zio"                      %% "zio-kafka"                 % "0.15.0" cross CrossVersion.for3Use2_13,
+      "dev.zio"                      %% "zio-json"                  % "0.1.5" cross CrossVersion.for3Use2_13,
       "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.11",
       "com.lihaoyi"                  %% "os-lib"                    % "0.7.8",
-      "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
+      "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion cross CrossVersion.for3Use2_13,
       "io.confluent"                  % "kafka-protobuf-serializer" % "6.2.0",
-      //"com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.10.0",
       "net.logstash.logback"          % "logstash-logback-encoder"  % "6.6",
       "ch.qos.logback"                % "logback-classic"           % "1.2.3",
-      "io.github.embeddedkafka"      %% "embedded-kafka"            % "2.8.0" % Test
+      "io.github.embeddedkafka"      %% "embedded-kafka"            % "2.8.0" % Test cross CrossVersion.for3Use2_13
     ),
     dependencyOverrides ++= Seq(
       "org.apache.kafka" % "kafka-clients" % "2.8.0"
@@ -131,19 +129,16 @@ lazy val site = project
   .settings(sharedSettings)
   .settings(
     name := "kafkamate-site",
-    scalacOptions ++= {
-      if (scalaJSVersion.startsWith("0.6.")) Seq("-P:scalajs:sjsDefinedByDefault")
-      else Nil
-    },
+    scalacOptions ++= Seq("-Ymacro-annotations"),
     version in webpack := "4.43.0",
     version in startWebpackDevServer := "3.11.0",
     libraryDependencies ++= Seq(
-      "me.shadaj"     %%% "slinky-core"                 % SlinkyVersion,
-      "me.shadaj"     %%% "slinky-web"                  % SlinkyVersion,
-      "me.shadaj"     %%% "slinky-native"               % SlinkyVersion,
-      "me.shadaj"     %%% "slinky-hot"                  % SlinkyVersion,
-      "me.shadaj"     %%% "slinky-react-router"         % SlinkyVersion,
-      "me.shadaj"     %%% "slinky-scalajsreact-interop" % SlinkyVersion,
+      "me.shadaj"     %%% "slinky-core"                 % SlinkyVersion cross CrossVersion.for3Use2_13,
+      "me.shadaj"     %%% "slinky-web"                  % SlinkyVersion cross CrossVersion.for3Use2_13,
+      "me.shadaj"     %%% "slinky-native"               % SlinkyVersion cross CrossVersion.for3Use2_13,
+      "me.shadaj"     %%% "slinky-hot"                  % SlinkyVersion cross CrossVersion.for3Use2_13,
+      "me.shadaj"     %%% "slinky-react-router"         % SlinkyVersion cross CrossVersion.for3Use2_13,
+      "me.shadaj"     %%% "slinky-scalajsreact-interop" % SlinkyVersion cross CrossVersion.for3Use2_13,
       "org.scalatest" %%% "scalatest"                   % "3.2.9" % Test
       //"com.github.oen9" %%% "slinky-bridge-react-konva"   % "0.1.1",
     ),
@@ -184,14 +179,14 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   .settings(sharedSettings)
   .disablePlugins(RevolverPlugin)
   .settings(
-    libraryDependencies += "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion,
+    libraryDependencies += "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion cross CrossVersion.for3Use2_13,
     PB.protoSources in Compile := Seq(
       (baseDirectory in ThisBuild).value / "common" / "src" / "main" / "protobuf"
     )
   )
   .jvmSettings(
     libraryDependencies ++= Seq(
-      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
+      "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion cross CrossVersion.for3Use2_13,
       "io.grpc"               % "grpc-netty"           % GrpcVersion
     ),
     PB.targets in Compile := Seq(
@@ -211,17 +206,14 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
 lazy val sharedSettings = Seq(
   version := ProjectVersion,
   scalaVersion := ProjectScalaVersion,
-  scalacOptions ++= Seq(
+  /* scalacOptions ++= Seq(
     "-Ymacro-annotations"
-  ),
+  ), */
   libraryDependencies ++= Seq(
     "dev.zio"  %%% "zio"           % ZIOVersion,
-    "dev.zio"  %%% "zio-macros"    % ZIOVersion,
     "io.circe" %%% "circe-generic" % "0.14.1",
     "dev.zio"  %%% "zio-test"      % ZIOVersion % Test,
     "dev.zio"  %%% "zio-test-sbt"  % ZIOVersion % Test
   ),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
-  //,bloopExportJarClassifiers in Global := Some(Set("sources"))
 )

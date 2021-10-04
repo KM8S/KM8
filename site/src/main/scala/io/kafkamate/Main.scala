@@ -30,6 +30,6 @@ object Main {
       elem
     }
 
-    ReactDOM.render(HashRouter(Router(Router.Props("KafkaMate"))), container)
+    ReactDOM.render(HashRouter(HashRouter.Props()), container) //todo
   }
 }

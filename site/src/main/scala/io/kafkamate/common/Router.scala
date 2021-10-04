@@ -11,9 +11,9 @@ import topics._
 import messages._
 
 @react object Router {
-  case class Props(appName: String)
+  type Props = Unit
 
-  val component = FunctionalComponent[Props] { case Props(appName) =>
+  val component = FunctionalComponent[Props] { _ =>
     val routerSwitch = Switch(
       Route(exact = true, path = Loc.home, component = ListClusters.component),
       Route(exact = true, path = Loc.clusters, component = ListClusters.component),
@@ -26,6 +26,6 @@ import messages._
       Route(exact = false, path = "", component = NotFound.component)
     )
 
-    Layout(routerSwitch)
+    Layout.component(Layout.Props(routerSwitch))
   }
 }

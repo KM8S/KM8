@@ -1,0 +1,13 @@
+# See: https://github.com/cloudhut/kowl/tree/master/docs/config for reference config files.
+server:
+  listenPort: 8080
+kafka:
+  brokers:
+    - kafka:29092
+  schemaRegistry:
+    enabled: true
+    urls: ["http://schema-registry:8081"]
+  protobuf:
+    enabled: true
+    schemaRegistry:
+      enabled: true # This tells the proto service to consider the schema registry when deserializing messages
