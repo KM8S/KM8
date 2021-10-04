@@ -7,6 +7,7 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
 import Html exposing (Html, div)
 import Http
 import Main.Models exposing (ClusterDetailsDTO)
@@ -48,6 +49,7 @@ init flags url key =
 type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
+    | ClusterChange String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -64,6 +66,9 @@ update msg model =
         UrlChanged url ->
             ( { model | url = url }, Cmd.none )
 
+        _ ->
+            ( model, Cmd.none )
+
 
 
 ---- VIEW ----
@@ -72,11 +77,11 @@ update msg model =
 view : Model -> Browser.Document Msg
 view model =
     { title = "Kafka Mate"
-    , body = [ Element.layout [] (body model) ]
+    , body = [ Element.layout [ Font.size 16, Font.color black ] (body model) ]
     }
 
 
-body : Model -> Element msg
+body : Model -> Element Msg
 body model =
     column
         [ width fill
@@ -85,10 +90,15 @@ body model =
         [ header model, content model, footer model ]
 
 
-header : Model -> Element msg
+header : Model -> Element Msg
 header model =
-    row [ width fill ]
-        [ image [ padding 20, width (px 100), height (px 100), alignLeft ] { src = "logo.svg", description = "logo" }
+    row [ width fill, Background.color backGreen, height (px 100), centerY ]
+        [ image
+            [ width (px 100)
+            , height (px 100)
+            , alignLeft
+            ]
+            { src = "logo.svg", description = "logo" }
         , el [ padding 20, alignRight ] (menu model)
         ]
 
@@ -98,16 +108,30 @@ green =
     rgb255 123 182 105
 
 
+lightGreen : Color
+lightGreen =
+    rgb255 133 192 115
+
+
+backGreen : Color
+backGreen =
+    rgb255 240 255 245
+
+
 white : Color
 white =
     rgb255 240 240 240
 
 
+black : Color
+black =
+    rgb255 70 70 70
+
+
 menuButton : String -> Element msg
 menuButton txt =
     el
-        [ Border.rounded 5
-        , mouseOver [ Font.color green ]
+        [ mouseOver [ Font.color green ]
         , pointer
         , padding 10
         ]
@@ -115,7 +139,7 @@ menuButton txt =
 
 
 menu : Model -> Element msg
-menu model =
+menu _ =
     row [ alignRight ]
         [ column [ height fill ]
             [ menuButton "Clusters" ]
@@ -126,56 +150,94 @@ menu model =
         ]
 
 
-rowContent : Model -> Element msg
-rowContent model =
-    row [ explain Debug.todo, width fill, height fill ] [ menu model, content model ]
+clusterDataList : Model -> Element Msg
+clusterDataList model =
+    let
+        altColor i =
+            if i == 0 || modBy 2 i == 0 then
+                rgb255 255 255 255
 
+            else
+                backGreen
 
-gridHeader : String -> Element msg
-gridHeader txt =
-    el [ paddingEach { top = 5, right = 5, bottom = 5, left = 0 }, width fill ]
-        (el
-            [ width fill
-            , paddingEach { top = 2, right = 0, bottom = 2, left = 5 }
-            , Background.color green
-            , Font.alignLeft
-            , Font.color white
-            ]
-            (text txt)
-        )
-
-
-gridCell : String -> Element msg
-gridCell txt =
-    el
-        [ paddingEach { top = 5, right = 5, bottom = 5, left = 3 }
-        , Background.color (rgb 255 255 255)
-        , Font.alignLeft
-        ]
-        (text txt)
-
-
-content : Model -> Element msg
-content model =
-    column [ padding 10, width fill, height fill ]
-        [ Element.table [ padding 10 ]
-            { data = model.clusters
-            , columns =
-                [ { header = gridHeader "Name"
-                  , width = fillPortion 2
-                  , view = \c -> gridCell c.name
-                  }
-                , { header = gridHeader "Hosts"
-                  , width = fillPortion 5
-                  , view = \c -> gridCell c.kafkaHosts
-                  }
-                , { header = gridHeader "Schema Registry"
-                  , width = fillPortion 5
-                  , view = \c -> gridCell c.schemaRegistryUrl
-                  }
+        gridHeader txt =
+            el
+                [ paddingEach { top = 5, right = 5, bottom = 5, left = 0 }
+                , width fill
+                , height fill
                 ]
-            }
-        ]
+                (el
+                    [ width fill
+                    , height fill
+                    , paddingEach { top = 10, right = 0, bottom = 10, left = 5 }
+                    , Background.color green
+                    , Border.rounded 2
+                    , Font.color white
+                    , centerY
+                    ]
+                    (text txt)
+                )
+
+        lstButton idx m txt =
+            el [ padding 5, Background.color <| altColor idx ]
+                (Input.button
+                    [ Background.color green
+                    , Font.color white
+                    , padding 8
+                    , Element.mouseOver [ Background.color lightGreen ]
+                    , Element.focused [ Background.color lightGreen ]
+                    , Border.rounded 2
+                    ]
+                    { onPress = m
+                    , label = text txt
+                    }
+                )
+
+        gridCell idx txt =
+            el
+                [ Background.color <| altColor idx
+                , height fill
+                , paddingEach { top = 5, right = 5, bottom = 5, left = 0 }
+                ]
+                (el
+                    [ paddingEach { top = 0, right = 0, bottom = 0, left = 5 }
+                    , centerY
+                    ]
+                    (text txt)
+                )
+    in
+    Element.indexedTable [ padding 10, width fill, Font.alignLeft ]
+        { data = model.clusters
+        , columns =
+            [ { header = gridHeader "Name"
+              , width = shrink
+              , view = \i c -> gridCell i c.name
+              }
+            , { header = gridHeader "Hosts"
+              , width = shrink
+              , view = \i c -> gridCell i c.kafkaHosts
+              }
+            , { header = gridHeader "Schema Registry"
+              , width = shrink
+              , view = \i c -> gridCell i c.schemaRegistryUrl
+              }
+            , { header = gridHeader ""
+              , width = shrink
+              , view =
+                    \i c ->
+                        row [ width shrink ]
+                            [ lstButton i (Just <| ClusterChange c.id) "Change"
+                            , lstButton i (Just <| ClusterChange c.id) "Delete"
+                            ]
+              }
+            ]
+        }
+
+
+content : Model -> Element Msg
+content model =
+    column [ padding 10, height fill, centerX ]
+        [ clusterDataList model ]
 
 
 footer : Model -> Element msg
