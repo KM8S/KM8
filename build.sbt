@@ -2,11 +2,14 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
 lazy val ProjectName         = "kafkamate"
 lazy val ProjectOrganization = "csofronia"
-lazy val ProjectVersion      = "0.1.0"
+lazy val ProjectVersion      = "0.1.1"
 lazy val ProjectScalaVersion = "2.13.6"
 
-lazy val ZIOVersion    = "1.0.9"
-lazy val GrpcVersion   = "1.38.1"
+lazy val Versions = new {
+  val zio  = "1.0.9"
+  val grpc = "1.41.0"
+}
+
 lazy val SlinkyVersion = "0.6.7"
 
 lazy val kafkamate = project
@@ -20,9 +23,9 @@ lazy val kafkamate = project
   .enablePlugins(DockerPlugin)
   .disablePlugins(RevolverPlugin)
   .settings(
-    docker := (docker dependsOn (assembly in service)).value,
-    dockerfile in docker := {
-      val artifact: File     = (assemblyOutputPath in assembly in service).value
+    docker := (docker dependsOn (service / assembly)).value,
+    docker / dockerfile := {
+      val artifact: File     = (service / assembly / assemblyOutputPath).value
       val artifactTargetPath = s"/app/${artifact.name}"
 
       new Dockerfile {
@@ -33,7 +36,7 @@ lazy val kafkamate = project
         expose(8080, 61234, 61235)
 
         runRaw(
-          "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common"
+          "apt-get update && apt-get mb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common"
         )
         runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
         runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
@@ -54,7 +57,7 @@ lazy val kafkamate = project
         cmd("./start.sh", artifactTargetPath)
       }
     },
-    imageNames in docker := Seq(
+    docker / imageNames := Seq(
       ImageName(s"${organization.value}/${name.value}:latest"),
       ImageName(
         repository = s"${organization.value}/${name.value}",
@@ -89,16 +92,16 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                      %% "zio-kafka"                 % "0.15.0",
-      "dev.zio"                      %% "zio-json"                  % "0.1.5",
-      "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.11",
-      "com.lihaoyi"                  %% "os-lib"                    % "0.7.8",
-      "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
-      "io.confluent"                  % "kafka-protobuf-serializer" % "6.2.0",
+      "dev.zio"              %% "zio-kafka"                 % "0.15.0",
+      "dev.zio"              %% "zio-json"                  % "0.1.5",
+      "dev.zio"              %% "zio-logging-slf4j"         % "0.5.11",
+      "com.lihaoyi"          %% "os-lib"                    % "0.7.8",
+      "com.thesamet.scalapb" %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
+      "io.confluent"          % "kafka-protobuf-serializer" % "6.2.0",
       //"com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.10.0",
-      "net.logstash.logback"          % "logstash-logback-encoder"  % "6.6",
-      "ch.qos.logback"                % "logback-classic"           % "1.2.3",
-      "io.github.embeddedkafka"      %% "embedded-kafka"            % "2.8.0" % Test
+      "net.logstash.logback"     % "logstash-logback-encoder" % "6.6",
+      "ch.qos.logback"           % "logback-classic"          % "1.2.3",
+      "io.github.embeddedkafka" %% "embedded-kafka"           % "2.8.0" % Test
     ),
     dependencyOverrides ++= Seq(
       "org.apache.kafka" % "kafka-clients" % "2.8.0"
@@ -106,22 +109,22 @@ lazy val service = project
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
     ),
-    PB.targets in Compile := Seq(
-      scalapb.gen(grpc = true)          -> (sourceManaged in Compile).value,
-      scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value
+    Compile / PB.targets := Seq(
+      scalapb.gen(grpc = true)          -> (Compile / sourceManaged).value,
+      scalapb.zio_grpc.ZioCodeGenerator -> (Compile / sourceManaged).value
     )
   )
   .dependsOn(common.jvm)
   .settings(
-    assemblyMergeStrategy in assembly := {
+    assembly / assemblyMergeStrategy := {
       case x if x endsWith "io.netty.versions.properties" => MergeStrategy.concat
       case x if x endsWith "module-info.class"            => MergeStrategy.discard
       case x if x endsWith ".proto"                       => MergeStrategy.discard
       case x =>
-        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
     },
-    test in assembly := {}
+    assembly / test := {}
   )
 
 lazy val site = project
@@ -135,8 +138,8 @@ lazy val site = project
       if (scalaJSVersion.startsWith("0.6.")) Seq("-P:scalajs:sjsDefinedByDefault")
       else Nil
     },
-    version in webpack := "4.43.0",
-    version in startWebpackDevServer := "3.11.0",
+    webpack / version := "4.43.0",
+    startWebpackDevServer / version := "3.11.0",
     libraryDependencies ++= Seq(
       "me.shadaj"     %%% "slinky-core"                 % SlinkyVersion,
       "me.shadaj"     %%% "slinky-web"                  % SlinkyVersion,
@@ -147,7 +150,7 @@ lazy val site = project
       "org.scalatest" %%% "scalatest"                   % "3.2.9" % Test
       //"com.github.oen9" %%% "slinky-bridge-react-konva"   % "0.1.1",
     ),
-    npmDependencies in Compile ++= Seq(
+    Compile / npmDependencies ++= Seq(
       "react"            -> "16.13.1",
       "react-dom"        -> "16.13.1",
       "react-proxy"      -> "1.1.8",
@@ -157,7 +160,7 @@ lazy val site = project
       //"react-konva"      -> "16.13.0-3",
       //"konva"            -> "4.2.2",
     ),
-    npmDevDependencies in Compile ++= Seq(
+    Compile / npmDevDependencies ++= Seq(
       "file-loader"         -> "6.0.0",
       "style-loader"        -> "1.2.1",
       "css-loader"          -> "3.5.3",
@@ -166,15 +169,15 @@ lazy val site = project
       "webpack-merge"       -> "4.2.2"
     ),
     webpackResources := baseDirectory.value / "webpack" * "*",
-    webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack" / "webpack-fastopt.config.js"),
-    webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack" / "webpack-opt.config.js"),
-    webpackConfigFile in Test := Some(baseDirectory.value / "webpack" / "webpack-core.config.js"),
-    webpackDevServerExtraArgs in fastOptJS := Seq("--inline", "--hot"),
-    webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
-    requireJsDomEnv in Test := true,
+    fastOptJS / webpackConfigFile := Some(baseDirectory.value / "webpack" / "webpack-fastopt.config.js"),
+    fullOptJS / webpackConfigFile := Some(baseDirectory.value / "webpack" / "webpack-opt.config.js"),
+    Test / webpackConfigFile := Some(baseDirectory.value / "webpack" / "webpack-core.config.js"),
+    fastOptJS / webpackDevServerExtraArgs := Seq("--inline", "--hot"),
+    fastOptJS / webpackBundlingMode := BundlingMode.LibraryOnly(),
+    Test / requireJsDomEnv := true,
     addCommandAlias("dev", ";fastOptJS::startWebpackDevServer;~fastOptJS"),
     addCommandAlias("build", "fullOptJS::webpack"),
-    test in Compile := {} //disable site tests for now
+    Compile / test := {} //disable site tests for now
   )
   .dependsOn(common.js)
 
@@ -185,26 +188,26 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   .disablePlugins(RevolverPlugin)
   .settings(
     libraryDependencies += "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion,
-    PB.protoSources in Compile := Seq(
-      (baseDirectory in ThisBuild).value / "common" / "src" / "main" / "protobuf"
+    Compile / PB.protoSources := Seq(
+      (ThisBuild / baseDirectory).value / "common" / "src" / "main" / "protobuf"
     )
   )
   .jvmSettings(
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-      "io.grpc"               % "grpc-netty"           % GrpcVersion
+      "io.grpc"               % "grpc-netty"           % Versions.grpc
     ),
-    PB.targets in Compile := Seq(
-      scalapb.gen(grpc = true)          -> (sourceManaged in Compile).value,
-      scalapb.zio_grpc.ZioCodeGenerator -> (sourceManaged in Compile).value
+    Compile / PB.targets := Seq(
+      scalapb.gen(grpc = true)          -> (Compile / sourceManaged).value,
+      scalapb.zio_grpc.ZioCodeGenerator -> (Compile / sourceManaged).value
     )
   )
   .jsSettings(
     // publish locally and update the version for test
     libraryDependencies += "com.thesamet.scalapb.grpcweb" %%% "scalapb-grpcweb" % scalapb.grpcweb.BuildInfo.version,
-    PB.targets in Compile := Seq(
-      scalapb.gen(grpc = false)            -> (sourceManaged in Compile).value,
-      scalapb.grpcweb.GrpcWebCodeGenerator -> (sourceManaged in Compile).value
+    Compile / PB.targets := Seq(
+      scalapb.gen(grpc = false)            -> (Compile / sourceManaged).value,
+      scalapb.grpcweb.GrpcWebCodeGenerator -> (Compile / sourceManaged).value
     )
   )
 
@@ -215,11 +218,11 @@ lazy val sharedSettings = Seq(
     "-Ymacro-annotations"
   ),
   libraryDependencies ++= Seq(
-    "dev.zio"  %%% "zio"           % ZIOVersion,
-    "dev.zio"  %%% "zio-macros"    % ZIOVersion,
+    "dev.zio"  %%% "zio"           % Versions.zio,
+    "dev.zio"  %%% "zio-macros"    % Versions.zio,
     "io.circe" %%% "circe-generic" % "0.14.1",
-    "dev.zio"  %%% "zio-test"      % ZIOVersion % Test,
-    "dev.zio"  %%% "zio-test-sbt"  % ZIOVersion % Test
+    "dev.zio"  %%% "zio-test"      % Versions.zio % Test,
+    "dev.zio"  %%% "zio-test-sbt"  % Versions.zio % Test
   ),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))

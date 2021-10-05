@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="false" scanPeriod="2 seconds">
+    <logger name="feign.slf4j.Slf4jLogger" level="WARN"/>
+    <logger name="org.testcontainers" level="WARN"/>
+    <logger name="com.github.dockerjava" level="WARN"/>
+
+    <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
+
+    <root level="INFO">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <target>System.out</target>
+            <encoder>
+                <pattern>%d{ISO8601} %-5level [%logger{0}] - %msg%n</pattern>
+            </encoder>
+        </appender>
+    </root>
+</configuration>
