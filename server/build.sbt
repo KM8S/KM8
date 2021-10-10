@@ -5,10 +5,11 @@ ThisBuild / organizationName := "kafka-mate"
 
 lazy val Versions = new {
   val zio            = "1.0.12" //"2.0.0-M3" - zio-logging, zio-kafka not ready for zio 2.x
-  val zioLogging     = "0.5.12"
+  val zioKafka       = "0.17.0"
   val zioConfig      = "1.0.10"
   val zioJson        = "0.2.0-M1"
   val zioHttp        = "1.0.0.0-RC17"
+  val zioLogging     = "0.5.12"
   val osLib          = "0.7.8"
   val logback        = "1.2.6"
   val testContainers = "0.39.8"
@@ -25,11 +26,11 @@ lazy val root = (project in file("."))
 
 val compileDependencies = Seq(
   "dev.zio"              %% "zio"                 % Versions.zio,
-  "dev.zio"              %% "zio-logging-slf4j"   % Versions.zioLogging,
+  "dev.zio"              %% "zio-kafka"           % Versions.zioKafka,
   "dev.zio"              %% "zio-config"          % Versions.zioConfig,
   "dev.zio"              %% "zio-config-typesafe" % Versions.zioConfig,
   "dev.zio"              %% "zio-json"            % Versions.zioJson,
-  "dev.zio"              %% "zio-streams"         % Versions.zio,
+  "dev.zio"              %% "zio-logging-slf4j"   % Versions.zioLogging,
   "io.d11"               %% "zhttp"               % Versions.zioHttp,
   "com.lihaoyi"          %% "os-lib"              % Versions.osLib,
   "ch.qos.logback"        % "logback-classic"     % Versions.logback

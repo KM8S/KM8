@@ -10,7 +10,7 @@ case class ProtoSerdeConfig(schemaRegistryUrl: String, private val _configs: Map
 }
 
 case class ClusterSettings(id: String, name: String, kafkaHosts: List[String], schemaRegistryUrl: Option[String]) {
-  val kafkaHosts_ : String                           = kafkaHosts.mkString(",")
+  val kafkaHosts_ : String                         = kafkaHosts.mkString(",")
   val protoSerdeSettings: Option[ProtoSerdeConfig] = schemaRegistryUrl.map(ProtoSerdeConfig(_))
 }
 object ClusterSettings {
@@ -33,8 +33,8 @@ trait Store:
     for {
       all <- readClusters
       cs <- ZIO
-              .fromOption(all.clusters.find(_.id == clusterId))
-              .orElseFail(new Exception(s"Cluster ($clusterId) doesn't exist!"))
+        .fromOption(all.clusters.find(_.id == clusterId))
+        .orElseFail(new Exception(s"Cluster ($clusterId) doesn't exist!"))
     } yield cs
 
 case class StoreLive(configPath: StorePath, log: Logger[String]) extends Store:
@@ -51,27 +51,27 @@ case class StoreLive(configPath: StorePath, log: Logger[String]) extends Store:
       _ <- writeJson(emptyPropertiesJson).unless(b)
       s <- Task(os.read(configFilepath))
       r <- ZIO
-             .fromEither(s.fromJson[ClusterProperties])
-             .catchAll { err =>
-               log.warn(s"Parsing error: $err") *>
-                 writeJson(emptyPropertiesJson).as(emptyProperties)
-             }
+        .fromEither(s.fromJson[ClusterProperties])
+        .catchAll { err =>
+          log.warn(s"Parsing error: $err") *>
+            writeJson(emptyPropertiesJson).as(emptyProperties)
+        }
     } yield r
 
   def writeClusters(cluster: ClusterSettings): Task[Unit] =
     for {
-      c   <- readClusters
+      c <- readClusters
       json = c.copy(clusters = c.clusters :+ cluster).toJsonPretty
-      _   <- writeJson(json)
+      _ <- writeJson(json)
     } yield ()
 
   def deleteCluster(clusterId: String): Task[ClusterProperties] =
     for {
-      c   <- readClusters
-      ls  <- ZIO.filterNotPar(c.clusters)(s => Task(s.id == clusterId))
+      c  <- readClusters
+      ls <- ZIO.filterNotPar(c.clusters)(s => UIO(s.id == clusterId))
       json = ClusterProperties(ls).toJsonPretty
-      _   <- writeJson(json)
-      r   <- readClusters
+      _ <- writeJson(json)
+      r <- readClusters
     } yield r
 
 object StoreLive:
