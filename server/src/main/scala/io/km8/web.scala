@@ -1,25 +1,26 @@
 package io.km8
 
-import zhttp.http.*
+import zhttp.http._
 import zhttp.service.Server
-import zio.*
+import zio.logging._
+import zio._
 
 trait Web:
-  def startServer(): ZIO[Has[_], Throwable, Unit]
+  def startServer: Task[Unit]
 
-object Web:
-  def startServer(): ZIO[Has[Web], Throwable, Unit] = ZIO.serviceWith[Web](_.startServer())
+object Web extends Accessible[Web]
 
-case class WebLive(config: Config) extends Web:
-  val routes = Http.collectM[Request] {
-    case Method.GET -> Root / "broker" / clusterId => ZIO.succeed(Response.text(s"broker $clusterId"))
+case class WebLive(settings: Settings, logger: Logger[String]) extends Web:
+
+  private val routes = Http.collectM[Request] {
+    case Method.GET -> Root / "broker" / clusterId => UIO(Response.text(s"broker $clusterId"))
   }
 
-  override def startServer(): ZIO[Has[_], Throwable, Unit] =
+  override def startServer: Task[Unit] =
     for {
-      configuration <- config.getConfiguration()
-      _ <- Server.start(configuration.port, routes.silent)
-    } yield()
+      _ <- logger.debug(s"Starting server, port: ${settings.appConfig.port}")
+      _ <- Server.start[Has[Settings]](settings.appConfig.port, routes.silent).provide(Has(settings))
+    } yield ()
 
 object WebLive:
-  val layer: ZLayer[Has[Config], Nothing, Has[Web]] = (WebLive(_)).toLayer
+  val layer: URLayer[Has[Settings] & Logging, Has[Web]] = (WebLive(_, _)).toLayer

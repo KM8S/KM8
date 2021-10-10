@@ -1,5 +1,5 @@
 lazy val Versions = new {
-  val zio            = "1.0.12"
+  val zio            = "2.0.0-M3"
   val zioLogging     = "0.5.12"
   val zioConfig      = "1.0.10"
   val zioJson        = "0.2.0-M1"
@@ -16,7 +16,7 @@ ThisBuild / organizationName := "Kafka Mate"
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(
-    name := "Kafka Mate",
+    name := "km8",
     testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     libraryDependencies ++= compileDependencies ++ testDependencies
   )
