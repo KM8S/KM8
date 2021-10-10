@@ -1,7 +1,7 @@
 package io.km8
 
 import zio.logging._
-import zio.logging.slf4j.Slf4jLogger
+import zio.logging.slf4j._
 import zio._
 
 object Server extends App:
@@ -10,9 +10,9 @@ object Server extends App:
     val app = Web(_.startServer)
 
     app
-      .inject(
-        ConfigLive.layer,
-        WebLive.layer,
-        Slf4jLogger.make((_, message) => message)
+      .provideLayer(
+        ConfigLive.layer >+>
+          Slf4jLogger.make((_, message) => message) >+>
+          WebLive.layer
       )
       .exitCode

@@ -21,7 +21,7 @@ case class WebLive(settings: Settings, logger: Logger[String]) extends Web:
 
   override def startServer: Task[Unit] =
     for {
-      _ <- logger.debug(s"Starting server, port: ${settings.appConfig.port}")
+      _ <- logger.info(s"Starting server, port: ${settings.appConfig.port}")
       _ <- Server.start[Has[Settings]](settings.appConfig.port, routes.silent).provide(Has(settings))
     } yield ()
 
