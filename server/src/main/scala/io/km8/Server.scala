@@ -4,6 +4,9 @@ import zio.logging._
 import zio.logging.slf4j._
 import zio._
 
+import io.km8.config._
+import io.km8.http._
+
 object Server extends App:
 
   override def run(args: List[String]): URIO[ZEnv, ExitCode] =

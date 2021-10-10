@@ -1,4 +1,4 @@
-package io.km8
+package io.km8.config
 
 import com.typesafe.config.ConfigFactory
 import zio._
@@ -8,7 +8,7 @@ import zio.config.typesafe._
 
 case class AppConf(port: Int)
 
-trait Settings:
+trait Config:
   val appConfig: AppConf
 
 object ConfigLive:
@@ -20,14 +20,14 @@ object ConfigLive:
       }
     }
 
-  lazy val layer: TaskLayer[Has[Settings]] =
+  lazy val layer: TaskLayer[Has[Config]] =
     val eff = for {
       typesafeConf <- Task(ConfigFactory.load.resolve)
       source       <- Task.fromEither(TypesafeConfigSource.fromTypesafeConfig(typesafeConf))
       config       <- Task.fromEither(read(appConfigDescriptor from source))
-    } yield new Settings { val appConfig = config }
+    } yield new Config { val appConfig = config }
 
     eff.toLayer
 
-  def getSettings: URIO[Has[Settings], Settings] =
+  def getConfig: URIO[Has[Config], Config] =
     ZIO.service

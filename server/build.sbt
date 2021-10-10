@@ -9,6 +9,7 @@ lazy val Versions = new {
   val zioConfig      = "1.0.10"
   val zioJson        = "0.2.0-M1"
   val zioHttp        = "1.0.0.0-RC17"
+  val osLib          = "0.7.8"
   val logback        = "1.2.6"
   val testContainers = "0.39.8"
 }
@@ -30,6 +31,7 @@ val compileDependencies = Seq(
   "dev.zio"              %% "zio-json"            % Versions.zioJson,
   "dev.zio"              %% "zio-streams"         % Versions.zio,
   "io.d11"               %% "zhttp"               % Versions.zioHttp,
+  "com.lihaoyi"          %% "os-lib"              % Versions.osLib,
   "ch.qos.logback"        % "logback-classic"     % Versions.logback
 )
 
