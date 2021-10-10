@@ -1,4 +1,4 @@
-# kafkamate
+# kafkamate (KM8)
 
 Web GUI Kafka Tool to consume and produce messages.
 
