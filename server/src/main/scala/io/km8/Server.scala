@@ -13,6 +13,6 @@ object Server extends App:
       .inject(
         ConfigLive.layer,
         WebLive.layer,
-        Slf4jLogger.make { (_, message) => message }
+        Slf4jLogger.make((_, message) => message)
       )
       .exitCode

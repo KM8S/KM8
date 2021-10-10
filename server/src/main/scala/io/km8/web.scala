@@ -13,7 +13,10 @@ object Web extends Accessible[Web]
 case class WebLive(settings: Settings, logger: Logger[String]) extends Web:
 
   private val routes = Http.collectM[Request] {
-    case Method.GET -> Root / "broker" / clusterId => UIO(Response.text(s"broker $clusterId"))
+    case Method.GET -> Root / "broker" / clusterId =>
+      UIO(Response.text(s"broker $clusterId"))
+    case Method.GET -> Root / "topics" =>
+      UIO(Response.text(s"topics"))
   }
 
   override def startServer: Task[Unit] =

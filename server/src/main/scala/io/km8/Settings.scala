@@ -6,7 +6,6 @@ import zio.config._
 import ConfigDescriptor._
 import zio.config.typesafe._
 
-
 case class AppConf(port: Int)
 
 trait Settings:
@@ -24,8 +23,8 @@ object ConfigLive:
   lazy val layer: TaskLayer[Has[Settings]] =
     val eff = for {
       typesafeConf <- Task(ConfigFactory.load.resolve)
-      source <- Task.fromEither(TypesafeConfigSource.fromTypesafeConfig(typesafeConf))
-      config <- Task.fromEither(read(appConfigDescriptor from source))
+      source       <- Task.fromEither(TypesafeConfigSource.fromTypesafeConfig(typesafeConf))
+      config       <- Task.fromEither(read(appConfigDescriptor from source))
     } yield new Settings { val appConfig = config }
 
     eff.toLayer
