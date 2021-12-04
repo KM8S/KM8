@@ -4,122 +4,153 @@ package kafka
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.duration._
-import zio.kafka.admin._
+import zio.duration.*
+import zio.kafka.admin.*
 import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
-import zio.macros.accessible
 
-import config._, ClustersConfig._
-import topics._
-import brokers.BrokerDetails
+import config.*, ClustersConfig.*
 
-@accessible object KafkaExplorer {
+case class BrokerRequest(clusterId: String)
 
-  type HasKafkaExplorer = Has[Service]
-  type HasAdminClient   = Has[AdminClient]
+case class BrokerDetails(id: Int, isController: Boolean)
+
+case class BrokerResponse(brokers: Seq[BrokerDetails])
+
+case class AddTopicRequest(
+  clusterId: String,
+  name: String,
+  partitions: Int,
+  replication: Int,
+  cleanupPolicy: String,
+  retentionMs: String)
+
+case class GetTopicsRequest(clusterId: String)
+
+case class DeleteTopicRequest(clusterId: String, topicName: String)
+
+case class TopicDetails(
+  name: String,
+  partitions: Int,
+  replication: Int,
+  cleanupPolicy: String,
+  retentionMs: String,
+  size: Long)
+
+case class TopicResponse(topics: Seq[TopicDetails])
+
+case class DeleteTopicResponse(name: String)
+
+trait KafkaExplorer {
+  def listBrokers(clusterId: String): Task[List[BrokerDetails]]
+  def listTopics(clusterId: String): Task[List[TopicDetails]]
+  def addTopic(req: AddTopicRequest): Task[TopicDetails]
+  def deleteTopic(req: DeleteTopicRequest): Task[DeleteTopicResponse]
+}
+
+object KafkaExplorer {
 
   val CleanupPolicyKey = "cleanup.policy"
-  val RetentionMsKey   = "retention.ms"
+  val RetentionMsKey = "retention.ms"
 
-  trait Service {
-    def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
-    def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]]
-    def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails]
-    def deleteTopic(req: DeleteTopicRequest): RIO[Blocking with Clock, DeleteTopicResponse]
-  }
+  lazy val liveLayer: URLayer[Has[ClusterConfig] with Clock with Blocking, Has[KafkaExplorer]] =
+    KafkaExplorerLive.apply.toLayer
 
-  lazy val liveLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
-    ZLayer.fromService { clustersConfigService =>
-      new Service {
-        private def adminClientLayer(clusterId: String): RLayer[Blocking, HasAdminClient] =
-          ZLayer.fromManaged {
-            for {
-              cs     <- clustersConfigService.getCluster(clusterId).toManaged_
-              client <- AdminClient.make(AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty))
-            } yield client
-          }
+  case class KafkaExplorerLive(
+    clock: Clock.Service,
+    blocking: Blocking.Service,
+    clustersConfigService: ClusterConfig)
+      extends KafkaExplorer {
+    val clockLayer = ZLayer.succeed(clock)
+    val blockingLayer = ZLayer.succeed(blocking)
 
-        private implicit class AdminClientProvider[A](eff: RIO[HasAdminClient with Blocking, A]) {
-          def withAdminClient(clusterId: String): RIO[Blocking with Clock, A] = eff
-            .timeoutFail(new Exception("Timed out"))(6.seconds)
-            .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
-        }
-
-        def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]] =
-          ZIO
-            .accessM[HasAdminClient with Blocking] { env =>
-              val ac = env.get[AdminClient]
-              for {
-                (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id)
-                brokers = nodes.map { n =>
-                            val nodeId = n.id
-                            if (controllerId != nodeId) BrokerDetails(nodeId)
-                            else BrokerDetails(nodeId, isController = true)
-                          }
-                //resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
-                //_ <- ac.describeConfigs(resources)
-              } yield brokers
-            }
-            .withAdminClient(clusterId)
-
-        def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]] =
-          ZIO
-            .accessM[HasAdminClient with Blocking] { env =>
-              val ac = env.get[AdminClient]
-              ac.listTopics()
-                .map(_.keys.toList)
-                .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("_"))))
-                .flatMap(ls =>
-                  ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(ConfigResource(ConfigResourceType.Topic, _)))
-                )
-                .map { case (nameDescriptionMap, topicConfigMap) =>
-                  val configs = topicConfigMap.map { case (res, conf) => (res.name, conf) }
-                  nameDescriptionMap.map { case (name, description) =>
-                    val conf                   = configs.get(name).map(_.entries)
-                    def getConfig(key: String) = conf.flatMap(_.get(key).map(_.value())).getOrElse("unknown")
-                    TopicDetails(
-                      name = name,
-                      partitions = description.partitions.size,
-                      replication = description.partitions.headOption.map(_.replicas.size).getOrElse(0),
-                      cleanupPolicy = getConfig(CleanupPolicyKey),
-                      retentionMs = getConfig(RetentionMsKey)
-                    )
-                  }.toList.sortBy(_.name)
-                }
-            }
-            .withAdminClient(clusterId)
-
-        def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails] =
-          ZIO
-            .accessM[HasAdminClient with Blocking] { env =>
-              env
-                .get[AdminClient]
-                .createTopic(
-                  AdminClient.NewTopic(
-                    req.name,
-                    req.partitions,
-                    req.replication.toShort,
-                    Map(
-                      CleanupPolicyKey -> req.cleanupPolicy,
-                      RetentionMsKey   -> req.retentionMs
-                    )
-                  )
-                )
-                .as(TopicDetails(req.name, req.partitions, req.replication, req.cleanupPolicy))
-            }
-            .withAdminClient(req.clusterId)
-
-        def deleteTopic(req: DeleteTopicRequest): RIO[Blocking with Clock, DeleteTopicResponse] =
-          ZIO
-            .accessM[HasAdminClient with Blocking] { env =>
-              env
-                .get[AdminClient]
-                .deleteTopic(req.topicName)
-                .as(DeleteTopicResponse(req.topicName))
-            }
-            .withAdminClient(req.clusterId)
-
+    private def adminClientLayer(clusterId: String) =
+      ZLayer.fromManaged {
+        for {
+          cs <- clustersConfigService.getCluster(clusterId).toManaged_
+          client <- AdminClient.make(AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty))
+        } yield client
       }
-    }
+
+    def withAdminClient[A](clusterId: String)(eff: AdminClient => RIO[Blocking with Clock, A]): Task[A] =
+      ZIO
+        .service[AdminClient]
+        .flatMap { ac =>
+          eff(ac)
+            .timeoutFail(new Exception("Timed out"))(6.seconds)
+        }
+        .provideLayer(blockingLayer >+> adminClientLayer(clusterId) ++ clockLayer)
+
+    override def listBrokers(clusterId: String) =
+      withAdminClient(clusterId) { ac =>
+        for {
+          (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id)
+          brokers = nodes.map { n =>
+                      val nodeId = n.id
+                      if (controllerId != nodeId) BrokerDetails(id = nodeId, isController = false)
+                      else BrokerDetails(nodeId, isController = true)
+                    }
+          // resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
+          // _ <- ac.describeConfigs(resources)
+        } yield brokers
+      }
+
+    override def listTopics(clusterId: String) =
+      withAdminClient(clusterId) { ac =>
+        ac.listTopics()
+          .map(_.keys.toList)
+          .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("_"))))
+          .flatMap(ls =>
+            ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(ConfigResource(ConfigResourceType.Topic, _)))
+          )
+          .map { case (nameDescriptionMap, topicConfigMap) =>
+            val configs = topicConfigMap.map { case (res, conf) => (res.name, conf) }
+            nameDescriptionMap.map { case (name, description) =>
+              val conf = configs.get(name).map(_.entries)
+              def getConfig(key: String) = conf.flatMap(_.get(key).map(_.value())).getOrElse("unknown")
+              TopicDetails(
+                name = name,
+                partitions = description.partitions.size,
+                replication = description.partitions.headOption.map(_.replicas.size).getOrElse(0),
+                cleanupPolicy = getConfig(CleanupPolicyKey),
+                retentionMs = getConfig(RetentionMsKey),
+                size = 0
+              )
+            }.toList.sortBy(_.name)
+          }
+      }
+
+    override def addTopic(req: AddTopicRequest) =
+      withAdminClient(req.clusterId) { ac =>
+        ac
+          .createTopic(
+            AdminClient.NewTopic(
+              req.name,
+              req.partitions,
+              req.replication.toShort,
+              Map(
+                CleanupPolicyKey -> req.cleanupPolicy,
+                RetentionMsKey -> req.retentionMs
+              )
+            )
+          )
+          .as(
+            TopicDetails(
+              name = req.name,
+              partitions = req.partitions,
+              replication = req.replication,
+              cleanupPolicy = req.cleanupPolicy,
+              retentionMs = req.retentionMs,
+              size = 0
+            )
+          )
+      }
+
+    override def deleteTopic(req: DeleteTopicRequest) =
+      withAdminClient(req.clusterId) {
+        _.deleteTopic(req.topicName)
+          .as(DeleteTopicResponse(req.topicName))
+      }
+
+  }
 
 }

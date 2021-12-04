@@ -1,6 +1,7 @@
 package io.kafkamate
 package util
 
+/*
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import zio._
 import zio.blocking.Blocking
@@ -42,3 +43,4 @@ trait HelperSpec {
     Producer
       .produceChunk[Any, String, String](Chunk.fromIterable(kvs.map { case (k, v) => new ProducerRecord(topic, k, v) }))
 }
+ */
