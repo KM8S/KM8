@@ -16,7 +16,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 lazy val root = project
   .in(file("."))
-  .aggregate(service)
+  .aggregate(fx, common, core)
   .settings(
     name         := ProjectName,
     organization := ProjectOrganization,
@@ -25,9 +25,9 @@ lazy val root = project
   .enablePlugins(DockerPlugin)
   .disablePlugins(RevolverPlugin)
   .settings(
-    docker := (docker dependsOn (service / assembly)).value,
+    docker := (docker dependsOn (core / assembly)).value,
     docker / dockerfile := {
-      val artifact: File = (service / assembly / assemblyOutputPath).value
+      val artifact: File = (core / assembly / assemblyOutputPath).value
       val artifactTargetPath = s"/app/${artifact.name}"
 
       new Dockerfile {
@@ -88,14 +88,16 @@ lazy val fx = project
       "com.softwaremill.sttp.client3" %% "core"                          % sttpVersion,
       "com.softwaremill.sttp.client3" %% "httpclient-backend-zio"        % sttpVersion,
       "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % sttpVersion
-    ) ++ javaFXModules
+    ) ++ javaFXModules,
+    Compile / run / mainClass     := Some("io.km8.fx.Main")
   )
+  .dependsOn(common)
 
-lazy val service = project
-  .in(file("service"))
+lazy val core = project
+  .in(file("core"))
   .settings(sharedSettings)
   .settings(
-    name := "kafkamate-service",
+    name := "km8-core",
     scalacOptions ++= Seq(
       "-unchecked",
       "-deprecation",
@@ -123,7 +125,7 @@ lazy val service = project
       "Confluent" at "https://packages.confluent.io/maven/"
     )
   )
-  .dependsOn(common.jvm)
+  .dependsOn(common)
   .settings(
     assembly / assemblyMergeStrategy := {
       case x if x endsWith "io.netty.versions.properties" => MergeStrategy.concat
@@ -136,8 +138,7 @@ lazy val service = project
     assembly / test := {}
   )
 
-lazy val common = crossProject(JVMPlatform)
-  .crossType(CrossType.Pure)
+lazy val common = project
   .in(file("common"))
   .settings(sharedSettings)
   .disablePlugins(RevolverPlugin)
