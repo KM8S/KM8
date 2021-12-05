@@ -56,14 +56,12 @@ case class TopicResponse(topics: Seq[TopicDetails])
 
 case class DeleteTopicResponse(name: String)
 
-case class ClusterDetails (
+case class ClusterDetails(
   id: String,
-  name : String,
-  kafkaHosts :String,
-  schemaRegistryUrl: String
-)
+  name: String,
+  kafkaHosts: String,
+  schemaRegistryUrl: String)
 
-case class ClusterResponse (brokers: ClusterDetails)
+case class ClusterResponse(brokers: ClusterDetails)
 
 case class ClusterRequest()
-

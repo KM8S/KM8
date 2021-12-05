@@ -14,14 +14,14 @@ class NavigatorControl extends BaseControl[Has[UI]]:
       ui <- ZIO.service[UI]
       tv <- treeView
       ret <- ZIO(
-        new ScrollPane {
-          minWidth = ui.config.leftWidth
-          fitToWidth = true
-          fitToHeight = true
-          id = "page-tree"
-          content = tv
-        }
-      )
+               new ScrollPane {
+                 minWidth = ui.config.leftWidth
+                 fitToWidth = true
+                 fitToHeight = true
+                 id = "page-tree"
+                 content = tv
+               }
+             )
     yield ret
 
   private val clusterNode = (cluster: Cluster) =>
@@ -39,18 +39,19 @@ class NavigatorControl extends BaseControl[Has[UI]]:
     for
       ui <- ZIO.service[UI]
       tv <- ZIO {
-        new TreeView[String] {
-          showRoot = false
-          id = "left-tree"
-          root = new TreeItem[String]("Clusters") {
-            expanded = true
-            children = ui.data.map(clusterNode).toSeq
-          }
-        }
-      }
+              new TreeView[String] {
+                showRoot = false
+                id = "left-tree"
+                root = new TreeItem[String]("Clusters") {
+                  expanded = true
+                  children = ui.data.map(clusterNode).toSeq
+                }
+              }
+            }
 //      _ = tv.getSelectionModel.selectedItemProperty().addListener((obs, oldVal, newVal) => alert(newVal.getValue))
-      _ = tv.getSelectionModel.selectedItemProperty().addListener((obs, oldVal, newVal) =>
-        alert(ui.data.map(_.consumerGroups)))
+      _ = tv.getSelectionModel
+            .selectedItemProperty()
+            .addListener((obs, oldVal, newVal) => alert(ui.data.map(_.consumerGroups)))
     yield tv
 
   override def render: ZIO[Has[UI], Throwable, Node] = view

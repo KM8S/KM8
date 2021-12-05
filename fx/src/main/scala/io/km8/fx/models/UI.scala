@@ -123,7 +123,8 @@ given Def[Topic] with
       NonEmptyList(gen(seed)),
       Nil,
       MessageEncoding.String,
-      MessageEncoding.String)
+      MessageEncoding.String
+    )
 
 case class PartitionOffset(partition: Partition, offset: Offset)
 

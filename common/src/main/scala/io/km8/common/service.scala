@@ -4,25 +4,23 @@ import zio.*
 import zio.stream.*
 
 trait TopicsService {
-  def AddTopic(request: AddTopicRequest): Task[TopicDetails]
-  def GetTopics(request: GetTopicsRequest): Task[ TopicResponse]
-  def DeleteTopic(request: DeleteTopicRequest): Task[DeleteTopicResponse]
+  def addTopic(request: AddTopicRequest): Task[TopicDetails]
+  def getTopics(request: GetTopicsRequest): Task[TopicResponse]
+  def deleteTopic(request: DeleteTopicRequest): Task[DeleteTopicResponse]
 }
 
 trait BrokersService {
-  def GetBrokers(request:BrokerRequest): Task[BrokerResponse]
+  def getBrokers(request: BrokerRequest): Task[BrokerResponse]
 }
 
 trait ClustersService {
-  def AddCluster(request:ClusterDetails): Task[ClusterDetails]
-  def DeleteCluster(request:ClusterDetails): Task[ClusterResponse]
-  def GetClusters(request:ClusterRequest): Task[ClusterResponse]
+  def addCluster(request: ClusterDetails): Task[ClusterDetails]
+  def deleteCluster(request: ClusterDetails): Task[ClusterResponse]
+  def getClusters(request: ClusterRequest): Task[ClusterResponse]
 }
 
 trait MessagesService {
-  def ProduceMessage(request:ProduceRequest): Task[ProduceResponse];
+  def produceMessage(request: ProduceRequest): Task[ProduceResponse];
 
-  def ConsumeMessages(request:ConsumeRequest): ZStream[Any, Throwable,  Message];
+  def consumeMessages(request: ConsumeRequest): ZStream[Any, Throwable, Message];
 }
-
-

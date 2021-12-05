@@ -31,34 +31,33 @@ object Main extends JFXApp3 with BootstrapRuntime:
       navigator <- NavigatorControl().render
       mainContent <- MainContentControl().render
       pane <- ZIO(new SplitPane {
-        dividerPositions = 0
-        id = "page-splitpane"
-        items.addAll(navigator, mainContent)
-      })
+                dividerPositions = 0
+                id = "page-splitpane"
+                items.addAll(navigator, mainContent)
+              })
       p <- ZIO(new BorderPane {
-        top = new VBox {
-          vgrow = Priority.Always
-          hgrow = Priority.Always
-          children = header
-        }
-        center = new BorderPane {
-          center = pane
-        }
-      })
+             top = new VBox {
+               vgrow = Priority.Always
+               hgrow = Priority.Always
+               children = header
+             }
+             center = new BorderPane {
+               center = pane
+             }
+           })
     yield p
 
   override def start(): Unit =
     val io =
       for
         main <- mkWindow
-        ret <- ZIO(
-          new JFXApp3.PrimaryStage {
-            title = "KM8"
-            scene = new Scene(1366, 768) {
-              stylesheets = List("css/app.css")
-              root = main
-            }
-          })
+        ret <- ZIO(new JFXApp3.PrimaryStage {
+                 title = "KM8"
+                 scene = new Scene(1366, 768) {
+                   stylesheets = List("css/app.css")
+                   root = main
+                 }
+               })
       yield ret
     unsafeRun(
       io
