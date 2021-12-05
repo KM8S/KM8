@@ -18,7 +18,7 @@
 
 #left-nav .list-cell:even, #left-nav .list-cell:odd {
     -fx-background-color: white;
-    -fx-font-size:20.0;
+    -fx-font-size: 20.0;
 }
 
 #left-nav .list-cell:empty, #left-nav .list-cell:empty:hover, #left-nav .list-cell:selected {
@@ -29,6 +29,14 @@
 #left-tree {
     -fx-background-color: white;
     -fx-font-size:20.0;
+}
+
+#omni {
+    -fx-font-size: 20
+}
+
+#search-omni {
+    -fx-font-size: 20
 }
 /* o
 

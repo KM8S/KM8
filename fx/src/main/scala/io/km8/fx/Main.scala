@@ -1,7 +1,9 @@
 package io.km8.fx
 
 import javafx.application.Platform
+import scala.collection.mutable.{Queue => SQueue}
 import zio.*
+import zio.duration.*
 import javafx.beans.property.ObjectProperty
 import scalafx.application.JFXApp3
 import scalafx.collections.ObservableBuffer
@@ -18,6 +20,9 @@ import io.km8.fx.ui.components.{given, *}
 
 import java.util.concurrent.Executor
 import scala.concurrent.ExecutionContext
+import scalafx.scene.input.KeyEvent
+import scalafx.Includes.*
+import scalafx.scene.input.KeyCode
 
 object Main extends JFXApp3 with BootstrapRuntime:
 
@@ -47,21 +52,33 @@ object Main extends JFXApp3 with BootstrapRuntime:
            })
     yield p
 
+  private def mkScene(sceneRoot: Parent): ZIO[Has[EventsHub], Throwable, Scene] =
+    for dispatchFocusOmni <- dispatchEvent
+    yield new Scene(1366, 768) {
+      stylesheets = List("css/app.css")
+      root = sceneRoot
+      onKeyReleased = k =>
+        k.code match
+          case KeyCode.Slash =>
+            k.consume()
+            dispatchFocusOmni(UIEvent.FocusOmni)
+          case _ => ()
+    }
+
   override def start(): Unit =
-    val io =
+    val io: ZIO[Any, Throwable, JFXApp3.PrimaryStage] =
       for
-        main <- mkWindow
+        h <- Hub.unbounded[UIEvent]
+        hubLayer = ZLayer.succeed(h)
+        main <- mkWindow.provideLayer(UI.make("") +!+ hubLayer)
+        s <- mkScene(main).provideLayer(hubLayer)
         ret <- ZIO(new JFXApp3.PrimaryStage {
                  title = "KM8"
-                 scene = new Scene(1366, 768) {
-                   stylesheets = List("css/app.css")
-                   root = main
-                 }
+                 scene = s
                })
       yield ret
     unsafeRun(
       io
-        .provideCustomLayer(ZLayer.succeed(gen[UI]("")))
         .on(currentThreadEC)
         .exitCode
     )

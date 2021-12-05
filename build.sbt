@@ -89,7 +89,7 @@ lazy val fx = project
       "com.softwaremill.sttp.client3" %% "httpclient-backend-zio"        % sttpVersion,
       "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % sttpVersion
     ) ++ javaFXModules,
-    Compile / run / mainClass     := Some("io.km8.fx.Main")
+    Compile / run / mainClass := Some("io.km8.fx.Main")
   )
   .dependsOn(common)
 
@@ -98,15 +98,6 @@ lazy val core = project
   .settings(sharedSettings)
   .settings(
     name := "km8-core",
-    scalacOptions ++= Seq(
-      "-unchecked",
-      "-deprecation",
-      "-encoding",
-      "utf8",
-      "-feature",
-      "-language:_"
-      // "-Xfatal-warnings",
-    ),
     libraryDependencies ++= Seq(
       "dev.zio"     %% "zio-kafka"                 % "0.16.0",
       "dev.zio"     %% "zio-json"                  % "0.2.0-M3",
@@ -146,6 +137,17 @@ lazy val common = project
 lazy val sharedSettings = Seq(
   version      := ProjectVersion,
   scalaVersion := ProjectScalaVersion,
+  scalacOptions ++= Seq(
+    "-unchecked",
+    "-deprecation",
+    "-encoding",
+    "utf8"
+//    "-feature",
+//    "-verbose"
+//    "-Ydebug",
+//    "-language:_"
+    // "-Xfatal-warnings",
+  ),
   libraryDependencies ++= Seq(
     "dev.zio"  %% "zio"           % ZIOVersion,
     "dev.zio"  %% "zio-prelude"   % zioPreludeVersion,

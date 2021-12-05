@@ -2,8 +2,10 @@ package io.km8.fx
 package models
 
 import zio.*
+import zio.duration.*
+import zio.clock.*
 import zio.prelude.*
-import Assertion._
+import Assertion.*
 
 import scala.annotation.implicitNotFound
 
@@ -168,15 +170,27 @@ given Def[Cluster] with
     )
 
 case class UIConfig(leftWidth: Int)
-case class UI(data: List[Cluster], config: UIConfig)
 
-given Def[UI] with
+case class UI(
+  data: List[Cluster],
+  config: UIConfig)
 
-  def apply(seed: TestSeed = "") =
-    UI(
-      data = List.range(1, 4).map(gen),
-      config = UIConfig(leftWidth = 300)
-    )
+enum UIEvent:
+  case FocusOmni
+
+type EventsHub = Hub[UIEvent]
+
+val EventsHub = Hub
+
+object UI:
+
+  def make(seed: TestSeed = ""): URLayer[Any, Has[UI]] =
+    UIO(
+      UI(
+        data = List.range(1, 4).map(gen),
+        config = UIConfig(leftWidth = 300)
+      )
+    ).toLayer
 
 case class Message(
   key: Array[Byte],
@@ -184,3 +198,8 @@ case class Message(
   headers: List[MessageHeader])
 
 case class MessageHeader(key: String, value: Array[Byte])
+
+type UIEnv = Has[UI] & Has[EventsHub]
+
+def dispatchEvent: ZIO[Has[EventsHub], Nothing, UIEvent => Unit] =
+  ZIO.service[EventsHub].map(hub => event => Runtime.global.unsafeRun(hub.publish(event)))
