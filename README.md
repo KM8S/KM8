@@ -1,6 +1,6 @@
 # kafkamate (KM8)
 
-Web GUI Kafka Tool to consume and produce messages.
+GUI Kafka Tool to consume and produce messages.
 
 Currently supports reading messages in STRING and PROTOBUF formats.
 
