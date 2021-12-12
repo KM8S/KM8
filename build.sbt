@@ -1,16 +1,24 @@
 ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
-lazy val ProjectName = "kafkamate"
-lazy val ProjectOrganization = "csofronia"
-lazy val ProjectVersion = "0.1.0"
+lazy val ProjectName = "KM8"
+lazy val ProjectOrganization = "KM8S"
+lazy val ProjectVersion = "0.2.0-SNAPSHOT"
 lazy val ProjectScalaVersion = "3.1.0"
 
-lazy val ZIOVersion = "1.0.12"
-lazy val SlinkyVersion = "0.6.7"
-
-val scalaFxVersion = "16.0.0-R25"
-val zioPreludeVersion = "1.0.0-RC8"
-val sttpVersion = "3.3.16"
+lazy val zioVersion = "1.0.12"
+lazy val zioKafkaVersion = "0.17.1"
+lazy val zioJsonVersion = "0.2.0-M3"
+lazy val zioLoggingVersion = "0.5.14"
+lazy val zioPreludeVersion = "1.0.0-RC8"
+lazy val kafkaVersion = "2.8.0"
+lazy val kafkaProtobufVersion = "6.2.0"
+lazy val javaFxVersion = "16"
+lazy val scalaFxVersion = "16.0.0-R25"
+lazy val osLibVersion = "0.8.0"
+lazy val circeVersion = "0.14.1"
+lazy val sttpVersion = "3.3.18"
+lazy val logbackVersion = "1.2.7"
+lazy val logstashVersion = "7.0.1"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -32,7 +40,6 @@ lazy val root = project
 
       new Dockerfile {
         from("openjdk:8-jre")
-        maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
 
         env("KAFKAMATE_ENV", "prod")
         expose(8080, 61234, 61235)
@@ -63,7 +70,9 @@ lazy val root = project
     )
   )
   .settings(
-    addCommandAlias("dockerize", ";compile;test;build;docker")
+    addCommandAlias("dockerize", ";compile;test;build;docker"),
+    addCommandAlias("fmt", "all scalafmtSbt scalafmtAll test:scalafmt"),
+    addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
   )
 
 lazy val javaFXModules = {
@@ -75,7 +84,7 @@ lazy val javaFXModules = {
     case _                            => throw new Exception("Unknown platform!")
   }
   Seq("base", "controls", "fxml", "graphics", "media", "swing", "web").map(m =>
-    "org.openjfx" % s"javafx-$m" % "16" classifier osName
+    "org.openjfx" % s"javafx-$m" % javaFxVersion classifier osName
   )
 }
 
@@ -99,18 +108,16 @@ lazy val core = project
   .settings(
     name := "km8-core",
     libraryDependencies ++= Seq(
-      "dev.zio"     %% "zio-kafka"                 % "0.16.0",
-      "dev.zio"     %% "zio-json"                  % "0.2.0-M3",
-      "dev.zio"     %% "zio-logging-slf4j"         % "0.5.14",
-      "com.lihaoyi" %% "os-lib"                    % "0.7.8",
-      "io.confluent" % "kafka-protobuf-serializer" % "6.2.0",
-      // "com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.10.0",
-      "net.logstash.logback" % "logstash-logback-encoder" % "6.6",
-      "ch.qos.logback"       % "logback-classic"          % "1.2.3"
-      // "io.github.embeddedkafka" %% "embedded-kafka"           % "3.0.0" % Test
+      "dev.zio"             %% "zio-kafka"                 % zioKafkaVersion,
+      "dev.zio"             %% "zio-json"                  % zioJsonVersion,
+      "dev.zio"             %% "zio-logging-slf4j"         % zioLoggingVersion,
+      "io.confluent"         % "kafka-protobuf-serializer" % kafkaProtobufVersion,
+      "com.lihaoyi"         %% "os-lib"                    % osLibVersion,
+      "net.logstash.logback" % "logstash-logback-encoder"  % logstashVersion,
+      "ch.qos.logback"       % "logback-classic"           % logbackVersion
     ),
     dependencyOverrides ++= Seq(
-      "org.apache.kafka" % "kafka-clients" % "2.8.0"
+      "org.apache.kafka" % "kafka-clients" % kafkaVersion
     ),
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
@@ -142,19 +149,13 @@ lazy val sharedSettings = Seq(
     "-deprecation",
     "-encoding",
     "utf8"
-//    "-feature",
-//    "-verbose"
-//    "-Ydebug",
-//    "-language:_"
-    // "-Xfatal-warnings",
   ),
   libraryDependencies ++= Seq(
-    "dev.zio"  %% "zio"           % ZIOVersion,
+    "dev.zio"  %% "zio"           % zioVersion,
     "dev.zio"  %% "zio-prelude"   % zioPreludeVersion,
-    "io.circe" %% "circe-generic" % "0.14.1",
-    "dev.zio"  %% "zio-test"      % ZIOVersion % Test,
-    "dev.zio"  %% "zio-test-sbt"  % ZIOVersion % Test
+    "io.circe" %% "circe-generic" % circeVersion,
+    "dev.zio"  %% "zio-test"      % zioVersion % Test,
+    "dev.zio"  %% "zio-test-sbt"  % zioVersion % Test
   ),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
-  // ,bloopExportJarClassifiers in Global := Some(Set("sources"))
 )

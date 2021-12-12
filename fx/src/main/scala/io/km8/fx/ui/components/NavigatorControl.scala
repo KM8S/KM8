@@ -54,7 +54,6 @@ class NavigatorControl extends BaseControl[Has[UI]]:
             .addListener((obs, oldVal, newVal) => alert(ui.data.map(_.consumerGroups)))
     yield tv
 
-  override def render: ZIO[Has[UI], Throwable, Node] = 
-    for 
-      ret <- view
+  override def render: ZIO[Has[UI], Throwable, Node] =
+    for ret <- view
     yield ret

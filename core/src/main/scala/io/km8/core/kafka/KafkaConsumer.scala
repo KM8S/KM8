@@ -44,12 +44,10 @@ object KafkaConsumer {
         case _          => AutoOffsetStrategy.Latest
       }
 
-    private def protobufDeserializer(settings: ProtoSerdeSettings): Deserializer[Any, Try[GMessage]] =
-      Deserializer {
-        val protoDeser = new KafkaProtobufDeserializer()
-        protoDeser.configure(settings.configs.asJava, false)
-        protoDeser
-      }.asTry
+    private def protobufDeserializer(settings: ProtoSerdeSettings): Task[Deserializer[Any, Try[GMessage]]] =
+      val protoDeser = new KafkaProtobufDeserializer()
+      protoDeser.configure(settings.configs.asJava, false)
+      Deserializer.fromKafkaDeserializer(protoDeser, settings.configs, false).map(_.asTry)
 
     private def consumerSettings(config: ClusterSettings, offsetStrategy: String): Task[ConsumerSettings] =
       Task {
@@ -90,8 +88,8 @@ object KafkaConsumer {
                 .orElseFail(new Exception("SchemaRegistry url was not provided!"))
             )
           ZStream
-            .fromEffect(protoSettings)
-            .flatMap(p => consumer(protobufDeserializer(p)))
+            .fromEffect(protoSettings.flatMap(protobufDeserializer))
+            .flatMap(consumer)
         case _ => consumer(Deserializer.string.asTry)
       }
 
