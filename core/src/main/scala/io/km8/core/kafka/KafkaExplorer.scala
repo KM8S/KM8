@@ -16,6 +16,7 @@ trait KafkaExplorer {
   def listTopics(clusterId: String): Task[List[TopicDetails]]
   def addTopic(req: AddTopicRequest): Task[TopicDetails]
   def deleteTopic(req: DeleteTopicRequest): Task[DeleteTopicResponse]
+  def listConsumerGroups(clusterId: String): Task[Unit]
 }
 
 object KafkaExplorer {
@@ -120,6 +121,11 @@ object KafkaExplorer {
       withAdminClient(req.clusterId) {
         _.deleteTopic(req.topicName)
           .as(DeleteTopicResponse(req.topicName))
+      }
+
+    override def listConsumerGroups(clusterId: String): Task[Unit] =
+      withAdminClient(clusterId) {
+        _.listConsumerGroups().unit
       }
 
   }

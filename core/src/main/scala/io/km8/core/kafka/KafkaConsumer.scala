@@ -45,9 +45,9 @@ object KafkaConsumer {
       }
 
     private def protobufDeserializer(settings: ProtoSerdeSettings): Task[Deserializer[Any, Try[GMessage]]] =
-      val protoDeser = new KafkaProtobufDeserializer()
-      protoDeser.configure(settings.configs.asJava, false)
-      Deserializer.fromKafkaDeserializer(protoDeser, settings.configs, false).map(_.asTry)
+      Deserializer
+        .fromKafkaDeserializer(new KafkaProtobufDeserializer(), settings.configs, false)
+        .map(_.asTry)
 
     private def consumerSettings(config: ClusterSettings, offsetStrategy: String): Task[ConsumerSettings] =
       Task {
