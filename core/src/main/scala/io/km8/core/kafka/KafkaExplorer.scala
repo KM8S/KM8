@@ -4,19 +4,20 @@ package kafka
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.duration.*
-import zio.kafka.admin.*
-import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
+import zio.duration._
+import zio.kafka.admin._
+import zio.kafka.admin.AdminClient._
 
-import config.*, ClustersConfig.*
-import io.km8.common.*
+import config._, ClustersConfig._
+import io.km8.common._
 
 trait KafkaExplorer {
   def listBrokers(clusterId: String): Task[List[BrokerDetails]]
   def listTopics(clusterId: String): Task[List[TopicDetails]]
   def addTopic(req: AddTopicRequest): Task[TopicDetails]
   def deleteTopic(req: DeleteTopicRequest): Task[DeleteTopicResponse]
-  def listConsumerGroups(clusterId: String): Task[Unit]
+  def listConsumerGroups(clusterId: String): Task[ConsumerGroupsResponse]
+  def listConsumerOffsets(clusterId: String, groupId: String): Task[ConsumerGroupOffsetsResponse]
 }
 
 object KafkaExplorer {
@@ -123,9 +124,30 @@ object KafkaExplorer {
           .as(DeleteTopicResponse(req.topicName))
       }
 
-    override def listConsumerGroups(clusterId: String): Task[Unit] =
+    override def listConsumerGroups(clusterId: String): Task[ConsumerGroupsResponse] =
+      def mapConsumerGroup(state: Option[ConsumerGroupState]): ConsumerGroupInternalState = state match {
+        case None | Some(ConsumerGroupState.Unknown)      => ConsumerGroupInternalState.Unknown
+        case Some(ConsumerGroupState.PreparingRebalance)  => ConsumerGroupInternalState.PreparingRebalance
+        case Some(ConsumerGroupState.CompletingRebalance) => ConsumerGroupInternalState.CompletingRebalance
+        case Some(ConsumerGroupState.Stable)              => ConsumerGroupInternalState.Stable
+        case Some(ConsumerGroupState.Dead)                => ConsumerGroupInternalState.Dead
+        case Some(ConsumerGroupState.Empty)               => ConsumerGroupInternalState.Empty
+      }
+
       withAdminClient(clusterId) {
-        _.listConsumerGroups().unit
+        _.listConsumerGroups()
+          .map(lst => ConsumerGroupsResponse(lst.map(r => ConsumerGroupInternal(r.groupId, mapConsumerGroup(r.state)))))
+      }
+
+    end listConsumerGroups
+
+    override def listConsumerOffsets(clusterId: String, groupId: String): Task[ConsumerGroupOffsetsResponse] =
+      withAdminClient(clusterId) {
+        _.listConsumerGroupOffsets(groupId).map(res =>
+          ConsumerGroupOffsetsResponse(res.map { case (tp, offMeta) =>
+            TopicPartitionInternal(tp.name, tp.partition) -> offMeta.offset
+          })
+        )
       }
 
   }
