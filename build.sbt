@@ -3,9 +3,9 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 lazy val ProjectName = "KM8"
 lazy val ProjectOrganization = "KM8S"
 lazy val ProjectVersion = "0.2.0-SNAPSHOT"
-lazy val ProjectScalaVersion = "3.1.0"
+lazy val ProjectScalaVersion = "3.1.1"
 
-lazy val zioVersion = "1.0.12"
+lazy val zioVersion = "1.0.13"
 lazy val zioKafkaVersion = "0.17.1"
 lazy val zioJsonVersion = "0.2.0-M3"
 lazy val zioLoggingVersion = "0.5.14"
@@ -17,7 +17,7 @@ lazy val scalaFxVersion = "16.0.0-R25"
 lazy val osLibVersion = "0.8.0"
 lazy val circeVersion = "0.14.1"
 lazy val sttpVersion = "3.3.18"
-lazy val logbackVersion = "1.2.7"
+lazy val logbackVersion = "1.2.11"
 lazy val logstashVersion = "7.0.1"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
@@ -92,13 +92,24 @@ lazy val fx = project
   .in(file("fx"))
   .settings(sharedSettings)
   .settings(
+    name := "KM8",
     libraryDependencies ++= Seq(
       "org.scalafx"                   %% "scalafx"                       % scalaFxVersion,
       "com.softwaremill.sttp.client3" %% "core"                          % sttpVersion,
       "com.softwaremill.sttp.client3" %% "httpclient-backend-zio"        % sttpVersion,
       "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % sttpVersion
     ) ++ javaFXModules,
-    Compile / run / mainClass := Some("io.km8.fx.Main")
+    Compile / run / mainClass := Some("io.km8.fx.Main"),
+    assembly / assemblyMergeStrategy := {
+      case x if x endsWith "io.netty.versions.properties" => MergeStrategy.discard
+      case x if x endsWith "module-info.class"            => MergeStrategy.discard
+      case x if x endsWith ".proto"                       => MergeStrategy.discard
+      case x if x startsWith "org/reactivestreams/"       => MergeStrategy.first
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    },
+    assembly / test := {}
   )
   .dependsOn(common)
 
@@ -124,17 +135,6 @@ lazy val core = project
     )
   )
   .dependsOn(common)
-  .settings(
-    assembly / assemblyMergeStrategy := {
-      case x if x endsWith "io.netty.versions.properties" => MergeStrategy.concat
-      case x if x endsWith "module-info.class"            => MergeStrategy.discard
-      case x if x endsWith ".proto"                       => MergeStrategy.discard
-      case x =>
-        val oldStrategy = (assembly / assemblyMergeStrategy).value
-        oldStrategy(x)
-    },
-    assembly / test := {}
-  )
 
 lazy val common = project
   .in(file("common"))
