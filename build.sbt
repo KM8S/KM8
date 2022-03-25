@@ -92,14 +92,24 @@ lazy val fx = project
   .in(file("fx"))
   .settings(sharedSettings)
   .settings(
-    name := "KafkaM8",
+    name := "KM8",
     libraryDependencies ++= Seq(
       "org.scalafx"                   %% "scalafx"                       % scalaFxVersion,
       "com.softwaremill.sttp.client3" %% "core"                          % sttpVersion,
       "com.softwaremill.sttp.client3" %% "httpclient-backend-zio"        % sttpVersion,
       "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % sttpVersion
     ) ++ javaFXModules,
-    Compile / run / mainClass := Some("io.km8.fx.Main")
+    Compile / run / mainClass := Some("io.km8.fx.Main"),
+    assembly / assemblyMergeStrategy := {
+      case x if x endsWith "io.netty.versions.properties" => MergeStrategy.discard
+      case x if x endsWith "module-info.class"            => MergeStrategy.discard
+      case x if x endsWith ".proto"                       => MergeStrategy.discard
+      case x if x startsWith "org/reactivestreams/"       => MergeStrategy.first
+      case x =>
+        val oldStrategy = (assembly / assemblyMergeStrategy).value
+        oldStrategy(x)
+    },
+    assembly / test := {}
   )
   .dependsOn(common)
 
@@ -147,15 +157,5 @@ lazy val sharedSettings = Seq(
     "dev.zio"  %% "zio-test"      % zioVersion % Test,
     "dev.zio"  %% "zio-test-sbt"  % zioVersion % Test
   ),
-  testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
-  assembly / assemblyMergeStrategy := {
-    case x if x endsWith "io.netty.versions.properties" => MergeStrategy.discard
-    case x if x endsWith "module-info.class"            => MergeStrategy.discard
-    case x if x endsWith ".proto"                       => MergeStrategy.discard
-    case x if x startsWith "org/reactivestreams/"       => MergeStrategy.first
-    case x =>
-      val oldStrategy = (assembly / assemblyMergeStrategy).value
-      oldStrategy(x)
-  },
-  assembly / test := {}
+  testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 )
