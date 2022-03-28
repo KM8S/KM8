@@ -23,7 +23,7 @@ lazy val Versions = new {
   val logback = "1.2.11"
   val logstash = "7.0.1"
 
-  val testContainers = "0.40.2"
+  val testContainers = "0.40.3"
 }
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
@@ -134,6 +134,7 @@ lazy val core = project
       "net.logstash.logback" % "logstash-logback-encoder"   % Versions.logstash,
       "ch.qos.logback"       % "logback-classic"            % Versions.logback,
       "dev.zio"             %% "zio-test"                   % Versions.zio            % IntegrationTest,
+      "dev.zio"             %% "zio-test-sbt"               % Versions.zio            % IntegrationTest,
       "com.dimafeng"        %% "testcontainers-scala-kafka" % Versions.testContainers % IntegrationTest
     ),
     dependencyOverrides ++= Seq(
@@ -142,8 +143,9 @@ lazy val core = project
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
     ),
-    Defaults.itSettings
+    IntegrationTest / fork := true
   )
+  .settings(Defaults.itSettings)
   .dependsOn(common)
 
 lazy val common = project

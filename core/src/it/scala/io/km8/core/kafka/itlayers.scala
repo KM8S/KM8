@@ -6,7 +6,7 @@ import zio.{Has, Task, UIO, ZIO, ZLayer, ZManaged}
 import com.dimafeng.testcontainers.KafkaContainer
 import io.km8.core.config.{ClusterConfig, ClusterProperties, ClusterSettings}
 
-object it_layers {
+object itlayers {
 
   val kafkaContainer: ZLayer[Blocking, Nothing, Has[KafkaContainer]] =
     ZManaged.make {
