@@ -42,8 +42,9 @@ object KafkaConsumer {
     private val clockLayer = ZLayer.succeed(clock)
     private val blockingLayer = ZLayer.succeed(blocking)
 
+    // TODO Ciprian transform to enum or reuse the Consumer enum + serdes
     private def extractOffsetStrategy(offsetValue: String): AutoOffsetStrategy =
-      offsetValue match {
+      offsetValue.toLowerCase match {
         case "earliest" => AutoOffsetStrategy.Earliest
         case _          => AutoOffsetStrategy.Latest
       }
@@ -64,7 +65,10 @@ object KafkaConsumer {
           .withCloseTimeout(10.seconds)
       }
 
-    private def makeConsumerLayer(clusterId: String, offsetStrategy: String): ZLayer[Clock & Blocking, Throwable, Has[Consumer]] =
+    private def makeConsumerLayer(
+      clusterId: String,
+      offsetStrategy: String
+    ): ZLayer[Clock & Blocking, Throwable, Has[Consumer]] =
       ZLayer.fromManaged {
         for {
           cs <- clustersConfigService.getCluster(clusterId).toManaged_
@@ -74,7 +78,9 @@ object KafkaConsumer {
       }
 
     def consume(request: ConsumeRequest): ZStream[Any, Throwable, Message] = {
-      def consumer[T](valueDeserializer: Deserializer[Any, Try[T]]): ZStream[Has[Consumer], Throwable, Message] = Consumer
+      def consumer[T](
+        valueDeserializer: Deserializer[Any, Try[T]]
+      ): ZStream[Has[Consumer], Throwable, Message] = Consumer
         .subscribeAnd(Subscription.topics(request.topicName))
         .plainStream(Deserializer.string, valueDeserializer)
         .collect {

@@ -4,6 +4,8 @@ import zio.*
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration.*
+import zio.kafka.consumer.*
+import zio.kafka.serde.Serde
 import zio.test.*
 import zio.test.Assertion.*
 
@@ -25,33 +27,29 @@ object KafkaProducerSpec extends DefaultRunnableSpec:
 
   override def spec: ZSpec[_root_.zio.test.environment.TestEnvironment, Any] =
     mainSpec
-      .provideSomeLayer[environment.TestEnvironment & Has[KafkaContainer]](specLayer)
+      .provideSomeLayer[environment.TestEnvironment & Has[KafkaContainer]](specLayer ++ Clock.live)
       .provideCustomLayerShared(Blocking.live >>> itlayers.kafkaContainer)
 
   private val mainSpec =
     suite("Kafka services")(
       testM("KafkaProducer sends a message and KafkaConsumer reads it correctly ") {
-
-        val io = for {
-          _ <- ZIO.sleep(10.seconds).provideLayer(Clock.live)
-          f <- KafkaConsumer
-                 .consume(
-                   ConsumeRequest(
-                     clusterId = "cluster_id",
-                     topicName = "test_topic",
-                     maxResults = 100L,
-                     offsetStrategy = OffsetResetStrategy.EARLIEST.toString,
-                     filterKeyword = "",
-                     messageFormat = MessageFormat.STRING
-                   )
-                 )
-                 .runHead
-                 .fork
+        for
+          f1 <- KafkaConsumer
+                  .consume(
+                    ConsumeRequest(
+                      clusterId = "cluster_id",
+                      topicName = "test_topic",
+                      maxResults = 100L,
+                      offsetStrategy = OffsetResetStrategy.EARLIEST.toString,
+                      filterKeyword = "",
+                      messageFormat = MessageFormat.STRING
+                    )
+                  )
+                  .runHead
+                  .fork
           _ <- KafkaProducer.produce("test_topic", "key", "value")("cluster_id")
-          maybeValue <- f.join
+          maybeValue <- f1.join
+        yield assert(maybeValue.map(_.value))(isSome(equalTo("value")))
 
-        } yield maybeValue
-
-        assertM(io.map(_.map(_.value)))(isSome(equalTo("value")))
-      } @@ TestAspect.timeout(30.seconds)
+      }
     )
