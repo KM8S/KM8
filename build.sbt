@@ -5,20 +5,26 @@ lazy val ProjectOrganization = "KM8S"
 lazy val ProjectVersion = "0.2.0-SNAPSHOT"
 lazy val ProjectScalaVersion = "3.1.1"
 
-lazy val zioVersion = "1.0.13"
-lazy val zioKafkaVersion = "0.17.1"
-lazy val zioJsonVersion = "0.2.0-M3"
-lazy val zioLoggingVersion = "0.5.14"
-lazy val zioPreludeVersion = "1.0.0-RC8"
-lazy val kafkaVersion = "2.8.0"
-lazy val kafkaProtobufVersion = "6.2.0"
-lazy val javaFxVersion = "16"
-lazy val scalaFxVersion = "16.0.0-R25"
-lazy val osLibVersion = "0.8.0"
-lazy val circeVersion = "0.14.1"
-lazy val sttpVersion = "3.3.18"
-lazy val logbackVersion = "1.2.11"
-lazy val logstashVersion = "7.0.1"
+lazy val Versions = new {
+
+  val zio = "1.0.13"
+  val zioKafka = "0.17.3"
+  val zioJson = "0.2.0-M3"
+  val zioLogging = "0.5.14"
+  val zioPrelude = "1.0.0-RC8"
+
+  val kafka = "2.8.0"
+  val kafkaProtobuf = "6.2.0"
+  val javaFx = "16"
+  val scalaFx = "16.0.0-R25"
+  val osLib = "0.8.0"
+  val circe = "0.14.1"
+  val sttp = "3.3.18"
+  val logback = "1.2.11"
+  val logstash = "7.0.1"
+
+  val testContainers = "0.40.3"
+}
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -84,7 +90,7 @@ lazy val javaFXModules = {
     case _                            => throw new Exception("Unknown platform!")
   }
   Seq("base", "controls", "fxml", "graphics", "media", "swing", "web").map(m =>
-    "org.openjfx" % s"javafx-$m" % javaFxVersion classifier osName
+    "org.openjfx" % s"javafx-$m" % Versions.javaFx classifier osName
   )
 }
 
@@ -94,10 +100,10 @@ lazy val fx = project
   .settings(
     name := "KM8",
     libraryDependencies ++= Seq(
-      "org.scalafx"                   %% "scalafx"                       % scalaFxVersion,
-      "com.softwaremill.sttp.client3" %% "core"                          % sttpVersion,
-      "com.softwaremill.sttp.client3" %% "httpclient-backend-zio"        % sttpVersion,
-      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % sttpVersion
+      "org.scalafx"                   %% "scalafx"                       % Versions.scalaFx,
+      "com.softwaremill.sttp.client3" %% "core"                          % Versions.sttp,
+      "com.softwaremill.sttp.client3" %% "httpclient-backend-zio"        % Versions.sttp,
+      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % Versions.sttp
     ) ++ javaFXModules,
     Compile / run / mainClass := Some("io.km8.fx.Main"),
     assembly / assemblyMergeStrategy := {
@@ -115,25 +121,31 @@ lazy val fx = project
 
 lazy val core = project
   .in(file("core"))
+  .configs(IntegrationTest)
   .settings(sharedSettings)
   .settings(
     name := "km8-core",
     libraryDependencies ++= Seq(
-      "dev.zio"             %% "zio-kafka"                 % zioKafkaVersion,
-      "dev.zio"             %% "zio-json"                  % zioJsonVersion,
-      "dev.zio"             %% "zio-logging-slf4j"         % zioLoggingVersion,
-      "io.confluent"         % "kafka-protobuf-serializer" % kafkaProtobufVersion,
-      "com.lihaoyi"         %% "os-lib"                    % osLibVersion,
-      "net.logstash.logback" % "logstash-logback-encoder"  % logstashVersion,
-      "ch.qos.logback"       % "logback-classic"           % logbackVersion
+      "dev.zio"             %% "zio-kafka"                  % Versions.zioKafka,
+      "dev.zio"             %% "zio-json"                   % Versions.zioJson,
+      "dev.zio"             %% "zio-logging-slf4j"          % Versions.zioLogging,
+      "io.confluent"         % "kafka-protobuf-serializer"  % Versions.kafkaProtobuf,
+      "com.lihaoyi"         %% "os-lib"                     % Versions.osLib,
+      "net.logstash.logback" % "logstash-logback-encoder"   % Versions.logstash,
+      "ch.qos.logback"       % "logback-classic"            % Versions.logback,
+      "dev.zio"             %% "zio-test"                   % Versions.zio            % IntegrationTest,
+      "dev.zio"             %% "zio-test-sbt"               % Versions.zio            % IntegrationTest,
+      "com.dimafeng"        %% "testcontainers-scala-kafka" % Versions.testContainers % IntegrationTest
     ),
     dependencyOverrides ++= Seq(
-      "org.apache.kafka" % "kafka-clients" % kafkaVersion
+      "org.apache.kafka" % "kafka-clients" % Versions.kafka
     ),
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
-    )
+    ),
+    IntegrationTest / fork := true
   )
+  .settings(Defaults.itSettings)
   .dependsOn(common)
 
 lazy val common = project
@@ -151,11 +163,11 @@ lazy val sharedSettings = Seq(
     "utf8"
   ),
   libraryDependencies ++= Seq(
-    "dev.zio"  %% "zio"           % zioVersion,
-    "dev.zio"  %% "zio-prelude"   % zioPreludeVersion,
-    "io.circe" %% "circe-generic" % circeVersion,
-    "dev.zio"  %% "zio-test"      % zioVersion % Test,
-    "dev.zio"  %% "zio-test-sbt"  % zioVersion % Test
+    "dev.zio"  %% "zio"           % Versions.zio,
+    "dev.zio"  %% "zio-prelude"   % Versions.zioPrelude,
+    "io.circe" %% "circe-generic" % Versions.circe,
+    "dev.zio"  %% "zio-test"      % Versions.zio % Test,
+    "dev.zio"  %% "zio-test-sbt"  % Versions.zio % Test
   ),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 )
