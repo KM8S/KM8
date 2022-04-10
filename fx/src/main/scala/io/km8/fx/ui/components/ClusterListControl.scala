@@ -2,7 +2,7 @@ package io.km8.fx
 package ui
 package components
 
-import scalafx.scene.control._
+import scalafx.scene.control.*
 import zio.*
 import zio.prelude.*
 import scalafx.scene.Node

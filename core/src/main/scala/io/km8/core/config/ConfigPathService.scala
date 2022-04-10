@@ -1,8 +1,8 @@
 package io.km8.core
 package config
 
-import zio._
-import zio.system._
+import zio.*
+import zio.system.*
 
 lazy val EnvKey = "KAFKAMATE_ENV"
 lazy val FileName = "kafkamate.json"

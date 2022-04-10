@@ -1,26 +1,25 @@
 package io.km8.core
 package kafka
 
-import zio._
+import zio.*
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.duration._
-import zio.kafka.admin._
-import zio.kafka.admin.AdminClient._
+import zio.duration.*
+import zio.kafka.admin.*
+import zio.kafka.admin.AdminClient.*
 
-import config._, ClustersConfig._
-import io.km8.common._
+import config.*, ClustersConfig.*
+import io.km8.common.*
 
-trait KafkaExplorer {
+trait KafkaExplorer:
   def listBrokers(clusterId: String): Task[List[BrokerDetails]]
   def listTopics(clusterId: String): Task[List[TopicDetails]]
   def addTopic(req: AddTopicRequest): Task[TopicDetails]
   def deleteTopic(req: DeleteTopicRequest): Task[DeleteTopicResponse]
   def listConsumerGroups(clusterId: String): Task[ConsumerGroupsResponse]
   def listConsumerOffsets(clusterId: String, groupId: String): Task[ConsumerGroupOffsetsResponse]
-}
 
-object KafkaExplorer {
+object KafkaExplorer:
 
   val CleanupPolicyKey = "cleanup.policy"
   val RetentionMsKey = "retention.ms"
@@ -151,5 +150,3 @@ object KafkaExplorer {
       }
 
   }
-
-}

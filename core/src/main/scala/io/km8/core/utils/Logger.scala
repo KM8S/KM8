@@ -4,7 +4,7 @@ package utils
 import zio.URLayer
 import zio.clock.Clock
 import zio.console.Console
-import zio.logging._
+import zio.logging.*
 
 object Logger {
 

@@ -3,7 +3,7 @@ package util
 /*
 
 import net.manub.embeddedkafka.{EmbeddedK, EmbeddedKafka, EmbeddedKafkaConfig}
-import zio._
+import zio.*
 
 object KafkaEmbedded {
   type Kafka = Has[Kafka.Service]
