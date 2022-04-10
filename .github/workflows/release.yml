@@ -1,0 +1,21 @@
+name: Release Artifact
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Scala
+        uses: olafurpg/setup-scala@v13
+        with:
+          java-version: openjdk@1.17
+      - name: Cache scala dependencies
+        uses: coursier/cache-action@v6
+      - name: Create jar artifact
+        run: sbt fx/assembly

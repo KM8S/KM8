@@ -1,25 +1,26 @@
 package io.km8.core
 package kafka
 
-import java.util.UUID
-import scala.jdk.CollectionConverters._
-import scala.util.Try
-
-import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
-import com.google.protobuf.{Message => GMessage}
 import zio.*
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration.*
-import zio.logging.*
-import zio.stream.ZStream
 import zio.kafka.consumer.*
 import zio.kafka.consumer.Consumer.*
 import zio.kafka.serde.Deserializer
+import zio.logging.*
+import zio.stream.ZStream
 
-import config.*, ClustersConfig.*
 import com.google.protobuf.Extension.MessageType
+import com.google.protobuf.Message as GMessage
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
 import io.km8.common.*
+import io.km8.core.config.*
+import io.km8.core.config.ClustersConfig.*
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+import java.util.UUID
 
 trait KafkaConsumer {
   def consume(request: ConsumeRequest): ZStream[Any, Throwable, Message]
@@ -30,16 +31,20 @@ object KafkaConsumer {
   lazy val liveLayer: URLayer[Clock with Blocking with Has[ClusterConfig], Has[KafkaConsumer]] =
     (KafkaConsumerLive(_, _, _)).toLayer
 
+  def consume(request: ConsumeRequest): ZStream[Has[KafkaConsumer], Throwable, Message] =
+    ZStream.accessStream[Has[KafkaConsumer]](_.get.consume(request))
+
   case class KafkaConsumerLive(
     clock: Clock.Service,
     blocking: Blocking.Service,
     clustersConfigService: ClusterConfig)
       extends KafkaConsumer {
-    val clockLayer = ZLayer.succeed(clock)
-    val blockingLayer = ZLayer.succeed(blocking)
+    private val clockLayer = ZLayer.succeed(clock)
+    private val blockingLayer = ZLayer.succeed(blocking)
 
+    // TODO Ciprian transform to enum or reuse the Consumer enum + serdes
     private def extractOffsetStrategy(offsetValue: String): AutoOffsetStrategy =
-      offsetValue match {
+      offsetValue.toLowerCase match {
         case "earliest" => AutoOffsetStrategy.Earliest
         case _          => AutoOffsetStrategy.Latest
       }
@@ -60,7 +65,10 @@ object KafkaConsumer {
           .withCloseTimeout(10.seconds)
       }
 
-    private def makeConsumerLayer(clusterId: String, offsetStrategy: String) =
+    private def makeConsumerLayer(
+      clusterId: String,
+      offsetStrategy: String
+    ): ZLayer[Clock & Blocking, Throwable, Has[Consumer]] =
       ZLayer.fromManaged {
         for {
           cs <- clustersConfigService.getCluster(clusterId).toManaged_
@@ -70,7 +78,9 @@ object KafkaConsumer {
       }
 
     def consume(request: ConsumeRequest): ZStream[Any, Throwable, Message] = {
-      def consumer[T](valueDeserializer: Deserializer[Any, Try[T]]) = Consumer
+      def consumer[T](
+        valueDeserializer: Deserializer[Any, Try[T]]
+      ): ZStream[Has[Consumer], Throwable, Message] = Consumer
         .subscribeAnd(Subscription.topics(request.topicName))
         .plainStream(Deserializer.string, valueDeserializer)
         .collect {
