@@ -1,13 +1,14 @@
 package io.km8.core.kafka
 
-import zio.blocking.*
-import zio.clock.Clock
-import zio.*
-import zio.kafka.consumer.Consumer
 import com.dimafeng.testcontainers.KafkaContainer
-import io.km8.core.config.{ClusterConfig, ClusterProperties, ClusterSettings}
+import zio.*
+import zio.clock.Clock
+import zio.blocking.*
+import zio.kafka.consumer.Consumer
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
 import zio.kafka.consumer.ConsumerSettings
+
+import io.km8.core.config.{ClusterConfig, ClusterProperties, ClusterSettings}
 
 object itlayers:
 
