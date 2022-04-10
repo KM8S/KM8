@@ -19,7 +19,7 @@ trait KafkaExplorer:
   def listConsumerGroups(clusterId: String): Task[ConsumerGroupsResponse]
   def listConsumerOffsets(clusterId: String, groupId: String): Task[ConsumerGroupOffsetsResponse]
 
-object KafkaExplorer:
+object KafkaExplorer extends Accessible[KafkaExplorer]:
 
   val CleanupPolicyKey = "cleanup.policy"
   val RetentionMsKey = "retention.ms"
@@ -46,10 +46,7 @@ object KafkaExplorer:
     def withAdminClient[A](clusterId: String)(eff: AdminClient => RIO[Blocking with Clock, A]): Task[A] =
       ZIO
         .service[AdminClient]
-        .flatMap { ac =>
-          eff(ac)
-            .timeoutFail(new Exception("Timed out"))(6.seconds)
-        }
+        .flatMap(eff(_).timeoutFail(new Exception("Timed out"))(6.seconds))
         .provideLayer(blockingLayer >+> adminClientLayer(clusterId) ++ clockLayer)
 
     override def listBrokers(clusterId: String) =

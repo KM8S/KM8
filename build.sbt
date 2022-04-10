@@ -13,7 +13,6 @@ lazy val Versions = new {
   val zioLogging = "0.5.14"
   val zioPrelude = "1.0.0-RC8"
 
-  val kafka = "2.8.0"
   val kafkaProtobuf = "7.1.0"
   val javaFx = "16"
   val scalaFx = "16.0.0-R25"
@@ -136,9 +135,6 @@ lazy val core = project
       "dev.zio"             %% "zio-test"                   % Versions.zio            % IntegrationTest,
       "dev.zio"             %% "zio-test-sbt"               % Versions.zio            % IntegrationTest,
       "com.dimafeng"        %% "testcontainers-scala-kafka" % Versions.testContainers % IntegrationTest
-    ),
-    dependencyOverrides ++= Seq(
-      "org.apache.kafka" % "kafka-clients" % Versions.kafka
     ),
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
