@@ -56,11 +56,11 @@ object KafkaExplorer {
     override def listBrokers(clusterId: String) =
       withAdminClient(clusterId) { ac =>
         for {
-          (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id)
+          (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.map(_.id))
           brokers = nodes.map { n =>
                       val nodeId = n.id
-                      if (controllerId != nodeId) BrokerDetails(id = nodeId, isController = false)
-                      else BrokerDetails(nodeId, isController = true)
+                      if (controllerId.contains(nodeId)) BrokerDetails(nodeId, isController = true)
+                      else BrokerDetails(id = nodeId, isController = false)
                     }
           // resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
           // _ <- ac.describeConfigs(resources)

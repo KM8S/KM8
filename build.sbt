@@ -3,27 +3,27 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 lazy val ProjectName = "KM8"
 lazy val ProjectOrganization = "KM8S"
 lazy val ProjectVersion = "0.2.0-SNAPSHOT"
-lazy val ProjectScalaVersion = "3.1.1"
+lazy val ProjectScalaVersion = "3.1.2"
 
 lazy val Versions = new {
 
   val zio = "1.0.13"
-  val zioKafka = "0.17.3"
+  val zioKafka = "0.17.5"
   val zioJson = "0.2.0-M3"
   val zioLogging = "0.5.14"
   val zioPrelude = "1.0.0-RC8"
 
   val kafka = "2.8.0"
-  val kafkaProtobuf = "7.0.1"
+  val kafkaProtobuf = "7.1.0"
   val javaFx = "16"
   val scalaFx = "16.0.0-R25"
-  val osLib = "0.8.0"
+  val osLib = "0.8.1"
   val circe = "0.14.1"
-  val sttp = "3.3.18"
+  val sttp = "3.5.1"
   val logback = "1.2.11"
-  val logstash = "7.0.1"
+  val logstash = "7.1"
 
-  val testContainers = "0.40.3"
+  val testContainers = "0.40.5"
 }
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
@@ -100,10 +100,10 @@ lazy val fx = project
   .settings(
     name := "KM8",
     libraryDependencies ++= Seq(
-      "org.scalafx"                   %% "scalafx"                       % Versions.scalaFx,
-      "com.softwaremill.sttp.client3" %% "core"                          % Versions.sttp,
-      "com.softwaremill.sttp.client3" %% "httpclient-backend-zio"        % Versions.sttp,
-      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio" % Versions.sttp
+      "org.scalafx"                   %% "scalafx"                        % Versions.scalaFx,
+      "com.softwaremill.sttp.client3" %% "core"                           % Versions.sttp,
+      "com.softwaremill.sttp.client3" %% "httpclient-backend-zio1"        % Versions.sttp,
+      "com.softwaremill.sttp.client3" %% "async-http-client-backend-zio1" % Versions.sttp
     ) ++ javaFXModules,
     Compile / run / mainClass := Some("io.km8.fx.Main"),
     assembly / assemblyMergeStrategy := {
