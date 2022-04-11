@@ -1,9 +1,9 @@
 package io.km8.core
 package config
 
-import zio._
-import zio.json._
-import zio.logging._
+import zio.*
+import zio.json.*
+import zio.logging.*
 
 case class ProtoSerdeSettings(schemaRegistryUrl: String, private val _configs: Map[String, AnyRef] = Map.empty) {
 

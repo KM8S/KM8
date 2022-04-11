@@ -44,7 +44,7 @@ object KafkaProducer {
               .getCluster(clusterId)
               .map(c => ProducerSettings(c.kafkaHosts))
 
-          def producerLayer(clusterId: String):ZLayer[Any, Throwable, Has[Producer]] =
+          def producerLayer(clusterId: String): ZLayer[Any, Throwable, Has[Producer]] =
             settingsLayer(clusterId).toManaged_
               .flatMap(settings => Producer.make(settings))
               .provideLayer(ZLayer.succeed(blocking) ++ serdeLayer ++ ZLayer.succeed(clusterConfigService))

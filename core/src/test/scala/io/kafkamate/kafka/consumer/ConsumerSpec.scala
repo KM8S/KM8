@@ -3,23 +3,23 @@ package kafka
 package consumer
 /*
 
-import zio._
+import zio.*
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.duration._
-import zio.test.Assertion._
-import zio.test.TestAspect._
-import zio.test.environment._
-import zio.logging._
-import zio.console._
+import zio.duration.*
+import zio.test.Assertion.*
+import zio.test.TestAspect.*
+import zio.test.environment.*
+import zio.logging.*
+import zio.console.*
 import zio.test.{DefaultRunnableSpec, _}
 
 import util.{HelperSpec, KafkaEmbedded}
 
 object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
-  import KafkaConsumer._
+  import KafkaConsumer.*
   import utils.Logger
-  import messages._
+  import messages.*
 
   val testLayer
     : Layer[TestFailure[Throwable], Clock with Blocking with Logging with StringProducer with KafkaConsumer] =

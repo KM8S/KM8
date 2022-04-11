@@ -3,13 +3,13 @@ package util
 
 /*
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
-import zio._
+import zio.*
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.kafka.producer.{Producer, ProducerSettings}
 import zio.kafka.serde.{Serde, Serializer}
 
-import config._, ClustersConfig._
+import config.*, ClustersConfig.*
 import KafkaEmbedded.Kafka
 
 trait HelperSpec {

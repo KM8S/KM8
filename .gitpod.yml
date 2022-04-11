@@ -1,7 +1,7 @@
 image: openjdk:8
 tasks:
-  - init: source ./gitpod_init.sh
-  - command: source ./gitpod_command.sh
+  - init: source gitpod/./gitpod_init.sh
+  - command: source gitpod/./gitpod_command.sh
 vscode:
   extensions:
     - scalameta.metals@1.8.0:COLt/susY54OcSJMqJKofQ==

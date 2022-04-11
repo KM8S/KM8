@@ -1,24 +1,25 @@
 package io.km8.core
 package kafka
 
-import zio._
+import zio.*
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration.*
 import zio.kafka.admin.*
-import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
+import zio.kafka.admin.AdminClient.*
 
 import config.*, ClustersConfig.*
 import io.km8.common.*
 
-trait KafkaExplorer {
+trait KafkaExplorer:
   def listBrokers(clusterId: String): Task[List[BrokerDetails]]
   def listTopics(clusterId: String): Task[List[TopicDetails]]
   def addTopic(req: AddTopicRequest): Task[TopicDetails]
   def deleteTopic(req: DeleteTopicRequest): Task[DeleteTopicResponse]
-}
+  def listConsumerGroups(clusterId: String): Task[ConsumerGroupsResponse]
+  def listConsumerOffsets(clusterId: String, groupId: String): Task[ConsumerGroupOffsetsResponse]
 
-object KafkaExplorer {
+object KafkaExplorer extends Accessible[KafkaExplorer]:
 
   val CleanupPolicyKey = "cleanup.policy"
   val RetentionMsKey = "retention.ms"
@@ -45,20 +46,17 @@ object KafkaExplorer {
     def withAdminClient[A](clusterId: String)(eff: AdminClient => RIO[Blocking with Clock, A]): Task[A] =
       ZIO
         .service[AdminClient]
-        .flatMap { ac =>
-          eff(ac)
-            .timeoutFail(new Exception("Timed out"))(6.seconds)
-        }
+        .flatMap(eff(_).timeoutFail(new Exception("Timed out"))(6.seconds))
         .provideLayer(blockingLayer >+> adminClientLayer(clusterId) ++ clockLayer)
 
     override def listBrokers(clusterId: String) =
       withAdminClient(clusterId) { ac =>
         for {
-          (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id)
+          (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.map(_.id))
           brokers = nodes.map { n =>
                       val nodeId = n.id
-                      if (controllerId != nodeId) BrokerDetails(id = nodeId, isController = false)
-                      else BrokerDetails(nodeId, isController = true)
+                      if (controllerId.contains(nodeId)) BrokerDetails(nodeId, isController = true)
+                      else BrokerDetails(id = nodeId, isController = false)
                     }
           // resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
           // _ <- ac.describeConfigs(resources)
@@ -122,6 +120,30 @@ object KafkaExplorer {
           .as(DeleteTopicResponse(req.topicName))
       }
 
-  }
+    override def listConsumerGroups(clusterId: String): Task[ConsumerGroupsResponse] =
+      def mapConsumerGroup(state: Option[ConsumerGroupState]): ConsumerGroupInternalState = state match {
+        case None | Some(ConsumerGroupState.Unknown)      => ConsumerGroupInternalState.Unknown
+        case Some(ConsumerGroupState.PreparingRebalance)  => ConsumerGroupInternalState.PreparingRebalance
+        case Some(ConsumerGroupState.CompletingRebalance) => ConsumerGroupInternalState.CompletingRebalance
+        case Some(ConsumerGroupState.Stable)              => ConsumerGroupInternalState.Stable
+        case Some(ConsumerGroupState.Dead)                => ConsumerGroupInternalState.Dead
+        case Some(ConsumerGroupState.Empty)               => ConsumerGroupInternalState.Empty
+      }
 
-}
+      withAdminClient(clusterId) {
+        _.listConsumerGroups()
+          .map(lst => ConsumerGroupsResponse(lst.map(r => ConsumerGroupInternal(r.groupId, mapConsumerGroup(r.state)))))
+      }
+
+    end listConsumerGroups
+
+    override def listConsumerOffsets(clusterId: String, groupId: String): Task[ConsumerGroupOffsetsResponse] =
+      withAdminClient(clusterId) {
+        _.listConsumerGroupOffsets(groupId).map(res =>
+          ConsumerGroupOffsetsResponse(res.map { case (tp, offMeta) =>
+            TopicPartitionInternal(tp.name, tp.partition) -> offMeta.offset
+          })
+        )
+      }
+
+  }
