@@ -2,10 +2,7 @@ package io.km8.fx
 package models
 
 import zio.*
-import zio.duration.*
-import zio.clock.*
-import zio.prelude.*
-import Assertion.*
+import zio.prelude.NonEmptyList
 
 import scala.annotation.implicitNotFound
 
@@ -60,18 +57,13 @@ def switch[P <: Page, S <: Page](p: Path[P, S]) = p match {
 }
  */
 
-inline def isNotEmpty: Assertion[String] = hasLength(greaterThan(0))
+//inline def isNotEmpty: Assertion[String] = hasLength(greaterThan(0))
 
-object Offset extends Subtype[Long]
-type Offset = Offset.Type
+opaque type Offset = Long
 
-object Config extends Newtype[(String, String)]
-type Config = Config.Type
+opaque type Config  = (String, String)
 
-object TopicName extends Newtype[String]:
-  override inline def assertion = isNotEmpty
-
-type TopicName = TopicName.Type
+opaque type TopicName = String
 
 /*
   Default type class
@@ -80,7 +72,7 @@ trait Def[T]:
   def apply(seed: TestSeed): T
 
 given Def[TopicName] with
-  def apply(seed: TestSeed): TopicName = TopicName.make(s"topic $seed").getOrElse(TopicName("nothing"))
+  def apply(seed: TestSeed): TopicName = s"topic $seed"
 
 def gen[T: Def](seed: TestSeed = "test"): T = summon[Def[T]].apply(seed)
 
@@ -108,7 +100,7 @@ case class Partition(
   size: Long)
 
 given Def[Partition] with
-  def apply(seed: TestSeed) = Partition(0, gen(seed), NonEmptyList(gen(seed)), Offset(0), Offset(0), 0)
+  def apply(seed: TestSeed) = Partition(0, gen(seed), NonEmptyList(gen(seed)), 0L, 0L, 0)
 
 case class Topic(
   name: TopicName,
@@ -121,7 +113,7 @@ given Def[Topic] with
 
   def apply(seed: TestSeed) =
     Topic(
-      TopicName.make(s"topic $seed").getOrElse(TopicName("topic")),
+      s"topic $seed",
       NonEmptyList(gen(seed)),
       Nil,
       MessageEncoding.String,
@@ -131,7 +123,7 @@ given Def[Topic] with
 case class PartitionOffset(partition: Partition, offset: Offset)
 
 given Def[PartitionOffset] with
-  def apply(seed: TestSeed) = PartitionOffset(gen(seed), Offset(0))
+  def apply(seed: TestSeed) = PartitionOffset(gen(seed), 0L)
 
 case class ConsumerGroup(
   name: String,
@@ -144,7 +136,7 @@ given Def[ConsumerGroup] with
     ConsumerGroup(s"name $seed", gen(seed), List.range(0, 10).map(gen))
 
 given Def[Config] with
-  def apply(seed: TestSeed) = Config(s"key_$seed" -> s"value $seed")
+  def apply(seed: TestSeed): Config = s"key_$seed" -> s"value $seed"
 
 case class Cluster(
   name: String,
@@ -180,17 +172,17 @@ enum UIEvent:
 
 type EventsHub = Hub[UIEvent]
 
-val EventsHub = Hub
+val EventsHub = zio.Hub
 
 object UI:
 
-  def make(seed: TestSeed = ""): URLayer[Any, Has[UI]] =
-    UIO(
+  def make(seed: TestSeed = ""): URLayer[Any, UI] =
+    ZLayer.succeed(
       UI(
         data = List.range(1, 4).map(gen),
         config = UIConfig(leftWidth = 300)
       )
-    ).toLayer
+    )
 
 case class Message(
   key: Array[Byte],
@@ -199,7 +191,11 @@ case class Message(
 
 case class MessageHeader(key: String, value: Array[Byte])
 
-type UIEnv = Has[UI] & Has[EventsHub]
+type UIEnv = UI & EventsHub
 
-def dispatchEvent: ZIO[Has[EventsHub], Nothing, UIEvent => Unit] =
+def dispatchEvent: ZIO[EventsHub, Nothing, UIEvent => Unit] =
   ZIO.service[EventsHub].map(hub => event => Runtime.global.unsafeRun(hub.publish(event)))
+
+object Test {
+  val stuff: String = ""
+}

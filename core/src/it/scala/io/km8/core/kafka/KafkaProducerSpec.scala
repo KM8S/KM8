@@ -1,7 +1,6 @@
 package io.km8.core.kafka
 
 import zio.*
-import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration.*
 import zio.kafka.consumer.*
@@ -16,19 +15,19 @@ import org.apache.kafka.clients.consumer.OffsetResetStrategy
 
 object KafkaProducerSpec extends DefaultRunnableSpec:
 
-  private val consumerLayer: ZLayer[Has[KafkaContainer], Nothing, Has[KafkaConsumer]] =
-    Clock.live ++ Blocking.live ++ itlayers.clusterConfig(clusterId = "cluster_id") >>> KafkaConsumer.liveLayer
+  private val consumerLayer: ZLayer[KafkaContainer, Nothing, KafkaConsumer] =
+    Clock.live ++ itlayers.clusterConfig(clusterId = "cluster_id") >>> KafkaConsumer.liveLayer
 
-  private val producerLayer: ZLayer[Has[KafkaContainer], Nothing, KafkaProducer] =
-    Blocking.live ++ itlayers.clusterConfig(clusterId = "cluster_id") >>> KafkaProducer.liveLayer
+  private val producerLayer: ZLayer[KafkaContainer, Nothing, KafkaProducer] =
+    itlayers.clusterConfig(clusterId = "cluster_id") >>> KafkaProducer.liveLayer
 
-  val specLayer: ZLayer[Has[KafkaContainer], Nothing, Has[KafkaConsumer] & KafkaProducer] =
+  val specLayer: ZLayer[KafkaContainer, Nothing, KafkaConsumer & KafkaProducer] =
     consumerLayer ++ producerLayer
 
   override def spec: ZSpec[_root_.zio.test.environment.TestEnvironment, Any] =
     mainSpec
-      .provideSomeLayer[environment.TestEnvironment & Has[KafkaContainer]](specLayer ++ Clock.live)
-      .provideCustomLayerShared(Blocking.live >>> itlayers.kafkaContainer)
+      .provideSomeLayer[environment.TestEnvironment & KafkaContainer](specLayer ++ Clock.live)
+      .provideCustomLayerShared(itlayers.kafkaContainer)
 
   private val mainSpec =
     suite("Kafka services")(

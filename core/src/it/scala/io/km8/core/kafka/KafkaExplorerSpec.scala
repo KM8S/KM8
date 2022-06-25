@@ -1,7 +1,6 @@
 package io.km8.core.kafka
 
 import zio.*
-import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration.*
 import zio.kafka.consumer.*
@@ -22,7 +21,6 @@ object KafkaExplorerSpec extends DefaultRunnableSpec:
 
         val layer =
           Clock.live >+>
-            Blocking.live >+>
             itlayers.kafkaContainer >+>
             itlayers.clusterConfig(clusterId) >+>
             KafkaExplorer.liveLayer >+>

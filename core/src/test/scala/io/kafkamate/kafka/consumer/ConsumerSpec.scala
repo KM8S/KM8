@@ -4,7 +4,6 @@ package consumer
 /*
 
 import zio.*
-import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration.*
 import zio.test.Assertion.*
@@ -22,10 +21,9 @@ object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
   import messages.*
 
   val testLayer
-    : Layer[TestFailure[Throwable], Clock with Blocking with Logging with StringProducer with KafkaConsumer] =
+    : Layer[TestFailure[Throwable], Clock with StringProducer with KafkaConsumer] =
     (Clock.live >+>
       Console.live >+>
-      Blocking.live >+>
       KafkaEmbedded.Kafka.embedded >+>
       stringProducer >+>
       testConfigLayer >+>

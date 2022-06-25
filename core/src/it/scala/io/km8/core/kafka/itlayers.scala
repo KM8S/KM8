@@ -3,7 +3,6 @@ package io.km8.core.kafka
 import com.dimafeng.testcontainers.KafkaContainer
 import zio.*
 import zio.clock.Clock
-import zio.blocking.*
 import zio.kafka.consumer.Consumer
 import zio.kafka.consumer.Consumer.{AutoOffsetStrategy, OffsetRetrieval}
 import zio.kafka.consumer.ConsumerSettings
@@ -12,7 +11,7 @@ import io.km8.core.config.{ClusterConfig, ClusterProperties, ClusterSettings}
 
 object itlayers:
 
-  val kafkaContainer: ZLayer[Blocking, Nothing, Has[KafkaContainer]] =
+  val kafkaContainer: ZLayer[Any, Nothing, KafkaContainer] =
     ZManaged.make {
       effectBlocking {
         val container = new KafkaContainer()
@@ -21,7 +20,7 @@ object itlayers:
       }.orDie
     }(container => effectBlocking(container.stop()).orDie).toLayer
 
-  def consumerSettings(cg: String): ZManaged[Has[KafkaContainer], Nothing, ConsumerSettings] =
+  def consumerSettings(cg: String): ZManaged[KafkaContainer, Nothing, ConsumerSettings] =
     ZIO
       .service[KafkaContainer]
       .map(c =>
@@ -31,10 +30,10 @@ object itlayers:
       )
       .toManaged_
 
-  def consumerLayer(cgroup: String): ZLayer[Has[KafkaContainer] with Clock with Blocking, Nothing, Has[Consumer]] =
+  def consumerLayer(cgroup: String): ZLayer[KafkaContainer with Clock , Nothing, Consumer] =
     consumerSettings(cgroup).flatMap(Consumer.make(_)).orDie.toLayer
 
-  def clusterConfig(clusterId: String): ZLayer[Has[KafkaContainer], Nothing, Has[ClusterConfig]] =
+  def clusterConfig(clusterId: String): ZLayer[KafkaContainer, Nothing, ClusterConfig] =
     ZIO
       .service[KafkaContainer]
       .map(kafkaContainer =>
