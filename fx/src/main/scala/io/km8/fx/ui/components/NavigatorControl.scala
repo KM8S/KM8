@@ -7,13 +7,13 @@ import scalafx.scene.control.{ScrollPane, TreeItem, TreeView}
 import zio.*
 import models.*
 
-class NavigatorControl extends BaseControl[Has[UI]]:
+class NavigatorControl extends BaseControl[UI]:
 
   private lazy val view =
     for
       ui <- ZIO.service[UI]
       tv <- treeView
-      ret <- ZIO(
+      ret <- ZIO.succeed(
                new ScrollPane {
                  minWidth = ui.config.leftWidth
                  fitToWidth = true
@@ -38,7 +38,7 @@ class NavigatorControl extends BaseControl[Has[UI]]:
   private val treeView =
     for
       ui <- ZIO.service[UI]
-      tv <- ZIO {
+      tv <- ZIO.succeed {
               new TreeView[String] {
                 showRoot = false
                 id = "left-tree"
@@ -54,6 +54,6 @@ class NavigatorControl extends BaseControl[Has[UI]]:
             .addListener((obs, oldVal, newVal) => alert(ui.data.map(_.consumerGroups)))
     yield tv
 
-  override def render: ZIO[Has[UI], Throwable, Node] =
+  override def render: ZIO[UI, Throwable, Node] =
     for ret <- view
     yield ret

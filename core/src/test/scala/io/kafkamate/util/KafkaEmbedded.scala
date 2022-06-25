@@ -6,7 +6,7 @@ import net.manub.embeddedkafka.{EmbeddedK, EmbeddedKafka, EmbeddedKafkaConfig}
 import zio.*
 
 object KafkaEmbedded {
-  type Kafka = Has[Kafka.Service]
+  type Kafka = Kafka.Service
 
   object Kafka {
 

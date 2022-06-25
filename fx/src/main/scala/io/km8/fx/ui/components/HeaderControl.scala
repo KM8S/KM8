@@ -32,7 +32,7 @@ class HeaderControl extends BaseControl[UIEnv]:
       _ <- ZStream
              .fromHub(hub)
              .foreach { case UIEvent.FocusOmni =>
-               ZIO {
+               ZIO.succeed {
                  omniBar.requestFocus()
                }
              }

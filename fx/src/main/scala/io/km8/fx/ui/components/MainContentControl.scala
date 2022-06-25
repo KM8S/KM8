@@ -8,8 +8,8 @@ import zio.*
 
 import models.*
 
-class MainContentControl extends BaseControl[Has[UI]]:
+class MainContentControl extends BaseControl[UI]:
 
-  private lazy val view = ZIO(new ScrollPane())
+  private lazy val view = ZIO.succeed(new ScrollPane())
 
-  override def render: ZIO[Has[UI], Throwable, Node] = view
+  override def render: ZIO[UI, Throwable, Node] = view

@@ -9,7 +9,7 @@ import scalafx.scene.Node
 
 import models.*
 
-class ClusterListControl extends BaseControl[Has[UI]] {
+class ClusterListControl extends BaseControl[UI] {
 
   val mkList = for {
     ui <- ZIO.service[UI]
@@ -18,5 +18,5 @@ class ClusterListControl extends BaseControl[Has[UI]] {
 
   private[components] val view = mkList
 
-  override def render: RIO[Has[UI], Node] = view
+  override def render: RIO[UI, Node] = view
 }
