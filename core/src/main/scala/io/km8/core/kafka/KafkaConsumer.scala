@@ -3,8 +3,6 @@ package kafka
 
 import zio.*
 
-import zio.Clock
-
 import zio.kafka.consumer.*
 import zio.kafka.consumer.Consumer.*
 import zio.kafka.serde.Deserializer
@@ -28,23 +26,19 @@ trait KafkaConsumer {
 
 object KafkaConsumer {
 
-  lazy val liveLayer: URLayer[Clock with ClusterConfig, KafkaConsumer] =
+  lazy val liveLayer: URLayer[ClusterConfig, KafkaConsumer] =
     ZLayer {
       for {
-        clock <- ZIO.service[Clock]
         config <- ZIO.service[ClusterConfig]
-      } yield KafkaConsumerLive(clock, config)
+      } yield KafkaConsumerLive(config)
     }
 
   def consume(request: ConsumeRequest): ZStream[KafkaConsumer, Throwable, Message] =
     ZStream.environmentWithStream[KafkaConsumer](_.get.consume(request))
 
   case class KafkaConsumerLive(
-    clock: Clock,
     clustersConfigService: ClusterConfig)
       extends KafkaConsumer {
-
-    private val clockLayer = ZLayer.succeed(clock)
 
     // TODO Ciprian transform to enum or reuse the Consumer enum + serdes
     private def extractOffsetStrategy(offsetValue: String): AutoOffsetStrategy =
@@ -118,8 +112,7 @@ object KafkaConsumer {
         else withFilter.take(request.maxResults)
 
       withFilterLimit.provideLayer(
-        clockLayer >>>
-          makeConsumerLayer(request.clusterId, request.offsetStrategy)
+        makeConsumerLayer(request.clusterId, request.offsetStrategy)
       )
     }
   }

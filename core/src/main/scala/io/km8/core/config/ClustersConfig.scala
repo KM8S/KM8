@@ -52,7 +52,7 @@ object ClustersConfig {
   def writeClusters(cluster: ClusterSettings) = ZIO.serviceWithZIO[ClusterConfig](_.writeClusters(cluster))
   def deleteCluster(clusterId: String) = ZIO.serviceWithZIO[ClusterConfig](_.deleteCluster(clusterId))
 
-  lazy val liveLayer: URLayer[ConfigPath , ClusterConfig] =
+  lazy val liveLayer: URLayer[ConfigPath, ClusterConfig] =
     ZLayer(ZIO.service[ConfigPath].map(ClusterConfigLive.apply))
 
   case class ClusterConfigLive(configPath: ConfigPath) extends ClusterConfig {

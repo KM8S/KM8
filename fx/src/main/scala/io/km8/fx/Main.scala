@@ -17,6 +17,7 @@ import io.km8.fx.models.*
 import io.km8.fx.models.given
 import io.km8.fx.ui.{*, given}
 import io.km8.fx.ui.components.{*, given}
+import io.km8.fx.views.{*, given}
 
 import java.util.concurrent.Executor
 import scala.concurrent.ExecutionContext
@@ -67,19 +68,24 @@ object Main extends JFXApp3:
 
   override def start(): Unit =
     val io: ZIO[Any, Throwable, JFXApp3.PrimaryStage] =
-      for
-        h <- Hub.unbounded[UIEvent]
-        hubLayer = ZLayer.succeed(h)
-        main <- mkWindow.provideLayer(UI.make("") +!+ hubLayer)
-        s <- mkScene(main).provideLayer(hubLayer)
-        ret <- ZIO.attempt(new JFXApp3.PrimaryStage {
-                 title = "KM8"
-                 scene = s
-               })
-      yield ret
+      ZIO.scoped {
+        val hubLayer = ZLayer.fromZIO(Hub.unbounded[UIEvent])
+        val hubMessages = ZLayer.fromZIO(Hub.unbounded[Msg[ViewState]])
+        for
+          _ <- initViews.provide(hubMessages)
+          main <- mkWindow.provideLayer(UI.make("") +!+ hubLayer)
+          s <- mkScene(main).provideLayer(hubLayer)
+          ret <- ZIO.attempt(new JFXApp3.PrimaryStage {
+                   title = "KM8"
+                   scene = s
+                 })
+        yield ret
+      }
 
-    Runtime.default.unsafeRun(
-      io
-        .onExecutionContext(currentThreadEC)
-        .exitCode
-    )
+    Unsafe.unsafe { implicit u: Unsafe =>
+      Runtime.default.unsafe.run(
+        io
+          .onExecutionContext(currentThreadEC)
+          .exitCode
+      )
+    }

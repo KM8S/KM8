@@ -13,7 +13,7 @@ class NavigatorControl extends BaseControl[UI]:
     for
       ui <- ZIO.service[UI]
       tv <- treeView
-      ret <- ZIO.succeed(
+      ret <- ZIO.attempt(
                new ScrollPane {
                  minWidth = ui.config.leftWidth
                  fitToWidth = true
@@ -38,7 +38,7 @@ class NavigatorControl extends BaseControl[UI]:
   private val treeView =
     for
       ui <- ZIO.service[UI]
-      tv <- ZIO.succeed {
+      tv <- ZIO.attempt {
               new TreeView[String] {
                 showRoot = false
                 id = "left-tree"

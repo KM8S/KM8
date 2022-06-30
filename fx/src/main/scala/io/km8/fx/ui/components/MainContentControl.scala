@@ -10,6 +10,6 @@ import models.*
 
 class MainContentControl extends BaseControl[UI]:
 
-  private lazy val view = ZIO.succeed(new ScrollPane())
+  private lazy val view = ZIO.attempt(new ScrollPane())
 
   override def render: ZIO[UI, Throwable, Node] = view

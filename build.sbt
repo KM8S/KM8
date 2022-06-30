@@ -7,11 +7,11 @@ lazy val ProjectScalaVersion = "3.1.3"
 
 lazy val Versions = new {
 
-  val zio = "2.0.0-RC5"
-  val zioKafka = "2.0.0-M3"
-  val zioJson = "0.3.0-RC7"
-  val zioLogging = "2.0.0-RC8"
-  val zioPrelude = "1.0.0-RC13"
+  val zio = "2.0.0"
+  val zioKafka = "2.0.0"
+  val zioJson = "0.3.0-RC9"
+  val zioLogging = "2.0.0"
+  val zioPrelude = "1.0.0-RC15"
 
   val kafkaProtobuf = "7.1.0"
   val javaFx = "16"

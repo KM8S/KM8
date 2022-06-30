@@ -3,8 +3,6 @@ package kafka
 
 import zio.*
 
-import zio.Clock
-
 import zio.kafka.admin.*
 import zio.kafka.admin.AdminClient.*
 
@@ -19,22 +17,28 @@ trait KafkaExplorer:
   def listConsumerGroups(clusterId: String): Task[ConsumerGroupsResponse]
   def listConsumerOffsets(clusterId: String, groupId: String): Task[ConsumerGroupOffsetsResponse]
 
-object KafkaExplorer extends Accessible[KafkaExplorer]:
+object KafkaExplorer:
 
   val CleanupPolicyKey = "cleanup.policy"
   val RetentionMsKey = "retention.ms"
 
-  lazy val liveLayer: ZLayer[Clock & ClusterConfig, Nothing, KafkaExplorer] =
-    ZLayer{
+  def listConsumerGroups(clusterId: String): ZIO[KafkaExplorer, Throwable, ConsumerGroupsResponse] =
+    ZIO.serviceWithZIO(_.listConsumerGroups(clusterId))
+
+  def listConsumerOffsets(
+    clusterId: String,
+    groupId: String
+  ): ZIO[KafkaExplorer, Throwable, ConsumerGroupOffsetsResponse] =
+    ZIO.serviceWithZIO(_.listConsumerOffsets(clusterId, groupId))
+
+  lazy val liveLayer: ZLayer[ClusterConfig, Nothing, KafkaExplorer] =
+    ZLayer {
       for {
-        cl <- ZIO.service[Clock]
         cc <- ZIO.service[ClusterConfig]
-      } yield KafkaExplorerLive(cl, cc)
+      } yield KafkaExplorerLive(cc)
     }
 
-
-case class KafkaExplorerLive(clock: Clock, clustersConfigService: ClusterConfig) extends KafkaExplorer {
-  val clockLayer: ULayer[Clock] = ZLayer.succeed(clock)
+case class KafkaExplorerLive(clustersConfigService: ClusterConfig) extends KafkaExplorer {
 
   private def adminClientLayer(clusterId: String) =
     ZLayer.fromZIO {
@@ -44,12 +48,12 @@ case class KafkaExplorerLive(clock: Clock, clustersConfigService: ClusterConfig)
       } yield client
     }
 
-  def withAdminClient[A](clusterId: String)(eff: AdminClient => RIO[Clock, A]): ZIO[Any, Throwable, A] =
+  def withAdminClient[A](clusterId: String)(eff: AdminClient => RIO[Any, A]): ZIO[Any, Throwable, A] =
     ZIO.scoped {
       ZIO
         .service[AdminClient]
         .flatMap(eff(_).timeoutFail(new Exception("Timed out"))(6.seconds))
-        .provideLayer(adminClientLayer(clusterId) ++ clockLayer)
+        .provideLayer(adminClientLayer(clusterId))
     }
 
   override def listBrokers(clusterId: String) =
@@ -141,7 +145,10 @@ case class KafkaExplorerLive(clock: Clock, clustersConfigService: ClusterConfig)
 
   end listConsumerGroups
 
-  override def listConsumerOffsets(clusterId: String, groupId: String): ZIO[Any, Throwable,ConsumerGroupOffsetsResponse] =
+  override def listConsumerOffsets(
+    clusterId: String,
+    groupId: String
+  ): ZIO[Any, Throwable, ConsumerGroupOffsetsResponse] =
     withAdminClient(clusterId) {
       _.listConsumerGroupOffsets(groupId).map(res =>
         ConsumerGroupOffsetsResponse(res.map { case (tp, offMeta) =>

@@ -28,9 +28,12 @@ object KafkaProducer {
     value: String
   )(
     clusterId: String
-  ): ZIO[Scope & KafkaProducer, Throwable, Unit] = ZIO.environmentWithZIO[KafkaProducer](_.get.produce(topic, key, value)(clusterId))
+  ): ZIO[KafkaProducer, Throwable, Unit] =
+    ZIO.scoped {
+      ZIO.environmentWithZIO[KafkaProducer](_.get.produce(topic, key, value)(clusterId))
+    }
 
-  lazy val liveLayer: URLayer[ClusterConfig & Scope, KafkaProducer] =ZLayer.fromZIO( for {
+  lazy val liveLayer: URLayer[ClusterConfig, KafkaProducer] = ZLayer.fromZIO(for {
     clusterConfigService <- ZIO.service[ClusterConfig]
   } yield new KafkaProducer {
 
@@ -43,8 +46,10 @@ object KafkaProducer {
         .map(c => ProducerSettings(c.kafkaHosts))
 
     def producerLayer(clusterId: String): ZIO[Scope, Throwable, Producer] =
-      settingsLayer(clusterId)
-        .flatMap(settings => Producer.make(settings))
+      ZIO.scoped {
+        settingsLayer(clusterId)
+          .flatMap(settings => Producer.make(settings))
+      }
 
     def produce(
       topic: String,
@@ -57,6 +62,5 @@ object KafkaProducer {
         .produce[Any, String, String](topic, key, value, Serde.string, Serde.string)
         .unit
         .provideLayer(ZLayer.fromZIO(producerLayer(clusterId)))
-  }
-  )
+  })
 }

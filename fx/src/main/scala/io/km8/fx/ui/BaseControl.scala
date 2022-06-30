@@ -6,7 +6,7 @@ import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, ButtonType}
 import zio.*
 
-trait BaseControl[R ]:
+trait BaseControl[R]:
   def render: ZIO[R, Throwable, Node]
 
   def alert(text: Any) =

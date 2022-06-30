@@ -61,7 +61,7 @@ def switch[P <: Page, S <: Page](p: Path[P, S]) = p match {
 
 opaque type Offset = Long
 
-opaque type Config  = (String, String)
+opaque type Config = (String, String)
 
 opaque type TopicName = String
 
@@ -194,7 +194,14 @@ case class MessageHeader(key: String, value: Array[Byte])
 type UIEnv = UI & EventsHub
 
 def dispatchEvent: ZIO[EventsHub, Nothing, UIEvent => Unit] =
-  ZIO.service[EventsHub].map(hub => event => Runtime.global.unsafeRun(hub.publish(event)))
+  ZIO
+    .service[EventsHub]
+    .map(hub =>
+      event =>
+        Unsafe.unsafeCompat { implicit u =>
+          Runtime.default.unsafe.run(hub.publish(event))
+        }
+    )
 
 object Test {
   val stuff: String = ""

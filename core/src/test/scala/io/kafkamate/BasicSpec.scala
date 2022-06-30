@@ -13,7 +13,7 @@ object BasicSpec extends ZIOSpecDefault {
   override def spec =
     suite("Simple test")(
       test("Check zio result") {
-        assertM(ZIO.succeed(1))(equalTo(1))
+        assertTrue(1 == 1)
       }
     )
 }

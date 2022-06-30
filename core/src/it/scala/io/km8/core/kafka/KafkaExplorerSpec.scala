@@ -1,27 +1,24 @@
 package io.km8.core.kafka
 
 import zio.*
-import zio.clock.Clock
-import zio.duration.*
+import zio.test.*
 import zio.kafka.consumer.*
 import zio.kafka.serde.Serde
-import zio.test.DefaultRunnableSpec
 import zio.test.*
 import zio.test.Assertion.*
 
 import io.km8.common.*
 
-object KafkaExplorerSpec extends DefaultRunnableSpec:
+object KafkaExplorerSpec extends ZIOSpecDefault:
 
   override def spec =
     suite("Kafka explorer spec")(
-      testM("test listConsumerGroups & listConsumerOffsets") {
+      test("test listConsumerGroups & listConsumerOffsets") {
         val clusterId = "123"
         val consumerGroup = "group-km8"
 
         val layer =
-          Clock.live >+>
-            itlayers.kafkaContainer >+>
+          itlayers.kafkaContainer >+>
             itlayers.clusterConfig(clusterId) >+>
             KafkaExplorer.liveLayer >+>
             itlayers.consumerLayer(consumerGroup) >+>
@@ -29,24 +26,26 @@ object KafkaExplorerSpec extends DefaultRunnableSpec:
 
         val test =
           for {
-            topic <- UIO("topic10")
+            topic <- ZIO.succeed("topic10")
             _ <- KafkaProducer.produce(topic, "123", "test")(clusterId)
             _ <- Consumer
                    .subscribeAnd(Subscription.topics(topic))
                    .plainStream(Serde.string, Serde.string)
-                   .mapM(cr =>
+                   .mapZIO(cr =>
                      ZIO.debug(s"${"-" * 10}> key: ${cr.key}, value: ${cr.value}") *>
                        cr.offset.commit.as(cr.value)
                    )
                    .take(1)
                    .runCollect
-            r1 <- KafkaExplorer(_.listConsumerGroups(clusterId))
-            r2 <- KafkaExplorer(_.listConsumerOffsets(clusterId, consumerGroup))
+            r1 <- KafkaExplorer.listConsumerGroups(clusterId)
+            r2 <- KafkaExplorer.listConsumerOffsets(clusterId, consumerGroup)
           } yield {
-            assert(r1.groups.map(_.groupId))(equalTo(List(consumerGroup))) &&
-            assert(r2.offsets)(equalTo(Map(TopicPartitionInternal(topic, 0) -> 1)))
+            assertTrue(
+              r1.groups.map(_.groupId) == List(consumerGroup),
+              r2.offsets == Map(TopicPartitionInternal(topic, 0) -> 1L)
+            )
           }
 
         test.provideLayer(layer)
       } @@ TestAspect.timeout(30.seconds)
-    )
+    ).provide(zio.test.liveEnvironment, zio.test.Live.default)
