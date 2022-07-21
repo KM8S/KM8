@@ -51,7 +51,9 @@ class NavigatorControl extends BaseControl[UI]:
 //      _ = tv.getSelectionModel.selectedItemProperty().addListener((obs, oldVal, newVal) => alert(newVal.getValue))
       _ = tv.getSelectionModel
             .selectedItemProperty()
-            .addListener((obs, oldVal, newVal) => alert(ui.data.map(_.consumerGroups)))
+            .addListener((obs, oldVal, newVal) =>
+              alert(ui.data.map(_.consumerGroups)
+              ))
     yield tv
 
   override def render: ZIO[UI, Throwable, Node] =

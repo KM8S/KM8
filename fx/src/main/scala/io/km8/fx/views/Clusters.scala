@@ -1,56 +1,45 @@
 package io.km8.fx.views
 
 import zio.*
+import zio.stream.ZStream
 import io.km8.common.ClusterDetails
+import io.km8.fx.models.*
+import io.km8.fx.models.given
 
-trait BaseMessage
-
-enum Msg[S] extends BaseMessage:
-  case Init(state: S)
-
-enum Screen:
-  case Clusters, Search
 
 trait View[S: Tag]:
   val children: List[View[S]] = Nil
 
-  def init: ZIO[Hub[Msg[S]], Nothing, Unit] =
-    registerCallback(update) *> ZIO.foreach(children)(_.init).unit
+  def init: ZIO[MsgBus, Nothing, Unit] =
+    for
+      f <- registerCallback(this, update).forkDaemon
+      _ <- ZIO.foreach(children)(_.init)
+    yield ()
 
-  def publishMessage(msg: Msg[S]): ZIO[Hub[Msg[S]], Nothing, Unit] =
-    ZIO.service[Hub[Msg[S]]].flatMap(_.publish(msg)).unit
-
-  def update(message: Msg[S]): ZIO[Any, Nothing, Option[Msg[S]]]
-
-  def registerCallback(
-    cb: Msg[S] => ZIO[Any, Nothing, Option[Msg[S]]]
-  ): ZIO[Hub[Msg[S]], Nothing, Unit] =
-    ZIO.scoped {
-      for {
-        hub <- ZIO.service[Hub[Msg[S]]]
-        q <- hub.subscribe
-        msg <- q.take
-        res <- cb(msg)
-        _ <- publishMessage(res.get).when(res.isDefined)
-      } yield ()
-    }
+  def update: Update
 
 case class ViewState(
-  focused: Screen,
-  clusterDetails: List[ClusterDetails],
-  currentCluster: Option[ClusterDetails])
+  clusterDetails: List[Cluster],
+  currentCluster: Option[Cluster])
 
 case class MainView() extends View[ViewState]:
   override val children = ClustersView() :: SearchView(None) :: Nil
-  override def update(message: Msg[ViewState]) = ZIO.none
+  override def update = { case _ => ZIO.none}
 
 case class ClustersView() extends View[ViewState]:
-  override def init: UIO[Unit] = ZIO.debug("calling method from clusters")
-  override def update(message: Msg[ViewState]) = ZIO.none
+  override val children =  TitleView() :: Nil
+
+  override def update =  {
+    case Backend.Init =>
+      val c1 = gen[Cluster]()
+      val c2 = gen[Cluster]()
+      ZIO.debug("creating clusters").as(Some(Signal.ChangedClusters(List(c1, c2))))
+    case Backend.SearchClicked(search) => ZIO.debug(s"Searched $search").as(None)
+    case m => ZIO.debug(s"ClusterView update: $m") *> ZIO.none
+  }
 
 case class SearchView(search: Option[String]) extends View[ViewState]:
-  override def init: UIO[Unit] = ZIO.debug("calling method from search")
-  override def update(message: Msg[ViewState]) = ZIO.none
+  override def update = { case m => ZIO.debug(s"SearchView update: $m").as(None)}
 
-def initViews =
-  MainView().init
+case class TitleView() extends View[ViewState]:
+  override def update = {case m =>  ZIO.debug(s"TitleView update: $m").as(None)}

@@ -1,10 +1,13 @@
 package io.km8.fx
 package models
 
+import javafx.application.Platform
 import zio.*
 import zio.prelude.NonEmptyList
+import zio.stream.ZStream
 
 import scala.annotation.implicitNotFound
+import scala.collection.mutable.Queue as SQueue
 
 type TestSeed = String | Int | Long
 
@@ -167,16 +170,14 @@ case class UI(
   data: List[Cluster],
   config: UIConfig)
 
-enum UIEvent:
-  case FocusOmni
-
-type EventsHub = Hub[UIEvent]
-
-val EventsHub = zio.Hub
-
 object UI:
+  def make(seed: TestSeed = ""): UI =
+      UI(
+        data = List.range(1, 4).map(gen),
+        config = UIConfig(leftWidth = 300)
+      )
 
-  def make(seed: TestSeed = ""): URLayer[Any, UI] =
+  def makeLayer(seed: TestSeed = ""): URLayer[Any, UI] =
     ZLayer.succeed(
       UI(
         data = List.range(1, 4).map(gen),
@@ -191,18 +192,61 @@ case class Message(
 
 case class MessageHeader(key: String, value: Array[Byte])
 
-type UIEnv = UI & EventsHub
+type UIEnv = UI
 
-def dispatchEvent: ZIO[EventsHub, Nothing, UIEvent => Unit] =
-  ZIO
-    .service[EventsHub]
-    .map(hub =>
-      event =>
-        Unsafe.unsafeCompat { implicit u =>
-          Runtime.default.unsafe.run(hub.publish(event))
-        }
-    )
 
 object Test {
   val stuff: String = ""
 }
+
+trait Msg
+
+enum Backend extends Msg:
+  case Init
+  case FocusOmni
+  case SearchClicked(search: String)
+
+enum Signal extends Msg:
+  case Search
+  case ChangedClusters(value: List[Cluster])
+
+type MsgBus = Hub[Msg]
+type EventsQ = SQueue[Msg]
+
+object EventsQ {
+  val schedule = Schedule.spaced(100.millis)
+  def toBus =
+    ZLayer.fromZIO(
+      for
+        hub <- ZIO.service[Hub[Msg]]
+        eventsQ <- ZIO.attempt(SQueue.empty[Msg])
+        _ <- ZIO.attempt(eventsQ.dequeueAll(_ => true))
+          .flatMap(hub.publishAll)
+          .repeat(schedule)
+          .forkDaemon
+      yield eventsQ
+    )
+}
+
+extension (c: => Unit)
+  def fx = ZIO.succeed(Platform.runLater(() => c))
+
+type Update = PartialFunction[Msg , ZIO[Any, Nothing, Option[Msg]]]
+
+def publishMessage(msg: Msg): ZIO[MsgBus, Nothing, Unit] =
+  ZIO.service[MsgBus].flatMap(_.publish(msg)).unit
+
+def registerCallback(sender: Object, cb: Update): ZIO[MsgBus , Nothing, Unit] =
+  for {
+    hub <- ZIO.service[MsgBus]
+    _ <- ZIO.debug(s"${sender.toString} - ${Thread.currentThread()}")
+    _ <- ZStream.fromHub(hub).foreach { m =>
+      for {
+        res <- cb(m)
+        _ <- res match {
+          case Some(v) => ZIO.debug(s"Sending $v") *> hub.publish(v)
+          case None    => ZIO.unit
+        }
+      } yield ()
+    }
+  } yield ()
