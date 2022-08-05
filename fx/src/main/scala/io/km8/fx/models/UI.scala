@@ -1,6 +1,7 @@
 package io.km8.fx
 package models
 
+import io.km8.fx.views.ViewState
 import javafx.application.Platform
 import zio.*
 import zio.prelude.NonEmptyList
@@ -153,7 +154,6 @@ case class Cluster(
 given Def[Cluster] with
 
   def apply(seed: TestSeed) =
-    val brokers = NonEmptyList.fromIterable(1, List.range(2, 5)).map(gen[Broker])
     Cluster(
       name = s"Cluster $seed",
       kafkaHosts = NonEmptyList(gen(seed)),
@@ -171,11 +171,12 @@ case class UI(
   config: UIConfig)
 
 object UI:
+
   def make(seed: TestSeed = ""): UI =
-      UI(
-        data = List.range(1, 4).map(gen),
-        config = UIConfig(leftWidth = 300)
-      )
+    UI(
+      data = List.range(1, 4).map(gen),
+      config = UIConfig(leftWidth = 300)
+    )
 
   def makeLayer(seed: TestSeed = ""): URLayer[Any, UI] =
     ZLayer.succeed(
@@ -192,9 +193,6 @@ case class Message(
 
 case class MessageHeader(key: String, value: Array[Byte])
 
-type UIEnv = UI
-
-
 object Test {
   val stuff: String = ""
 }
@@ -202,51 +200,71 @@ object Test {
 trait Msg
 
 enum Backend extends Msg:
-  case Init
+  case LoadClusters
+  case LoadConfig
   case FocusOmni
-  case SearchClicked(search: String)
+  case Search(search: String)
+  case LoadTopics
 
 enum Signal extends Msg:
+  case Nop
   case Search
-  case ChangedClusters(value: List[Cluster])
+  case ChangedClusters
 
-type MsgBus = Hub[Msg]
-type EventsQ = SQueue[Msg]
+type MsgBus[S] = Hub[(S, Msg)]
 
-object EventsQ {
-  val schedule = Schedule.spaced(100.millis)
-  def toBus =
-    ZLayer.fromZIO(
-      for
-        hub <- ZIO.service[Hub[Msg]]
-        eventsQ <- ZIO.attempt(SQueue.empty[Msg])
-        _ <- ZIO.attempt(eventsQ.dequeueAll(_ => true))
-          .flatMap(hub.publishAll)
-          .repeat(schedule)
-          .forkDaemon
-      yield eventsQ
-    )
-}
+object MsgBus:
+  def layer[S: Tag] = ZLayer.fromZIO(Hub.unbounded[(S, Msg)])
 
-extension (c: => Unit)
-  def fx = ZIO.succeed(Platform.runLater(() => c))
-
-type Update = PartialFunction[Msg , ZIO[Any, Nothing, Option[Msg]]]
-
-def publishMessage(msg: Msg): ZIO[MsgBus, Nothing, Unit] =
-  ZIO.service[MsgBus].flatMap(_.publish(msg)).unit
-
-def registerCallback(sender: Object, cb: Update): ZIO[MsgBus , Nothing, Unit] =
-  for {
-    hub <- ZIO.service[MsgBus]
-    _ <- ZIO.debug(s"${sender.toString} - ${Thread.currentThread()}")
-    _ <- ZStream.fromHub(hub).foreach { m =>
-      for {
-        res <- cb(m)
-        _ <- res match {
-          case Some(v) => ZIO.debug(s"Sending $v") *> hub.publish(v)
-          case None    => ZIO.unit
-        }
-      } yield ()
+  def signal[S: Tag](m: Msg, s: S) =
+    ZIO.service[MsgBus[S]].flatMap { hub =>
+      hub.publish(s -> m)
     }
-  } yield ()
+
+type EventsQ[S] = SQueue[(S, Msg)]
+
+def fireFX[S](m: Msg, s: S = ViewState.empty): EventsQ[S] ?=> Unit =
+  summon[EventsQ[S]].enqueue(s -> m)
+
+import io.km8.fx.views.*
+
+object App:
+  val schedule = Schedule.spaced(100.millis)
+
+  def initialize[S: Tag, V <: View[S]](v: View[S]): UIO[(ULayer[Hub[(S, Msg)]], ULayer[SQueue[(S, Msg)]])] =
+    for
+      hub <- Hub.unbounded[(S, Msg)]
+      hubLayer = ZLayer.succeed(hub)
+      _ <- v.init.forkDaemon.provide(hubLayer)
+      eventsQ <- ZIO.succeed(SQueue.empty[(S, Msg)])
+      _ <- ZIO
+             .succeed(eventsQ.dequeueAll(_ => true))
+             .flatMap(hub.publishAll)
+             .repeat(schedule)
+             .forkDaemon
+    yield (hubLayer, ZLayer.succeed(eventsQ))
+
+extension (c: => Unit) def fx = ZIO.succeed(Platform.runLater(() => c))
+
+type Update[S] = ((S, Msg)) => UIO[Option[(S, Msg)]]
+
+def publishMessage[S: Tag](msg: (S, Msg)): URIO[MsgBus[S], Unit] =
+  ZIO.service[MsgBus[S]].flatMap(_.publish(msg)).unit
+
+def registerCallbackAsync[S: Tag](sender: Object, cb: Update[S]) =
+  registerCallback(sender, cb).forkDaemon
+
+def registerCallback[S: Tag](sender: Object, cb: Update[S]): URIO[MsgBus[S], Unit] =
+  for
+    hub <- ZIO.service[MsgBus[S]]
+    _ <- ZIO.debug(s"registering ${sender.toString} - ${Thread.currentThread()}")
+    _ <- ZStream.fromHub(hub).foreach { m =>
+           for
+             res <- cb(m)
+             _ <- res match
+                    case Some(v) => ZIO.debug(s"Sending $v") *> hub.publish(v)
+                    case None    => ZIO.unit
+
+           yield ()
+         }
+  yield ()

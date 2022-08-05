@@ -13,7 +13,7 @@ import scalafx.beans.property.ReadOnlyDoubleProperty
 import io.km8.fx.views.*
 import javafx.application.Platform
 
-class HeaderControl extends BaseControl[UIEnv & MsgBus & EventsQ]:
+class HeaderControl extends BaseControl[ViewState, MsgBus[ViewState] & EventsQ[ViewState]]:
 
   lazy val omniBar =
     new TextField {
@@ -21,26 +21,26 @@ class HeaderControl extends BaseControl[UIEnv & MsgBus & EventsQ]:
       prefWidth = 600
     }
 
-  lazy val buttonZIO =
+  val buttonZIO =
     for {
-      q <- ZIO.service[EventsQ]
+      given EventsQ[ViewState] <- ZIO.service[EventsQ[ViewState]]
       button <- ZIO.attempt(new Button {
         id = "search-omni"
         text = "Search"
-        onMouseClicked =
-          _ => q.enqueue(Backend.SearchClicked(omniBar.text.value))
+        onMouseClicked = _ =>
+            fireFX(Backend.Search(omniBar.text.value))
       })
     } yield button
 
-  val update: Update =
-    case Backend.FocusOmni =>
-      ZIO.debug("Focus omni") *>
-         omniBar.requestFocus().fx.as(None)
+  val update: Update[ViewState] = {
+    case _ -> Backend.FocusOmni => omniBar.requestFocus().fx.as(None)
+    case _ => ZIO.none
+  }
 
-  private[ui] lazy val view =
+  override def render =
     for {
       button <- buttonZIO
-      toolBar <- ZIO.attempt(
+      toolBar =
         new ToolBar {
           prefHeight = 76
           maxHeight = 76
@@ -59,8 +59,6 @@ class HeaderControl extends BaseControl[UIEnv & MsgBus & EventsQ]:
             omniBar,
             button
           )
-        })
-      _ <- registerCallback(this, update).forkDaemon
+        }
+      _ <- registerCallbackAsync(this, update)
     } yield toolBar
-
-  override def render = view
