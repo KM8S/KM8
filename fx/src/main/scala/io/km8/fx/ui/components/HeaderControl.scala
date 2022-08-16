@@ -33,8 +33,8 @@ class HeaderControl extends BaseControl[ViewState, MsgBus[ViewState] & EventsQ[V
     } yield button
 
   val update: Update[ViewState] = {
-    case _ -> Backend.FocusOmni => omniBar.requestFocus().fx.as(None)
-    case _ => ZIO.none
+    case _ -> Backend.FocusOmni => omniBar.requestFocus().fx *> Update.none
+    case _ => Update.none
   }
 
   override def render =

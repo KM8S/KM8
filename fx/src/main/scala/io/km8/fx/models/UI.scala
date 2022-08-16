@@ -205,6 +205,7 @@ enum Backend extends Msg:
   case FocusOmni
   case Search(search: String)
   case LoadTopics
+  case KeyPressed(key: Char)
 
 enum Signal extends Msg:
   case Nop
@@ -246,7 +247,19 @@ object App:
 
 extension (c: => Unit) def fx = ZIO.succeed(Platform.runLater(() => c))
 
-type Update[S] = ((S, Msg)) => UIO[Option[(S, Msg)]]
+type Update[S] = ((S, Msg)) => UIO[(Option[S], Option[Msg])]
+
+object Update:
+  def state[S](state: S): UIO[(Option[S], Option[Msg])] =
+    ZIO.succeed(Some(state), None)
+
+  def stateZIO[S](state: UIO[S]): UIO[(Option[S], Option[Msg])] =
+    state.map(s => Some(s) -> None)
+
+  def apply[S](state: S, msg: Msg): UIO[(Option[S], Option[Msg])] =
+    ZIO.succeed(Some(state), Some(msg))
+
+  def none[S]: UIO[(Option[S], Option[Msg])] = ZIO.succeed(None -> None)
 
 def publishMessage[S: Tag](msg: (S, Msg)): URIO[MsgBus[S], Unit] =
   ZIO.service[MsgBus[S]].flatMap(_.publish(msg)).unit
@@ -262,8 +275,8 @@ def registerCallback[S: Tag](sender: Object, cb: Update[S]): URIO[MsgBus[S], Uni
            for
              res <- cb(m)
              _ <- res match
-                    case Some(v) => ZIO.debug(s"Sending $v") *> hub.publish(v)
-                    case None    => ZIO.unit
+                    case s -> m if s.isDefined || m.isDefined => ZIO.debug(s"Sending $res") *> hub.publish(res)
+                    case _    => Update.none
 
            yield ()
          }

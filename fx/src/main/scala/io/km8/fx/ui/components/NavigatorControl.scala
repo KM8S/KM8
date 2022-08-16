@@ -33,8 +33,8 @@ class NavigatorControl extends BaseControl[ViewState, MsgBus[ViewState]]:
       ZIO.attempt {
         val nodes = state.clusterDetails.map(s => clusterNode(s).delegate)
         treeView.root.value.getChildren.addAll(nodes: _*)
-      }.catchAll(e => ZIO.succeed(e.printStackTrace())).as(None)
-    case _ => ZIO.none
+      }.catchAll(e => ZIO.succeed(e.printStackTrace())) *> Update.none
+    case _ => Update.none
 
   private lazy val treeView =
     new TreeView[String] {

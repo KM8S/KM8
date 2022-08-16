@@ -38,7 +38,7 @@ class MainStage:
     yield p
 
   def handler: Update[ViewState] =
-    case m => ZIO.debug(s"UI-$m from ${Thread.currentThread()}").as(None)
+    case m => ZIO.debug(s"UI-$m from ${Thread.currentThread()}") *> Update.none
 
 
   def render =

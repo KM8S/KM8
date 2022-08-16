@@ -37,7 +37,7 @@ object MainView extends View[ViewState]:
   override val children = ClustersView :: SearchView :: Nil
 
   override def update =
-    case _ => ZIO.none
+    case _ => Update.none
 
 object ClustersView extends View[ViewState]:
   override val children = TitleView :: Nil
@@ -46,20 +46,29 @@ object ClustersView extends View[ViewState]:
     case (state, Backend.LoadClusters) =>
       Data.loadClusters.flatMap { newClusters =>
         ZIO
-          .debug("creating clusters")
-          .as(Some(state.copy(clusterDetails = newClusters) -> Signal.ChangedClusters))
+          .debug("creating clusters") *>
+          Update(state.copy(clusterDetails = newClusters), Signal.ChangedClusters)
       }
     case _ -> Backend.Search(search) =>
-      ZIO.debug(s"Searched $search").as(None)
+      ZIO.debug(s"Searched $search") *> Update.none
     case (_, m) =>
-      ZIO.debug(s"ClusterView update: $m") *> ZIO.none
+      ZIO.debug(s"ClusterView update: $m") *> Update.none
+
+/*
+
+object TextInput extends View[String]:
+  override def update =
+    case state -> Backend.KeyPressed(k) =>
+      ZIO.succeed(state ++ 'c'.toString).
+*/
+
 
 object SearchView extends View[ViewState]:
 
   override def update =
-    case (_, m) => ZIO.debug(s"SearchView update: $m").as(None)
+    case (_, m) => ZIO.debug(s"SearchView update: $m") *> Update.none
 
 object TitleView extends View[ViewState]:
 
   override def update =
-    case _ -> m => ZIO.debug(s"TitleView update: $m").as(None)
+    case _ -> m => ZIO.debug(s"TitleView update: $m") *> Update.none

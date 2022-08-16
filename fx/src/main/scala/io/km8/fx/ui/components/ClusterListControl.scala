@@ -23,5 +23,5 @@ class ClusterListControl extends BaseControl[ViewState, UI & MsgBus[ViewState]] 
     registerCallbackAsync(this, update ) *> view
 
   val update: Update[ViewState] =
-    case s => ZIO.debug(s"${this.getClass} - $s").as(None)
+    case s => ZIO.debug(s"${this.getClass} - $s") *> Update.none
 }
