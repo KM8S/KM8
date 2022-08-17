@@ -2,27 +2,20 @@ package io.km8.fx
 package ui
 package components
 
+import javafx.application.*
+
+import scala.jdk.CollectionConverters.*
 import scalafx.scene.Node
-import scalafx.scene.control.{ScrollPane, TreeItem, TreeView}
+import scalafx.scene.control.*
+import scalafx.Includes.*
 import zio.*
 import models.*
+import io.km8.fx.views.*
+import javafx.scene.layout.*
+import javafx.scene.paint.*
+import javafx.geometry.*
 
-class NavigatorControl extends BaseControl[Has[UI]]:
-
-  private lazy val view =
-    for
-      ui <- ZIO.service[UI]
-      tv <- treeView
-      ret <- ZIO(
-               new ScrollPane {
-                 minWidth = ui.config.leftWidth
-                 fitToWidth = true
-                 fitToHeight = true
-                 id = "page-tree"
-                 content = tv
-               }
-             )
-    yield ret
+class NavigatorControl extends BaseControl[ViewState, MsgBus[ViewState]]:
 
   private val clusterNode = (cluster: Cluster) =>
     new TreeItem[String](cluster.name) {
@@ -35,25 +28,38 @@ class NavigatorControl extends BaseControl[Has[UI]]:
       )
     }
 
-  private val treeView =
-    for
-      ui <- ZIO.service[UI]
-      tv <- ZIO {
-              new TreeView[String] {
-                showRoot = false
-                id = "left-tree"
-                root = new TreeItem[String]("Clusters") {
-                  expanded = true
-                  children = ui.data.map(clusterNode).toSeq
-                }
-              }
-            }
+  val update: Update[ViewState] =
+    case EventData(Some(state), Some(Signal.ChangedClusters)) =>
+      ZIO.attempt {
+        val nodes = state.clusterDetails.map(s => clusterNode(s).delegate)
+        treeView.root.value.getChildren.addAll(nodes: _*)
+      }.catchAll(e => ZIO.succeed(e.printStackTrace())) *> Update.none
+    case _ => Update.none
+
+  private lazy val treeView =
+    new TreeView[String] {
+      showRoot = true
+      id = "left-tree"
+      root = new TreeItem[String]("Clusters") {
+        expanded = true
+      }
+    }
 //      _ = tv.getSelectionModel.selectedItemProperty().addListener((obs, oldVal, newVal) => alert(newVal.getValue))
+/*
       _ = tv.getSelectionModel
             .selectedItemProperty()
-            .addListener((obs, oldVal, newVal) => alert(ui.data.map(_.consumerGroups)))
-    yield tv
+            .addListener((obs, oldVal, newVal) => ())
+*/
 
-  override def render: ZIO[Has[UI], Throwable, Node] =
-    for ret <- view
-    yield ret
+  lazy val scrollPane =
+      new ScrollPane {
+        minWidth = 300
+        fitToWidth = true
+        fitToHeight = true
+        background = Background(BackgroundFill(Color.RED, CornerRadii(0), Insets.EMPTY))
+        id = "page-tree"
+        content = treeView
+      }
+
+  override def render =
+    registerCallbackAsync(this, update).as(scrollPane)

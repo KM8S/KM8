@@ -3,15 +3,15 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 lazy val ProjectName = "KM8"
 lazy val ProjectOrganization = "KM8S"
 lazy val ProjectVersion = "0.2.0-SNAPSHOT"
-lazy val ProjectScalaVersion = "3.1.2"
+lazy val ProjectScalaVersion = "3.1.3"
 
 lazy val Versions = new {
 
-  val zio = "1.0.13"
-  val zioKafka = "0.17.5"
-  val zioJson = "0.2.0-M3"
-  val zioLogging = "0.5.14"
-  val zioPrelude = "1.0.0-RC8"
+  val zio = "2.0.0"
+  val zioKafka = "2.0.0"
+  val zioJson = "0.3.0-RC9"
+  val zioLogging = "2.0.0"
+  val zioPrelude = "1.0.0-RC15"
 
   val kafkaProtobuf = "7.1.0"
   val javaFx = "16"

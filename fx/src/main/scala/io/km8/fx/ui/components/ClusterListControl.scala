@@ -8,8 +8,9 @@ import zio.prelude.*
 import scalafx.scene.Node
 
 import models.*
+import views.*
 
-class ClusterListControl extends BaseControl[Has[UI]] {
+class ClusterListControl extends BaseControl[ViewState, UI & MsgBus[ViewState]] {
 
   val mkList = for {
     ui <- ZIO.service[UI]
@@ -18,5 +19,9 @@ class ClusterListControl extends BaseControl[Has[UI]] {
 
   private[components] val view = mkList
 
-  override def render: RIO[Has[UI], Node] = view
+  override def render =
+    registerCallbackAsync(this, update ) *> view
+
+  val update: Update[ViewState] =
+    case s => ZIO.debug(s"${this.getClass} - $s") *> Update.none
 }

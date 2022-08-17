@@ -1,9 +1,9 @@
 package io.km8.fx
 
+import com.sun.javafx.application.PlatformImpl
 import javafx.application.Platform
-import scala.collection.mutable.{Queue => SQueue}
+
 import zio.*
-import zio.duration.*
 import javafx.beans.property.ObjectProperty
 import scalafx.application.JFXApp3
 import scalafx.collections.ObservableBuffer
@@ -13,72 +13,40 @@ import scalafx.scene.control.*
 import scalafx.scene.layout.*
 import scalafx.scene.paint.*
 import scalafx.scene.text.*
-import io.km8.fx.models.*
-import io.km8.fx.models.given
-import io.km8.fx.ui.{given, *}
-import io.km8.fx.ui.components.{given, *}
+import io.km8.fx.models.{*, given}
+import io.km8.fx.ui.{*, given}
+import io.km8.fx.ui.components.{*, given}
+import io.km8.fx.views.{*, given}
 
-import java.util.concurrent.Executor
 import scala.concurrent.ExecutionContext
 import scalafx.scene.input.KeyEvent
 import scalafx.Includes.*
 import scalafx.scene.input.KeyCode
 
-object Main extends JFXApp3 with BootstrapRuntime:
+object Main extends JFXApp3:
 
-  val currentThreadEC = ExecutionContext.fromExecutor(new Executor {
-    override def execute(command: Runnable): Unit = command.run()
-  })
-
-  private lazy val mkWindow =
-    for
-      header <- HeaderControl().render
-      navigator <- NavigatorControl().render
-      mainContent <- MainContentControl().render
-      pane <- ZIO(new SplitPane {
-                dividerPositions = 0
-                id = "page-splitpane"
-                items.addAll(navigator, mainContent)
-              })
-      p <- ZIO(new BorderPane {
-             top = new VBox {
-               vgrow = Priority.Always
-               hgrow = Priority.Always
-               children = header
-             }
-             center = new BorderPane {
-               center = pane
-             }
-           })
-    yield p
-
-  private def mkScene(sceneRoot: Parent): ZIO[Has[EventsHub], Throwable, Scene] =
-    for dispatchFocusOmni <- dispatchEvent
-    yield new Scene(1366, 768) {
-      stylesheets = List("css/app.css")
-      root = sceneRoot
-      onKeyReleased = k =>
-        k.code match
-          case KeyCode.Slash =>
-            k.consume()
-            dispatchFocusOmni(UIEvent.FocusOmni)
-          case _ => ()
-    }
+  val currentExe =
+    zio.Executor.fromJavaExecutor((command: Runnable) => command.run())
 
   override def start(): Unit =
-    val io: ZIO[Any, Throwable, JFXApp3.PrimaryStage] =
+
+    val io =
       for
-        h <- Hub.unbounded[UIEvent]
-        hubLayer = ZLayer.succeed(h)
-        main <- mkWindow.provideLayer(UI.make("") +!+ hubLayer)
-        s <- mkScene(main).provideLayer(hubLayer)
-        ret <- ZIO(new JFXApp3.PrimaryStage {
-                 title = "KM8"
-                 scene = s
-               })
+        layers <- App.initialize(MainView)
+        (msgLayer, fxLayer) = layers
+        s <- MainStage()
+          .render
+          .tapError(e => ZIO.succeed(e.printStackTrace))
+          .orDie
+          .provide(msgLayer, fxLayer)
+        ret = new JFXApp3.PrimaryStage {
+                title = s"KM8 - ${Thread.currentThread()}"
+                scene = s
+              }
+        _ <- MsgBus.signal(Backend.LoadClusters, ViewState.empty).provide(msgLayer)
       yield ret
-    unsafeRun(
-      io
-        .on(currentThreadEC)
-        .exitCode
-    )
+
+    stage =
+      Unsafe.unsafeCompat { implicit u: Unsafe =>
+        Runtime.default.unsafe.run(io.onExecutor(currentExe)).getOrThrow()
+      }

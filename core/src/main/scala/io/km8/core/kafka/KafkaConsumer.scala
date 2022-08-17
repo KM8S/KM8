@@ -2,9 +2,7 @@ package io.km8.core
 package kafka
 
 import zio.*
-import zio.blocking.Blocking
-import zio.clock.Clock
-import zio.duration.*
+
 import zio.kafka.consumer.*
 import zio.kafka.consumer.Consumer.*
 import zio.kafka.serde.Deserializer
@@ -28,19 +26,19 @@ trait KafkaConsumer {
 
 object KafkaConsumer {
 
-  lazy val liveLayer: URLayer[Clock with Blocking with Has[ClusterConfig], Has[KafkaConsumer]] =
-    (KafkaConsumerLive(_, _, _)).toLayer
+  lazy val liveLayer: URLayer[ClusterConfig, KafkaConsumer] =
+    ZLayer {
+      for {
+        config <- ZIO.service[ClusterConfig]
+      } yield KafkaConsumerLive(config)
+    }
 
-  def consume(request: ConsumeRequest): ZStream[Has[KafkaConsumer], Throwable, Message] =
-    ZStream.accessStream[Has[KafkaConsumer]](_.get.consume(request))
+  def consume(request: ConsumeRequest): ZStream[KafkaConsumer, Throwable, Message] =
+    ZStream.environmentWithStream[KafkaConsumer](_.get.consume(request))
 
   case class KafkaConsumerLive(
-    clock: Clock.Service,
-    blocking: Blocking.Service,
     clustersConfigService: ClusterConfig)
       extends KafkaConsumer {
-    private val clockLayer = ZLayer.succeed(clock)
-    private val blockingLayer = ZLayer.succeed(blocking)
 
     // TODO Ciprian transform to enum or reuse the Consumer enum + serdes
     private def extractOffsetStrategy(offsetValue: String): AutoOffsetStrategy =
@@ -55,7 +53,7 @@ object KafkaConsumer {
         .map(_.asTry)
 
     private def consumerSettings(config: ClusterSettings, offsetStrategy: String): Task[ConsumerSettings] =
-      Task {
+      ZIO.attempt {
         val uuid = UUID.randomUUID().toString
         ConsumerSettings(config.kafkaHosts)
           .withGroupId(s"group-kafkamate-$uuid")
@@ -68,11 +66,11 @@ object KafkaConsumer {
     private def makeConsumerLayer(
       clusterId: String,
       offsetStrategy: String
-    ): ZLayer[Clock & Blocking, Throwable, Has[Consumer]] =
-      ZLayer.fromManaged {
+    ): ZLayer[Any, Throwable, Consumer] =
+      ZLayer.scoped {
         for {
-          cs <- clustersConfigService.getCluster(clusterId).toManaged_
-          settings <- consumerSettings(cs, offsetStrategy).toManaged_
+          cs <- clustersConfigService.getCluster(clusterId)
+          settings <- consumerSettings(cs, offsetStrategy)
           consumer <- Consumer.make(settings)
         } yield consumer
       }
@@ -80,7 +78,7 @@ object KafkaConsumer {
     def consume(request: ConsumeRequest): ZStream[Any, Throwable, Message] = {
       def consumer[T](
         valueDeserializer: Deserializer[Any, Try[T]]
-      ): ZStream[Has[Consumer], Throwable, Message] = Consumer
+      ): ZStream[Consumer, Throwable, Message] = Consumer
         .subscribeAnd(Subscription.topics(request.topicName))
         .plainStream(Deserializer.string, valueDeserializer)
         .collect {
@@ -98,7 +96,7 @@ object KafkaConsumer {
                 .orElseFail(new Exception("SchemaRegistry url was not provided!"))
             )
           ZStream
-            .fromEffect(protoSettings.flatMap(protobufDeserializer))
+            .fromZIO(protoSettings.flatMap(protobufDeserializer))
             .flatMap(consumer)
         case _ => consumer(Deserializer.string.asTry)
       }
@@ -114,8 +112,7 @@ object KafkaConsumer {
         else withFilter.take(request.maxResults)
 
       withFilterLimit.provideLayer(
-        clockLayer ++ blockingLayer >>>
-          makeConsumerLayer(request.clusterId, request.offsetStrategy)
+        makeConsumerLayer(request.clusterId, request.offsetStrategy)
       )
     }
   }

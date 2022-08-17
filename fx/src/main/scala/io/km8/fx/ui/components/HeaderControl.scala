@@ -8,11 +8,12 @@ import scalafx.scene.control.*
 import scalafx.scene.image.{Image, ImageView}
 import zio.*
 import zio.stream.*
-
 import models.*
 import scalafx.beans.property.ReadOnlyDoubleProperty
+import io.km8.fx.views.*
+import javafx.application.Platform
 
-class HeaderControl extends BaseControl[UIEnv]:
+class HeaderControl extends BaseControl[ViewState, MsgBus[ViewState] & EventsQ[ViewState]]:
 
   lazy val omniBar =
     new TextField {
@@ -20,41 +21,45 @@ class HeaderControl extends BaseControl[UIEnv]:
       prefWidth = 600
     }
 
-  lazy val button = new Button {
-    id = "search-omni"
-    text = "Search"
-    onMouseClicked = _ => alert("test")
+  val buttonZIO =
+    for {
+      given EventsQ[ViewState] <- ZIO.service[EventsQ[ViewState]]
+      button <- ZIO.attempt(new Button {
+        id = "search-omni"
+        text = "Search"
+        onMouseClicked = _ =>
+            fireFX(Backend.Search(omniBar.text.value))
+      })
+    } yield button
+
+  val update: Update[ViewState] = {
+    case EventData(_ , Some(Backend.FocusOmni)) =>
+      omniBar.requestFocus().fx *> Update.none
+    case _ => Update.none
   }
 
-  private[ui] val view =
-    for
-      hub <- ZIO.service[EventsHub]
-      _ <- ZStream
-             .fromHub(hub)
-             .foreach { case UIEvent.FocusOmni =>
-               ZIO {
-                 omniBar.requestFocus()
-               }
-             }
-             .forkDaemon
-    yield new ToolBar {
-      prefHeight = 76
-      maxHeight = 76
-      id = "mainToolBar"
-      content = List(
-        new ImageView {
-          image = new Image(
-            this.getClass.getResourceAsStream("/images/logo.png"),
-            200,
-            100,
-            true,
-            true
+  override def render =
+    for {
+      button <- buttonZIO
+      toolBar =
+        new ToolBar {
+          prefHeight = 76
+          maxHeight = 76
+          id = "mainToolBar"
+          content = List(
+            new ImageView {
+              image = new Image(
+                this.getClass.getResourceAsStream("/images/logo.png"),
+                200,
+                100,
+                true,
+                true
+              )
+              margin = Insets(0, 100, 0, 10)
+            },
+            omniBar,
+            button
           )
-          margin = Insets(0, 100, 0, 10)
-        },
-        omniBar,
-        button
-      )
-    }
-
-  override def render: RIO[UIEnv, Node] = view
+        }
+      _ <- registerCallbackAsync(this, update)
+    } yield toolBar
