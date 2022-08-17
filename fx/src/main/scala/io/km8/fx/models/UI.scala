@@ -212,32 +212,41 @@ enum Signal extends Msg:
   case Search
   case ChangedClusters
 
-type MsgBus[S] = Hub[(S, Msg)]
+case class EventData[+S](state: Option[S], msg: Option[Msg])
+
+object EventData:
+  def apply[S](state: S): EventData[S] = EventData(Some(state), None)
+  def apply(msg: Msg): EventData[Nothing] = EventData(None, Some(msg))
+
+type MsgBus[S] = Hub[EventData[S]]
 
 object MsgBus:
-  def layer[S: Tag] = ZLayer.fromZIO(Hub.unbounded[(S, Msg)])
+  def layer[S: Tag] = ZLayer.fromZIO(Hub.unbounded[(Option[S], Option[Msg])])
 
   def signal[S: Tag](m: Msg, s: S) =
     ZIO.service[MsgBus[S]].flatMap { hub =>
-      hub.publish(s -> m)
+      hub.publish(EventData(Some(s), Some(m)))
     }
 
-type EventsQ[S] = SQueue[(S, Msg)]
+type EventsQ[S] = SQueue[EventData[S]]
 
-def fireFX[S](m: Msg, s: S = ViewState.empty): EventsQ[S] ?=> Unit =
-  summon[EventsQ[S]].enqueue(s -> m)
+def fireFX[S](m: Option[Msg], s: Option[S]): EventsQ[S] ?=> Unit =
+  summon[EventsQ[S]].enqueue(EventData(s, m))
+
+def fireFX[S](m: Msg, s: Option[S] = None): EventsQ[S] ?=> Unit =
+  fireFX(Some(m), s)
 
 import io.km8.fx.views.*
 
 object App:
   val schedule = Schedule.spaced(100.millis)
 
-  def initialize[S: Tag, V <: View[S]](v: View[S]): UIO[(ULayer[Hub[(S, Msg)]], ULayer[SQueue[(S, Msg)]])] =
+  def initialize[S: Tag, V <: View[S]](v: View[S]): UIO[(ULayer[MsgBus[S]], ULayer[EventsQ[S]])] =
     for
-      hub <- Hub.unbounded[(S, Msg)]
+      hub <- Hub.unbounded[EventData[S]]
       hubLayer = ZLayer.succeed(hub)
       _ <- v.init.forkDaemon.provide(hubLayer)
-      eventsQ <- ZIO.succeed(SQueue.empty[(S, Msg)])
+      eventsQ <- ZIO.succeed(SQueue.empty[EventData[S]])
       _ <- ZIO
              .succeed(eventsQ.dequeueAll(_ => true))
              .flatMap(hub.publishAll)
@@ -247,7 +256,7 @@ object App:
 
 extension (c: => Unit) def fx = ZIO.succeed(Platform.runLater(() => c))
 
-type Update[S] = ((S, Msg)) => UIO[(Option[S], Option[Msg])]
+type Update[S] = EventData[S] => UIO[EventData[S]]
 
 object Update:
   def state[S](state: S): UIO[(Option[S], Option[Msg])] =
@@ -256,12 +265,12 @@ object Update:
   def stateZIO[S](state: UIO[S]): UIO[(Option[S], Option[Msg])] =
     state.map(s => Some(s) -> None)
 
-  def apply[S](state: S, msg: Msg): UIO[(Option[S], Option[Msg])] =
-    ZIO.succeed(Some(state), Some(msg))
+  def apply[S](state: S, msg: Msg): UIO[EventData[S]] =
+    ZIO.succeed(EventData(Some(state), Some(msg)))
 
-  def none[S]: UIO[(Option[S], Option[Msg])] = ZIO.succeed(None -> None)
+  def none[S]: UIO[EventData[S]] = ZIO.succeed(EventData(None , None))
 
-def publishMessage[S: Tag](msg: (S, Msg)): URIO[MsgBus[S], Unit] =
+def publishMessage[S: Tag](msg: EventData[S]): URIO[MsgBus[S], Unit] =
   ZIO.service[MsgBus[S]].flatMap(_.publish(msg)).unit
 
 def registerCallbackAsync[S: Tag](sender: Object, cb: Update[S]) =
@@ -275,7 +284,8 @@ def registerCallback[S: Tag](sender: Object, cb: Update[S]): URIO[MsgBus[S], Uni
            for
              res <- cb(m)
              _ <- res match
-                    case s -> m if s.isDefined || m.isDefined => ZIO.debug(s"Sending $res") *> hub.publish(res)
+                    case EventData(s, m) if s.isDefined || m.isDefined =>
+                      ZIO.debug(s"Sending $res") *> hub.publish(res)
                     case _    => Update.none
 
            yield ()

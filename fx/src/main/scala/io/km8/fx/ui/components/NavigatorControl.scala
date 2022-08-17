@@ -29,7 +29,7 @@ class NavigatorControl extends BaseControl[ViewState, MsgBus[ViewState]]:
     }
 
   val update: Update[ViewState] =
-    case (state, Signal.ChangedClusters) =>
+    case EventData(Some(state), Some(Signal.ChangedClusters)) =>
       ZIO.attempt {
         val nodes = state.clusterDetails.map(s => clusterNode(s).delegate)
         treeView.root.value.getChildren.addAll(nodes: _*)

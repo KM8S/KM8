@@ -43,15 +43,15 @@ object ClustersView extends View[ViewState]:
   override val children = TitleView :: Nil
 
   override def update =
-    case (state, Backend.LoadClusters) =>
+    case EventData(Some(state), Some(Backend.LoadClusters)) =>
       Data.loadClusters.flatMap { newClusters =>
         ZIO
           .debug("creating clusters") *>
           Update(state.copy(clusterDetails = newClusters), Signal.ChangedClusters)
       }
-    case _ -> Backend.Search(search) =>
+    case EventData(_, Some(Backend.Search(search))) =>
       ZIO.debug(s"Searched $search") *> Update.none
-    case (_, m) =>
+    case EventData(_, m) =>
       ZIO.debug(s"ClusterView update: $m") *> Update.none
 
 /*
@@ -66,9 +66,9 @@ object TextInput extends View[String]:
 object SearchView extends View[ViewState]:
 
   override def update =
-    case (_, m) => ZIO.debug(s"SearchView update: $m") *> Update.none
+    case EventData(_, m) => ZIO.debug(s"SearchView update: $m") *> Update.none
 
 object TitleView extends View[ViewState]:
 
   override def update =
-    case _ -> m => ZIO.debug(s"TitleView update: $m") *> Update.none
+    case EventData(_ , m) => ZIO.debug(s"TitleView update: $m") *> Update.none

@@ -17,4 +17,4 @@ class MainContentControl extends BaseControl[ViewState, MsgBus[ViewState]]:
     registerCallbackAsync(this, update) *> view
 
   val update: Update[ViewState] =
-    case (_, m) => ZIO.debug(s"${this.getClass} - $m") *> Update.none
+    case EventData(_, m) => ZIO.debug(s"${this.getClass} - $m") *> Update.none
