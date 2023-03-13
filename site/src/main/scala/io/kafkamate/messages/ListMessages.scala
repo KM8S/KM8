@@ -27,7 +27,7 @@ import common._
     isStreaming: Boolean = false,
     items: List[Item] = List.empty,
     error: Option[String] = None,
-    maxResults: Long = 0L,
+    maxResults: Long = 20L,
     offsetStrategy: String = "earliest",
     filterKeyword: String = "",
     messageFormat: MessageFormat = MessageFormat.STRING

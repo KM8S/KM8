@@ -9,8 +9,9 @@ import zio.logging._
 object Logger {
 
   lazy val liveLayer: URLayer[Console with Clock, Logging] =
+    //Slf4jLogger.make((_, message) => message)
     Logging.console(
-      logLevel = LogLevel.Info,
+      logLevel = LogLevel.Debug,
       format = LogFormat.ColoredLogFormat()
     ) >>> Logging.withRootLoggerName("kafkamate")
 

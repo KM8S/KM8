@@ -5,6 +5,7 @@ lazy val ProjectOrganization = "csofronia"
 lazy val ProjectVersion      = "0.1.0"
 lazy val ProjectScalaVersion = "2.13.6"
 
+// make sure to align zio versions with scalajs versions from plugins.sbt
 lazy val ZIOVersion    = "1.0.9"
 lazy val GrpcVersion   = "1.38.1"
 lazy val SlinkyVersion = "0.6.7"
@@ -94,7 +95,7 @@ lazy val service = project
       "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.11",
       "com.lihaoyi"                  %% "os-lib"                    % "0.7.8",
       "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
-      "io.confluent"                  % "kafka-protobuf-serializer" % "6.2.0",
+      "io.confluent"                  % "kafka-protobuf-serializer" % "7.2.1",
       //"com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.10.0",
       "net.logstash.logback"          % "logstash-logback-encoder"  % "6.6",
       "ch.qos.logback"                % "logback-classic"           % "1.2.3",

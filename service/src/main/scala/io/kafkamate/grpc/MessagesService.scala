@@ -25,13 +25,13 @@ object MessagesService {
     override def produceMessage(request: ProduceRequest): ZIO[Env, Status, ProduceResponse] =
       KafkaProducer
         .produce(request.topicName, request.key, request.value)(request.clusterId)
-        .tapError(e => log.error(s"Producer error: ${e.getMessage}"))
+        .tapError(e => log.throwable(s"Producer error: ${e.getMessage}", e))
         .bimap(GRPCStatus.fromThrowable, _ => ProduceResponse("OK"))
 
     override def consumeMessages(request: ConsumeRequest): ZStream[Env, Status, Message] =
       KafkaConsumer
         .consume(request)
-        .onError(e => log.error("Consumer error: \n" + e.prettyPrint))
+        .onError(e => log.error("Consumer error: \n" + e.prettyPrint, e))
         .mapError(GRPCStatus.fromThrowable)
   }
 }

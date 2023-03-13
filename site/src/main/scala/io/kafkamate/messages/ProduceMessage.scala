@@ -107,7 +107,7 @@ import common._
       br(),
       div(
         className := "card",
-        div(className := "card-header", "Publish data using STRING message format"),
+        div(className := "card-header", "Publish data using STRING value format"),
         div(
           className := "card-body",
           addMessageForm()

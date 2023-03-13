@@ -4,9 +4,8 @@ package kafka
 import java.util.UUID
 import scala.jdk.CollectionConverters._
 import scala.util.Try
-
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
-import com.google.protobuf.{Message => GMessage}
+import com.google.protobuf.{MessageOrBuilder, Message => GMessage}
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
@@ -17,9 +16,10 @@ import zio.kafka.consumer._
 import zio.kafka.consumer.Consumer._
 import zio.kafka.serde.Deserializer
 import zio.macros.accessible
-
 import io.kafkamate.messages.MessageFormat.PROTOBUF
-import config._, ClustersConfig._
+import config._
+import ClustersConfig._
+import com.google.protobuf.util.JsonFormat
 import messages._
 
 @accessible object KafkaConsumer {
@@ -59,7 +59,10 @@ import messages._
             .withCloseTimeout(10.seconds)
         }
 
-      private def makeConsumerLayer(clusterId: String, offsetStrategy: String): RLayer[Clock with Blocking, Consumer] =
+      def toJson(messageOrBuilder: MessageOrBuilder): String =
+        JsonFormat.printer.print(messageOrBuilder)
+
+      private def makeConsumerLayer(clusterId: String, offsetStrategy: String) =
         ZLayer.fromManaged {
           for {
             cs       <- clustersConfigService.getCluster(clusterId).toManaged_
@@ -74,7 +77,12 @@ import messages._
           .plainStream(Deserializer.string, valueDeserializer)
           .collect {
             case v if v.value.isSuccess =>
-              Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value.get.toString)
+              if (request.messageFormat == PROTOBUF)
+                Message(v.offset.offset, v.partition, v.timestamp, v.key, toJson(v.value.get.asInstanceOf[GMessage]))
+              else
+                Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value.get.toString)
+            case v if v.value.isFailure =>
+              Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value.toString)
           }
 
         val stream = request.messageFormat match {
@@ -89,7 +97,9 @@ import messages._
             ZStream
               .fromEffect(protoSettings)
               .flatMap(p => consumer(protobufDeserializer(p)))
-          case _ => consumer(Deserializer.string.asTry)
+          case _ =>
+//            ZStream.fail(new Exception("not impl"))
+            consumer(Deserializer.string.asTry)
         }
 
         val withFilter = {

@@ -25,7 +25,7 @@ object ClustersService {
         schemaRegistry = Option.unless(request.schemaRegistryUrl.isEmpty)(request.schemaRegistryUrl)
         c <- ClustersConfig
                .writeClusters(ClusterSettings(clusterId, request.name, hosts, schemaRegistry))
-               .tapError(e => log.error(s"Add cluster error: ${e.getMessage}"))
+               .tapError(e => log.throwable(s"Add cluster error: ${e.getMessage}", e))
                .bimap(GRPCStatus.fromThrowable, _ => request)
       } yield c
 
@@ -35,14 +35,15 @@ object ClustersService {
       )
 
     def getClusters(request: ClusterRequest): ZIO[Env, Status, ClusterResponse] =
-      ClustersConfig.readClusters
-        .tapError(e => log.error(s"Get clusters error: ${e.getMessage}"))
-        .bimap(GRPCStatus.fromThrowable, toClusterResponse)
+      log.debug("Received getClusters request") *>
+        ClustersConfig.readClusters
+          .tapError(e => log.throwable(s"Get clusters error: ${e.getMessage}", e))
+          .bimap(GRPCStatus.fromThrowable, toClusterResponse)
 
     def deleteCluster(request: ClusterDetails): ZIO[Env, Status, ClusterResponse] =
       ClustersConfig
         .deleteCluster(request.id)
-        .tapError(e => log.error(s"Delete cluster error: ${e.getMessage}"))
+        .tapError(e => log.throwable(s"Delete cluster error: ${e.getMessage}", e))
         .bimap(GRPCStatus.fromThrowable, toClusterResponse)
   }
 }

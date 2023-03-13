@@ -1,0 +1,23 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>
+                %d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n
+            </Pattern>
+        </layout>
+    </appender>
+
+<!--    JSON format logging -->
+<!--    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">-->
+<!--        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>-->
+<!--    </appender>-->
+
+    <logger name="io.kafkamate" level="DEBUG"/>
+    <logger name="io.grpc" level="INFO"/>
+    <logger name="io.netty" level="INFO"/>
+    <logger name="org.apache.kafka" level="INFO"/>
+
+    <root level="DEBUG">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
