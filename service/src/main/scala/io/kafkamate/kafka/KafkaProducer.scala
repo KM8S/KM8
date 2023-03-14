@@ -8,14 +8,14 @@ import zio.kafka.producer._
 import zio.macros.accessible
 import config._
 import ClustersConfig._
-import com.google.protobuf.{DynamicMessage, Message}
+import com.google.protobuf.{Descriptors, DynamicMessage, Message}
 import com.google.protobuf.util.JsonFormat
 import io.confluent.kafka.formatter.SchemaMessageSerializer
 import io.confluent.kafka.schemaregistry.{ParsedSchema, SchemaProvider}
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaRegistryClient}
 import io.confluent.kafka.schemaregistry.protobuf.{ProtobufSchema, ProtobufSchemaProvider, ProtobufSchemaUtils}
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
-import io.confluent.kafka.serializers.protobuf.AbstractKafkaProtobufSerializer
+import io.confluent.kafka.serializers.protobuf.{AbstractKafkaProtobufSerializer, KafkaProtobufSerializer}
 
 import scala.jdk.CollectionConverters._
 
@@ -47,7 +47,8 @@ import scala.jdk.CollectionConverters._
           Map("auto.register.schema" -> "true").asJava
         )
 
-        val schemaId = 7
+//        val schemaId = 21 //trading
+        val schemaId = 7 //quotes
         def valueSubject(topic: String) = s"$topic-value"
 
         def getSchema(id: Int): Task[ParsedSchema] =
@@ -55,16 +56,35 @@ import scala.jdk.CollectionConverters._
 
         lazy val serializer: SchemaMessageSerializer[Message] =
           KM8ProtobufMessageSerializer(schemaRegistryClient)
+//        lazy val serializer: KafkaProtobufSerializer[Message] = {
+//          val r = new KafkaProtobufSerializer[Message](/*schemaRegistryClient*/)
+//          val cfg = Map(
+////            "reference.subject.name.strategy" -> "io.confluent.kafka.serializers.subject.TopicNameStrategy",
+//            "schema.registry.url" -> "http://localhost:8081",
+//            "auto.register.schema" -> "true"
+//          )
+//          r.configure(cfg.asJava, false)
+//          r
+//        }
+
+        def toObject(value: String, schema: ProtobufSchema, messageDescriptor: Descriptors.Descriptor): Message = {
+          val message = DynamicMessage.newBuilder(messageDescriptor)
+          JsonFormat.parser.merge(value, message)
+          message.build
+        }
 
         def readFrom(jsonString: String, schema: ParsedSchema): Task[Message] =
           Task {
             println("?" * 100)
-            //val s = ProtobufSchemaUtils.toObject(jsonString, schema.asInstanceOf[ProtobufSchema]).asInstanceOf[Message]
-            val messageBuilder: DynamicMessage.Builder = schema.asInstanceOf[ProtobufSchema].newMessageBuilder
-            //JsonFormat.parser.merge(jsonString, messageBuilder)
-            JsonFormat.parser().ignoringUnknownFields().merge(jsonString, messageBuilder)
-            val s = messageBuilder.build
+            val quoteSchema = schema.asInstanceOf[ProtobufSchema]
+            val descriptor: Descriptors.Descriptor = quoteSchema.toDescriptor("Quote")
+//            val s = ProtobufSchemaUtils.toObject(jsonString, schema.asInstanceOf[ProtobufSchema]).asInstanceOf[Message]
+            val s = toObject(jsonString, quoteSchema, descriptor)
             println(">" * 100)
+            println("1: " + s.getDescriptorForType.getFullName)
+            println("2: " + s.toString)
+            println("4: " + s.getDescriptorForType.getFields.asScala)
+            println("<" * 100)
             s
           }.tapError(e => ZIO.debug(s"Error (${e.getMessage}) while reading from ($jsonString) and schema ($schema)"))
 
@@ -72,7 +92,9 @@ import scala.jdk.CollectionConverters._
           for {
             valueSchema <- getSchema(schemaId)
             value <- readFrom(valueString, valueSchema)
+            _ <- ZIO.debug(s"Value:\n---\n$value")
             bytes <- Task(serializer.serialize(valueSubject(topic), topic, false, value, valueSchema))
+//            bytes <- Task(serializer.serialize(topic, value))
           } yield bytes
 
         def producerLayer(clusterId: String): RLayer[Blocking, Producer[Any, String, Array[Byte]]] =
