@@ -93,6 +93,7 @@ lazy val service = project
       "dev.zio"                      %% "zio-kafka"                 % "0.15.0",
       "dev.zio"                      %% "zio-json"                  % "0.1.5",
       "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.11",
+      "io.github.kitlangton"         %% "zio-magic"                 % "0.3.2",
       "com.lihaoyi"                  %% "os-lib"                    % "0.7.8",
       "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
       "io.confluent"                  % "kafka-protobuf-serializer" % "7.2.1",

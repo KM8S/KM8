@@ -184,19 +184,13 @@ import common._
                 )(" Stop")
             )
           ),
-          consumerState.messageFormat match {
-            case MessageFormat.STRING =>
-              Some(
-                a(
-                  `type` := "button",
-                  style := js.Dynamic.literal(marginTop = "29px", float = "right"),
-                  className := "btn btn-primary fa fa-plus",
-                  href := s"#${Loc.fromTopicAdd(clusterId, topicName)}",
-                  target := "_blank"
-                )(" Add new message")
-              )
-            case _ => None
-          }
+          a(
+            `type` := "button",
+            style := js.Dynamic.literal(marginTop = "29px", float = "right"),
+            className := "btn btn-primary fa fa-plus",
+            href := s"#${Loc.fromTopicAdd(clusterId, topicName)}",
+            target := "_blank"
+          )(" Add new message")
         ),
         table(
           className := "table table-hover",

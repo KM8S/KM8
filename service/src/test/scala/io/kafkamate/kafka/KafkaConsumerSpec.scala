@@ -1,6 +1,5 @@
 package io.kafkamate
 package kafka
-package consumer
 
 import zio._
 import zio.blocking.Blocking
@@ -15,7 +14,7 @@ import zio.test.{DefaultRunnableSpec, _}
 
 import util.{HelperSpec, KafkaEmbedded}
 
-object ConsumerSpec extends DefaultRunnableSpec with HelperSpec {
+object KafkaConsumerSpec extends DefaultRunnableSpec with HelperSpec {
   import KafkaConsumer._
   import utils.Logger
   import messages._

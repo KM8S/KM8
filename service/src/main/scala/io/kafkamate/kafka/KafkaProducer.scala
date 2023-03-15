@@ -3,6 +3,7 @@ package kafka
 
 import zio._
 import zio.blocking._
+import zio.magic._
 import zio.kafka.serde._
 import zio.kafka.producer._
 import zio.macros.accessible
@@ -13,9 +14,10 @@ import com.google.protobuf.util.JsonFormat
 import io.confluent.kafka.formatter.SchemaMessageSerializer
 import io.confluent.kafka.schemaregistry.{ParsedSchema, SchemaProvider}
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaRegistryClient}
-import io.confluent.kafka.schemaregistry.protobuf.{ProtobufSchema, ProtobufSchemaProvider, ProtobufSchemaUtils}
+import io.confluent.kafka.schemaregistry.protobuf.{ProtobufSchema, ProtobufSchemaProvider}
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.serializers.protobuf.{AbstractKafkaProtobufSerializer, KafkaProtobufSerializer}
+import io.kafkamate.messages.ProduceRequest
 
 import scala.jdk.CollectionConverters._
 
@@ -23,39 +25,55 @@ import scala.jdk.CollectionConverters._
   type KafkaProducer = Has[Service]
 
   trait Service {
-    def produce(topic: String, key: String, value: String)(clusterId: String): RIO[Blocking, Unit]
+    def produce(request: ProduceRequest): RIO[Blocking, Unit]
   }
 
   lazy val liveLayer: URLayer[ClustersConfigService, KafkaProducer] =
     ZLayer.fromService { clusterConfigService =>
       new Service {
         lazy val serdeLayer: ULayer[Has[Serializer[Any, String]] with Has[Serializer[Any, Array[Byte]]]] =
-          UIO(Serde.string).toLayer[Serializer[Any, String]] ++ UIO(Serde.byteArray).toLayer[Serializer[Any, Array[Byte]]]
+          UIO(Serde.string).toLayer[Serializer[Any, String]] ++
+            UIO(Serde.byteArray).toLayer[Serializer[Any, Array[Byte]]]
 
-        def settingsLayer(clusterId: String): TaskLayer[Has[ProducerSettings]] =
-          clusterConfigService
-            .getCluster(clusterId)
+        lazy val providers: List[SchemaProvider] =
+          List(new ProtobufSchemaProvider())
+
+        lazy val producerConfig: Map[String, String] =
+          Map("auto.register.schema" -> "true")
+
+        def custerSettingsLayer(clusterId: String): TaskLayer[Has[ClusterSettings]] =
+          clusterConfigService.getCluster(clusterId).toLayer
+
+        def settingsLayer: URLayer[Has[ClusterSettings], Has[ProducerSettings]] =
+          ZIO
+            .service[ClusterSettings]
             .map(c => ProducerSettings(c.kafkaHosts))
             .toLayer
 
-        lazy val providers: List[SchemaProvider] = List(new ProtobufSchemaProvider())
-
-        lazy val schemaRegistryClient = new CachedSchemaRegistryClient(
-          List("http://localhost:8081").asJava,
-          AbstractKafkaSchemaSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_DEFAULT,
-          providers.asJava,
-          Map("auto.register.schema" -> "true").asJava
-        )
+        def getSchemaRegistryClient: RIO[Has[ClusterSettings], CachedSchemaRegistryClient] =
+          ZIO
+            .service[ClusterSettings]
+            .map(_.schemaRegistryUrl)
+            .someOrFail(new RuntimeException("Schema registry url not provided!"))
+            .mapEffect { schemaRegistryUrl =>
+              new CachedSchemaRegistryClient(
+                List(schemaRegistryUrl).asJava,
+                AbstractKafkaSchemaSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_DEFAULT,
+                providers.asJava,
+                producerConfig.asJava
+              )
+            }
 
 //        val schemaId = 21 //trading
-        val schemaId = 7 //quotes
-        def valueSubject(topic: String) = s"$topic-value"
+//        val schemaId = 7 //quotes
+//        def valueSubject(topic: String) = s"$topic-value"
 
-        def getSchema(id: Int): Task[ParsedSchema] =
-          Task(schemaRegistryClient.getSchemaById(id))
+        def getSchema(registry: CachedSchemaRegistryClient, id: Int): Task[ParsedSchema] =
+          Task(registry.getSchemaById(id))
 
-        lazy val serializer: SchemaMessageSerializer[Message] =
-          KM8ProtobufMessageSerializer(schemaRegistryClient)
+        def getSerializer(registry: CachedSchemaRegistryClient): Task[KM8ProtobufMessageSerializer] =
+          Task(KM8ProtobufMessageSerializer(registry))
+
 //        lazy val serializer: KafkaProtobufSerializer[Message] = {
 //          val r = new KafkaProtobufSerializer[Message](/*schemaRegistryClient*/)
 //          val cfg = Map(
@@ -67,55 +85,56 @@ import scala.jdk.CollectionConverters._
 //          r
 //        }
 
-        def toObject(value: String, schema: ProtobufSchema, messageDescriptor: Descriptors.Descriptor): Message = {
-          val message = DynamicMessage.newBuilder(messageDescriptor)
-          JsonFormat.parser.merge(value, message)
-          message.build
-        }
-
-        def readFrom(jsonString: String, schema: ParsedSchema): Task[Message] =
+        def readFrom(valueString: String, valueSchema: ParsedSchema, valueDescriptor: Option[String]): Task[Message] =
           Task {
-            println("?" * 100)
-            val quoteSchema = schema.asInstanceOf[ProtobufSchema]
-            val descriptor: Descriptors.Descriptor = quoteSchema.toDescriptor("Quote")
-//            val s = ProtobufSchemaUtils.toObject(jsonString, schema.asInstanceOf[ProtobufSchema]).asInstanceOf[Message]
-            val s = toObject(jsonString, quoteSchema, descriptor)
-            println(">" * 100)
-            println("1: " + s.getDescriptorForType.getFullName)
-            println("2: " + s.toString)
-            println("4: " + s.getDescriptorForType.getFields.asScala)
-            println("<" * 100)
-            s
-          }.tapError(e => ZIO.debug(s"Error (${e.getMessage}) while reading from ($jsonString) and schema ($schema)"))
+            val protobufSchema = valueSchema.asInstanceOf[ProtobufSchema]
+            val schemaDescriptor: Descriptors.Descriptor =
+              valueDescriptor.fold(protobufSchema.toDescriptor)(name => protobufSchema.toDescriptor(name))
+            val builder = DynamicMessage.newBuilder(schemaDescriptor)
+            JsonFormat.parser.merge(valueString, builder)
+            builder.build
+          }.tapError(e =>
+            ZIO.debug(s"Error (${e.getMessage}) while reading from ($valueString) and schema ($valueSchema)")
+          )
 
-        def readMessage(topic: String, valueString: String): Task[Array[Byte]] =
+        def readMessage(request: ProduceRequest): RIO[Has[ClusterSettings], Array[Byte]] =
           for {
-            valueSchema <- getSchema(schemaId)
-            value <- readFrom(valueString, valueSchema)
-            _ <- ZIO.debug(s"Value:\n---\n$value")
-            bytes <- Task(serializer.serialize(valueSubject(topic), topic, false, value, valueSchema))
+            registry    <- getSchemaRegistryClient
+            valueSchema <- getSchema(registry, request.schemaId)
+            value       <- readFrom(request.value, valueSchema, request.valueDescriptor)
+            _           <- ZIO.debug(s"value message:\n$value")
+            serializer  <- getSerializer(registry)
+            bytes <-
+              Task(serializer.serialize(request.valueSubject, request.topicName, isKey = false, value, valueSchema))
 //            bytes <- Task(serializer.serialize(topic, value))
           } yield bytes
 
-        def producerLayer(clusterId: String): RLayer[Blocking, Producer[Any, String, Array[Byte]]] =
-          Blocking.any ++ serdeLayer ++ settingsLayer(clusterId) >>> Producer.live[Any, String, Array[Byte]]
+        def producerLayer(
+          clusterId: String
+        ): RLayer[Blocking, Producer[Any, String, Array[Byte]] with Has[ClusterSettings]] =
+          ZLayer.wireSome[Blocking, Producer[Any, String, Array[Byte]] with Has[ClusterSettings]](
+            serdeLayer,
+            custerSettingsLayer(clusterId),
+            settingsLayer,
+            Producer.live[Any, String, Array[Byte]]
+          )
 
-        def produce(topic: String, key: String, value: String)(clusterId: String): RIO[Blocking, Unit] = {
-          readMessage(topic, value).flatMap { bytes =>
+        def produce(request: ProduceRequest): RIO[Blocking, Unit] =
+          readMessage(request).flatMap { bytes =>
             Producer
-              .produce[Any, String, Array[Byte]](topic, key, bytes)
+              .produce[Any, String, Array[Byte]](request.topicName, request.key, bytes)
               .unit
-              .provideSomeLayer[Blocking](producerLayer(clusterId))
-          }
-        }
+          }.provideSomeLayer[Blocking](producerLayer(request.clusterId))
+
       }
     }
 
   case class KM8ProtobufMessageSerializer(
-      schemaRegistryClient: SchemaRegistryClient,
-      autoRegister: Boolean = true,
-      useLatest: Boolean = true
-    ) extends AbstractKafkaProtobufSerializer[Message] with SchemaMessageSerializer[Message] {
+    schemaRegistryClient: SchemaRegistryClient,
+    autoRegister: Boolean = true,
+    useLatest: Boolean = true
+  ) extends AbstractKafkaProtobufSerializer[Message]
+      with SchemaMessageSerializer[Message] {
 
     this.schemaRegistry = schemaRegistryClient
     this.autoRegisterSchema = autoRegister
@@ -125,7 +144,13 @@ import scala.jdk.CollectionConverters._
 
     override def serializeKey(topic: String, payload: Object) = ???
 
-    override def serialize(subject: String, topic: String, isKey: Boolean, `object`: Message, schema: ParsedSchema): Array[Byte] =
+    override def serialize(
+      subject: String,
+      topic: String,
+      isKey: Boolean,
+      `object`: Message,
+      schema: ParsedSchema
+    ): Array[Byte] =
       super.serializeImpl(subject, topic, isKey, `object`, schema.asInstanceOf[ProtobufSchema])
   }
 

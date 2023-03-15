@@ -24,7 +24,7 @@ object MessagesService {
   object GrpcService extends ZioMessages.RMessagesService[Env] {
     override def produceMessage(request: ProduceRequest): ZIO[Env, Status, ProduceResponse] =
       KafkaProducer
-        .produce(request.topicName, request.key, request.value)(request.clusterId)
+        .produce(request)
         .tapError(e => log.throwable(s"Producer error: ${e.getMessage}", e))
         .bimap(GRPCStatus.fromThrowable, _ => ProduceResponse("OK"))
 

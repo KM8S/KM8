@@ -23,6 +23,10 @@ message ProduceRequest {
   string topicName = 2;
   string key = 3;
   string value = 4;
+  MessageFormat messageFormat = 5;
+  int32 schemaId = 6;
+  string valueSubject = 7;
+  optional string valueDescriptor = 8;
 }
 
 message ProduceResponse {
