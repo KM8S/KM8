@@ -130,7 +130,10 @@ import scala.jdk.CollectionConverters._
                   .unit
               }.provideSomeLayer[Blocking](producerLayer(r.clusterId))
             case ProduceRequest.Request.StringRequest(r) =>
-              ZIO.fail(new RuntimeException("Not implemented!"))
+              Producer
+                .produce[Any, String, Array[Byte]](r.topicName, r.key, r.value.getBytes)
+                .unit
+                .provideSomeLayer[Blocking](producerLayer(r.clusterId))
             case _ => ZIO.fail(new RuntimeException("Not implemented!"))
           }
 
