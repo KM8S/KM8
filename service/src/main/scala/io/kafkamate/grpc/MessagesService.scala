@@ -33,5 +33,11 @@ object MessagesService {
         .consume(request)
         .onError(e => log.error("Consumer error: \n" + e.prettyPrint, e))
         .mapError(GRPCStatus.fromThrowable)
+
+    override def getSchemaSubject(request: GetSchemaSubjectRequest): ZIO[Env, Status, SchemaSubjectResponse] =
+      KafkaProducer
+        .getSchemaSubjects(request)
+        .tapError(e => log.throwable(s"Error retrieving schemas: ${e.getMessage}", e))
+        .mapError(GRPCStatus.fromThrowable)
   }
 }

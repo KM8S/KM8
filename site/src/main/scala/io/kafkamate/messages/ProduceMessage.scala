@@ -24,6 +24,10 @@ import common._
     val (shouldMakeRequest, setRequestAction) = useState(false)
     val (messageKey, setKey)                  = useState("")
     val (messageValue, setValue)              = useState("")
+    val (schemas, setSchemas)                 = useState(Seq.empty[SchemaSubject])
+    val (schemaId, setSchemaId)               = useState(0)
+    val (schemaUrl, setSchemaUrl)             = useState("")
+    val (messageFormat, setMessageFormat)     = useState(MessageFormat.STRING.name)
     val (valueDescriptor, setValueDescriptor) = useState("")
     val (successMsgs, setSuccessMsgs)         = useState(Option.empty[String])
     val (errorMsgs, setErrorMsgs)             = useState(Option.empty[String])
@@ -32,11 +36,15 @@ import common._
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
-    def handleMessageFormat(e: SyntheticEvent[html.Select, Event]): Unit  = () //setKey(e.target.value)
-    def handleSchemaId(e: SyntheticEvent[html.Select, Event]): Unit       = () //setKey(e.target.value)
+    def handleMessageFormat(e: SyntheticEvent[html.Select, Event]): Unit = setMessageFormat(e.target.value)
+    def handleSchemaId(e: SyntheticEvent[html.Select, Event]): Unit = {
+      val id = e.target.value.toInt
+      setSchemaId(id)
+      setSchemaUrl(schemas.collectFirst { case s if s.id == id => s.url }.getOrElse(""))
+    }
     def handleKey(e: SyntheticEvent[html.Input, Event]): Unit             = setKey(e.target.value)
     def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit        = setValue(e.target.value)
-    def handleValueDescriptor(e: SyntheticEvent[html.Input, Event]): Unit = () //setValueDescriptor(e.target.value)
+    def handleValueDescriptor(e: SyntheticEvent[html.Input, Event]): Unit = setValueDescriptor(e.target.value)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
@@ -50,14 +58,29 @@ import common._
           messagesGrpcClient
             .produceMessage(
               ProduceRequest(
-                clusterId = clusterId,
-                topicName = topicName,
-                key = messageKey,
-                value = messageValue,
-                messageFormat = MessageFormat.PROTOBUF,
-                schemaId = 7,
-                valueSubject = s"$topicName-value",
-                valueDescriptor = Some("Quote")
+                messageFormat match {
+                  case MessageFormat.PROTOBUF.name =>
+                    ProduceRequest.Request.ProtoRequest(
+                      ProduceProtoRequest(
+                        clusterId = clusterId,
+                        topicName = topicName,
+                        key = messageKey,
+                        value = messageValue,
+                        schemaId = schemaId,
+                        valueSubject = s"$topicName-value",
+                        valueDescriptor = Option.when(valueDescriptor.nonEmpty)(valueDescriptor)
+                      )
+                    )
+                  case _ =>
+                    ProduceRequest.Request.StringRequest(
+                      ProduceStringRequest(
+                        clusterId = clusterId,
+                        topicName = topicName,
+                        key = messageKey,
+                        value = messageValue
+                      )
+                    )
+                }
               )
             )
             .onComplete {
@@ -65,13 +88,43 @@ import common._
                 Util.logMessage("Message produced")
                 setRequestAction(false)
                 setSuccessMsgs(Some(s"Message produced for key: $messageKey"))
+                setErrorMsgs(None)
 
               case Failure(e) =>
                 Util.logMessage("Error producing message: " + e)
                 setRequestAction(false)
+                setSuccessMsgs(None)
                 setErrorMsgs(Some(e.getMessage))
             },
       List(shouldMakeRequest)
+    )
+
+    useEffect(
+      () =>
+        if (messageFormat == MessageFormat.PROTOBUF.name)
+          messagesGrpcClient
+            .getSchemaSubject(
+              GetSchemaSubjectRequest(
+                clusterId = clusterId,
+                topicName = topicName
+              )
+            )
+            .onComplete {
+              case Success(response) =>
+                Util.logMessage("Schema retrieved")
+                setSchemas(response.versions)
+                response.versions.headOption.foreach { s =>
+                  setSchemaId(s.id)
+                  setSchemaUrl(s.url)
+                }
+                setErrorMsgs(None)
+
+              case Failure(e) =>
+                Util.logMessage("Error retrieving schemas: " + e)
+                setSuccessMsgs(None)
+                setErrorMsgs(Some(e.getMessage))
+            },
+      List(messageFormat)
     )
 
     def addMessageForm() =
@@ -92,21 +145,32 @@ import common._
             option(value := MessageFormat.PROTOBUF.name)(MessageFormat.PROTOBUF.name)
           )
         ),
-        div(
-          className := "input-group mb-3",
-          div(
-            className := "input-group-prepend",
-            span(className := "input-group-text", "schema", id := "form-schemaId-label0")
-          ),
-          select(
-            className := "form-control",
-            id := "form-schemaId-label1",
-            onChange := (handleSchemaId(_))
-          )(
-            option(value := "7")("topic1-value (id 7)"),
-            option(value := "8")("topic2-value (id 8)")
-          )
-        ),
+        messageFormat match {
+          case MessageFormat.PROTOBUF.name =>
+            Some(
+              div(
+                className := "input-group mb-3",
+                div(
+                  className := "input-group-prepend",
+                  span(className := "input-group-text", "schema", id := "form-schemaId-label0")
+                ),
+                select(
+                  className := "form-control",
+                  id := "form-schemaId-label1",
+                  onChange := (handleSchemaId(_))
+                )(
+                  schemas.map(s => option(key := s"id-${s.id}", value := s.id.toString)(s"id ${s.id}"))
+                ),
+                a(
+                  `type` := "button",
+                  className := "btn btn-secondary",
+                  href := s"$schemaUrl",
+                  target := "_blank"
+                )("View")
+              )
+            )
+          case _ => None
+        },
         div(
           className := "input-group mb-3",
           div(
@@ -138,29 +202,33 @@ import common._
             onChange := (handleValue(_))
           )
         ),
-        div(
-          className := "input-group mb-3",
-          div(
-            className := "input-group-prepend",
-            span(className := "input-group-text", "value descriptor", id := "form-value-descriptor-label")
-          ),
-          input(
-            `type` := "text",
-            className := "form-control",
-            placeholder := "optional descriptor",
-            aria - "label" := "descriptor",
-            aria - "describedby" := "form-username-label",
-            value := valueDescriptor,
-            onChange := (handleValueDescriptor(_))
-          )
-        ),
+        messageFormat match {
+          case MessageFormat.PROTOBUF.name =>
+            div(
+              className := "input-group mb-3",
+              div(
+                className := "input-group-prepend",
+                span(className := "input-group-text", "value descriptor", id := "form-value-descriptor-label")
+              ),
+              input(
+                `type` := "text",
+                className := "form-control",
+                placeholder := "optional descriptor",
+                aria - "label" := "descriptor",
+                aria - "describedby" := "form-username-label",
+                value := valueDescriptor,
+                onChange := (handleValueDescriptor(_))
+              )
+            )
+          case _ => None
+        },
         successMsgs.zipWithIndex.map { case (msg, idx) =>
           div(key := idx.toString, className := "alert alert-success", role := "alert", msg)
         },
         errorMsgs.zipWithIndex.map { case (msg, idx) =>
           div(key := idx.toString, className := "alert alert-danger", role := "alert", msg)
         },
-        button(`type` := "submit", className := "btn btn-secondary", "Publish")
+        button(`type` := "submit", className := "btn btn-primary", "Publish")
       )
 
     div(className := "App")(

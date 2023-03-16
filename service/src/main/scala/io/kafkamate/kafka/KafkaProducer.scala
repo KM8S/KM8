@@ -17,7 +17,7 @@ import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, Sch
 import io.confluent.kafka.schemaregistry.protobuf.{ProtobufSchema, ProtobufSchemaProvider}
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import io.confluent.kafka.serializers.protobuf.{AbstractKafkaProtobufSerializer, KafkaProtobufSerializer}
-import io.kafkamate.messages.ProduceRequest
+import io.kafkamate.messages._
 
 import scala.jdk.CollectionConverters._
 
@@ -25,6 +25,7 @@ import scala.jdk.CollectionConverters._
   type KafkaProducer = Has[Service]
 
   trait Service {
+    def getSchemaSubjects(request: GetSchemaSubjectRequest): Task[SchemaSubjectResponse]
     def produce(request: ProduceRequest): RIO[Blocking, Unit]
   }
 
@@ -97,8 +98,9 @@ import scala.jdk.CollectionConverters._
             ZIO.debug(s"Error (${e.getMessage}) while reading from ($valueString) and schema ($valueSchema)")
           )
 
-        def readMessage(request: ProduceRequest): RIO[Has[ClusterSettings], Array[Byte]] =
+        def readMessage(request: ProduceProtoRequest): RIO[Has[ClusterSettings], Array[Byte]] =
           for {
+            _           <- ZIO.debug(s"request:\n$request")
             registry    <- getSchemaRegistryClient
             valueSchema <- getSchema(registry, request.schemaId)
             value       <- readFrom(request.value, valueSchema, request.valueDescriptor)
@@ -119,12 +121,38 @@ import scala.jdk.CollectionConverters._
             Producer.live[Any, String, Array[Byte]]
           )
 
-        def produce(request: ProduceRequest): RIO[Blocking, Unit] =
-          readMessage(request).flatMap { bytes =>
-            Producer
-              .produce[Any, String, Array[Byte]](request.topicName, request.key, bytes)
-              .unit
-          }.provideSomeLayer[Blocking](producerLayer(request.clusterId))
+        override def produce(produceRequest: ProduceRequest): RIO[Blocking, Unit] =
+          produceRequest.request match {
+            case ProduceRequest.Request.ProtoRequest(r) =>
+              readMessage(r).flatMap { bytes =>
+                Producer
+                  .produce[Any, String, Array[Byte]](r.topicName, r.key, bytes)
+                  .unit
+              }.provideSomeLayer[Blocking](producerLayer(r.clusterId))
+            case ProduceRequest.Request.StringRequest(r) =>
+              ZIO.fail(new RuntimeException("Not implemented!"))
+            case _ => ZIO.fail(new RuntimeException("Not implemented!"))
+          }
+
+        override def getSchemaSubjects(request: GetSchemaSubjectRequest): Task[SchemaSubjectResponse] = {
+          val process = for {
+            baseUrl <- ZIO
+                         .service[ClusterSettings]
+                         .map(_.schemaRegistryUrl)
+                         .someOrFail(new RuntimeException("Schema registry url not provided!"))
+            subject   = s"${request.topicName}-value"
+            registry <- getSchemaRegistryClient
+            versions <- Task(registry.getAllVersions(subject).asScala.toList)
+            metas    <- ZIO.foreachPar(versions)(v => Task(registry.getSchemaMetadata(subject, v)))
+            schemaUrl = (id: Int) => s"$baseUrl/schemas/ids/$id"
+          } yield SchemaSubjectResponse(
+            metas.map { meta =>
+              SchemaSubject(meta.getId, schemaUrl(meta.getId))
+            }.sortBy(-_.id)
+          )
+
+          process.provideLayer(custerSettingsLayer(request.clusterId))
+        }
 
       }
     }
