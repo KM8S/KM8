@@ -20,7 +20,7 @@ import common._
 
   case class Item(offset: Long, partition: Int, timestamp: Long, key: String, value: String)
   case object Item {
-    def fromMessage(m: Message): Item =
+    def fromMessage(m: LogicMessage): Item =
       Item(m.offset, m.partition, m.timestamp, m.key, m.value)
   }
   case class ConsumerState(
@@ -30,7 +30,7 @@ import common._
     maxResults: Long = 20L,
     offsetStrategy: String = "earliest",
     filterKeyword: String = "",
-    messageFormat: MessageFormat = MessageFormat.STRING
+    messageFormat: MessageFormat = MessageFormat.AUTO
   )
 
   sealed trait ConsumerEvent
@@ -81,9 +81,9 @@ import common._
       consumerDispatch(SetMaxResultsEvent(e.target.value.toLong))
     def handleFilter(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetFilterEvent(e.target.value))
 
-    def onMessage(v: Message): Unit = consumerDispatch(AddItemEvent(Item.fromMessage(v)))
+    def onMessage(v: LogicMessage): Unit = consumerDispatch(AddItemEvent(Item.fromMessage(v)))
     def onError(t: Throwable): Unit =
-      consumerDispatch(SetStreamingEvent(false, Some("There was an error processing this request!")))
+      consumerDispatch(SetStreamingEvent(false, Some(t.getMessage)))
     val onCompleted = () => consumerDispatch(SetStreamingEvent(false))
 
     useEffect(
@@ -122,6 +122,7 @@ import common._
                 id := "form-message-format-label1",
                 onChange := (handleMessageFormat(_))
               )(
+                option(value := MessageFormat.AUTO.name)(MessageFormat.AUTO.name),
                 option(value := MessageFormat.STRING.name)(MessageFormat.STRING.name),
                 option(value := MessageFormat.PROTOBUF.name)(MessageFormat.PROTOBUF.name)
               )

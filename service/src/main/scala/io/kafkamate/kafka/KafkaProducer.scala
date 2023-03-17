@@ -65,10 +65,6 @@ import scala.jdk.CollectionConverters._
               )
             }
 
-//        val schemaId = 21 //trading
-//        val schemaId = 7 //quotes
-//        def valueSubject(topic: String) = s"$topic-value"
-
         def getSchema(registry: CachedSchemaRegistryClient, id: Int): Task[ParsedSchema] =
           Task(registry.getSchemaById(id))
 

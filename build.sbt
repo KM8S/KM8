@@ -31,7 +31,8 @@ lazy val kafkamate = project
         maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
 
         env("KAFKAMATE_ENV", "prod")
-        expose(8080, 61234, 61235)
+//        expose(8080, 61234, 61235)
+        expose(8080) //todo
 
         runRaw(
           "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common"

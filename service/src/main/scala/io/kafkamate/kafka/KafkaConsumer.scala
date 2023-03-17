@@ -3,9 +3,9 @@ package kafka
 
 import java.util.UUID
 import scala.jdk.CollectionConverters._
-import scala.util.Try
+import scala.util.{Try, Success, Failure}
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
-import com.google.protobuf.{MessageOrBuilder, Message => GMessage}
+import com.google.protobuf.{MessageOrBuilder, Message}
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
@@ -16,7 +16,7 @@ import zio.kafka.consumer._
 import zio.kafka.consumer.Consumer._
 import zio.kafka.serde.Deserializer
 import zio.macros.accessible
-import io.kafkamate.messages.MessageFormat.PROTOBUF
+import io.kafkamate.messages.MessageFormat
 import config._
 import ClustersConfig._
 import com.google.protobuf.util.JsonFormat
@@ -27,7 +27,7 @@ import messages._
   type Env           = Clock with Blocking with Logging
 
   trait Service {
-    def consume(request: ConsumeRequest): ZStream[Env, Throwable, Message]
+    def consume(request: ConsumeRequest): ZStream[Env, Throwable, LogicMessage]
   }
 
   lazy val liveLayer: URLayer[ClustersConfigService, KafkaConsumer] =
@@ -41,9 +41,9 @@ import messages._
           case _          => AutoOffsetStrategy.Latest
         }
 
-      private def protobufDeserializer(settings: ProtoSerdeSettings): Deserializer[Any, Try[GMessage]] =
+      private def protobufDeserializer(settings: ProtoSerdeSettings): Deserializer[Any, Try[Message]] =
         Deserializer {
-          val protoDeser = new KafkaProtobufDeserializer()
+          val protoDeser = new KafkaProtobufDeserializer[Message]()
           protoDeser.configure(settings.configs.asJava, false)
           protoDeser
         }.asTry
@@ -59,8 +59,8 @@ import messages._
             .withCloseTimeout(10.seconds)
         }
 
-      def toJson(messageOrBuilder: MessageOrBuilder): String =
-        JsonFormat.printer.print(messageOrBuilder)
+      def toJson(messageOrBuilder: MessageOrBuilder): Task[String] =
+        Task(JsonFormat.printer.print(messageOrBuilder))
 
       private def makeConsumerLayer(clusterId: String, offsetStrategy: String) =
         ZLayer.fromManaged {
@@ -71,36 +71,64 @@ import messages._
           } yield consumer
         }
 
-      def consume(request: ConsumeRequest): ZStream[Env, Throwable, Message] = {
-        def consumer[T](valueDeserializer: Deserializer[Any, Try[T]]) = Consumer
-          .subscribeAnd(Subscription.topics(request.topicName))
-          .plainStream(Deserializer.string, valueDeserializer)
-          .collect {
-            case v if v.value.isSuccess =>
-              if (request.messageFormat == PROTOBUF)
-                Message(v.offset.offset, v.partition, v.timestamp, v.key, toJson(v.value.get.asInstanceOf[GMessage]))
-              else
-                Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value.get.toString)
-            case v if v.value.isFailure =>
-              Message(v.offset.offset, v.partition, v.timestamp, v.key, v.value.toString)
+      private def deserializeProto(
+        cachedDeserializer: Task[Deserializer[Any, Try[Message]]],
+        record: CommittableRecord[String, Array[Byte]],
+        fallback: Throwable => Task[LogicMessage]
+      ) =
+        cachedDeserializer.flatMap {
+          _.deserialize(record.record.topic, record.record.headers, record.value).flatMap {
+            case Success(message) =>
+              toJson(message).map { str =>
+                LogicMessage(record.offset.offset, record.partition, record.timestamp, record.key, str)
+              }
+            case Failure(e) =>
+              Task.fail(e)
           }
-
-        val stream = request.messageFormat match {
-          case PROTOBUF =>
-            val protoSettings = clustersConfigService
-              .getCluster(request.clusterId)
-              .flatMap(c =>
-                ZIO
-                  .fromOption(c.protoSerdeSettings)
-                  .orElseFail(new Exception("SchemaRegistry url was not provided!"))
-              )
-            ZStream
-              .fromEffect(protoSettings)
-              .flatMap(p => consumer(protobufDeserializer(p)))
-          case _ =>
-//            ZStream.fail(new Exception("not impl"))
-            consumer(Deserializer.string.asTry)
+            .catchAll(t => fallback(t))
         }
+
+      private def deserializeString(v: CommittableRecord[String, Array[Byte]]) =
+        Deserializer.string.deserialize(v.record.topic, v.record.headers, v.value).map { str =>
+          LogicMessage(v.offset.offset, v.partition, v.timestamp, v.key, str)
+        }
+
+      def consume(request: ConsumeRequest): ZStream[Env, Throwable, LogicMessage] = {
+        val stream =
+          for {
+            cachedDeserializer <- ZStream.fromEffect(
+                                    clustersConfigService
+                                      .getCluster(request.clusterId)
+                                      .flatMap(c =>
+                                        ZIO
+                                          .fromOption(c.protoSerdeSettings)
+                                          .orElseFail(new Exception("SchemaRegistry url was not provided!"))
+                                      )
+                                      .map(protobufDeserializer)
+                                      .cached(Duration.Infinity)
+                                  )
+            response <- Consumer
+                          .subscribeAnd(Subscription.topics(request.topicName))
+                          .plainStream(Deserializer.string, Deserializer.byteArray)
+                          .mapM { r =>
+                            request.messageFormat match {
+                              case MessageFormat.AUTO =>
+                                deserializeProto(
+                                  cachedDeserializer,
+                                  r,
+                                  _ => deserializeString(r)
+                                )
+                              case MessageFormat.PROTOBUF =>
+                                deserializeProto(
+                                  cachedDeserializer,
+                                  r,
+                                  e => UIO(LogicMessage(r.offset.offset, r.partition, r.timestamp, r.key, e.getMessage))
+                                )
+                              case _ =>
+                                deserializeString(r)
+                            }
+                          }
+          } yield response
 
         val withFilter = {
           val trimmed = request.filterKeyword.trim

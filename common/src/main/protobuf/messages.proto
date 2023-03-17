@@ -14,8 +14,9 @@ message ConsumeRequest {
 }
 
 enum MessageFormat {
-  STRING = 0;
-  PROTOBUF = 1;
+  AUTO = 0;
+  STRING = 1;
+  PROTOBUF = 2;
 }
 
 message ProduceRequest {
@@ -60,7 +61,7 @@ message SchemaSubjectResponse {
   repeated SchemaSubject versions = 1;
 }
 
-message Message {
+message LogicMessage {
   uint64 offset = 1;
   int32 partition = 2;
   uint64 timestamp = 3;
@@ -70,6 +71,6 @@ message Message {
 
 service MessagesService {
   rpc ProduceMessage(ProduceRequest) returns (ProduceResponse);
-  rpc ConsumeMessages(ConsumeRequest) returns (stream Message);
+  rpc ConsumeMessages(ConsumeRequest) returns (stream LogicMessage);
   rpc GetSchemaSubject(GetSchemaSubjectRequest) returns (SchemaSubjectResponse);
 }

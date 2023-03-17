@@ -6,12 +6,13 @@ import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration._
 import zio.kafka.admin._
-import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
+import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType, TopicPartition}
 import zio.macros.accessible
-
-import config._, ClustersConfig._
+import config._
+import ClustersConfig._
 import topics._
 import brokers.BrokerDetails
+import org.apache.kafka.clients.admin.{DescribeLogDirsOptions, ReplicaInfo}
 
 @accessible object KafkaExplorer {
 
@@ -67,8 +68,7 @@ import brokers.BrokerDetails
             .accessM[HasAdminClient with Blocking] { env =>
               val ac = env.get[AdminClient]
               ac.listTopics()
-                .map(_.keys.toList)
-                .flatMap(ls => ZIO.filterNotPar(ls)(t => UIO(t.startsWith("_"))))
+                .map(_.keys.toList.filterNot(_.startsWith("_")))
                 .flatMap(ls =>
                   ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(ConfigResource(ConfigResourceType.Topic, _)))
                 )
@@ -88,6 +88,38 @@ import brokers.BrokerDetails
                 }
             }
             .withAdminClient(clusterId)
+
+//        def getTopicsSize(topicDescription: Map[String, AdminClient.TopicDescription]): RIO[Blocking, Map[TopicPartition, Long]] = {
+//          for {
+//            // Get the partition info
+////            topicPartitions = topicDescription.partitions.map { partitionInfo =>
+////              TopicPartition(topic, partitionInfo.partition)
+////            }
+//            _ <- ZIO.unit
+//            // Query log directory information from each broker
+//            brokerIds = topicDescription.values.flatMap(_.partitions).map(_.leader.id).toSet
+//            logDirInfos <- ZIO.foreachPar(brokerIds)(describeLogDirs)
+//          } yield {
+//            logDirInfos.flatMap { logDirInfo =>
+//              logDirInfo.flatMap { case (tp, replicaInfo) =>
+//                if (tp.topic == topic) {
+//                  Some(tp -> replicaInfo.size)
+//                } else {
+//                  None
+//                }
+//              }
+//            }.toMap
+//          }
+//        }
+//
+//        def describeLogDirs(brokerId: Int): Task[Map[String, ReplicaInfo]] = {
+//          val asJavaFuture = AdminClient.describeLogDirs(List(brokerId)).all()
+//          AdminClient.fromKafkaFuture(asJavaFuture).map { logDirInfo =>
+//            logDirInfo.get(brokerId).asScala.flatMap {
+//              case (_, replicaInfos) => replicaInfos.asScala
+//            }.toMap
+//          }
+//        }
 
         def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails] =
           ZIO

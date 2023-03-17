@@ -11,12 +11,12 @@ case class MessagesConsumer(
   private var stream: ClientCallStreamObserver[_] = _
 
   private def newStreamObs(
-    onMessage: Message => Unit,
+    onMessage: LogicMessage => Unit,
     onFailure: Throwable => Unit,
     onTerminated: () => Unit
-  ): StreamObserver[Message] =
-    new StreamObserver[Message] {
-      def onNext(value: Message): Unit =
+  ): StreamObserver[LogicMessage] =
+    new StreamObserver[LogicMessage] {
+      def onNext(value: LogicMessage): Unit =
         onMessage(value)
 
       def onError(throwable: Throwable): Unit = {
@@ -33,7 +33,7 @@ case class MessagesConsumer(
     }
 
   def start(request: ConsumeRequest)(
-    onMessage: Message => Unit,
+    onMessage: LogicMessage => Unit,
     onError: Throwable => Unit,
     onCompleted: () => Unit
   ): Unit =

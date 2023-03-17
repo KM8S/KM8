@@ -213,7 +213,7 @@ import common._
               input(
                 `type` := "text",
                 className := "form-control",
-                placeholder := "optional descriptor",
+                placeholder := "optional schema value descriptor",
                 aria - "label" := "descriptor",
                 aria - "describedby" := "form-username-label",
                 value := valueDescriptor,
