@@ -73,6 +73,7 @@ import common._
               th("Replication factor"),
               th("Cleanup Policy"),
               th("Retention (ms)"),
+              th("Size (bytes)"),
               th("Action")
             )
           ),
@@ -84,6 +85,7 @@ import common._
                 td(topicDetails.replication.toString),
                 td(topicDetails.cleanupPolicy),
                 td(topicDetails.retentionMs),
+                td(topicDetails.size.toString),
                 td(renderDelete(idx.toString, topicDetails))
               )
             }

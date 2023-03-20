@@ -2,22 +2,23 @@ package io.kafkamate
 package kafka
 
 import zio._
-import zio.blocking.Blocking
+import zio.blocking._
 import zio.clock.Clock
 import zio.duration._
 import zio.kafka.admin._
-import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType, TopicPartition}
+import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
+import org.apache.kafka.clients.admin.{AdminClient => JAdminClient}
 import zio.macros.accessible
 import config._
 import ClustersConfig._
 import topics._
 import brokers.BrokerDetails
-import org.apache.kafka.clients.admin.{DescribeLogDirsOptions, ReplicaInfo}
+import scala.jdk.CollectionConverters._
 
 @accessible object KafkaExplorer {
 
   type HasKafkaExplorer = Has[Service]
-  type HasAdminClient   = Has[AdminClient]
+  type HasAdminClient   = Has[AdminClient] with Has[JAdminClient]
 
   val CleanupPolicyKey = "cleanup.policy"
   val RetentionMsKey   = "retention.ms"
@@ -32,17 +33,20 @@ import org.apache.kafka.clients.admin.{DescribeLogDirsOptions, ReplicaInfo}
   lazy val liveLayer: URLayer[ClustersConfigService, HasKafkaExplorer] =
     ZLayer.fromService { clustersConfigService =>
       new Service {
-        private def adminClientLayer(clusterId: String): RLayer[Blocking, HasAdminClient] =
-          ZLayer.fromManaged {
-            for {
-              cs     <- clustersConfigService.getCluster(clusterId).toManaged_
-              client <- AdminClient.make(AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty))
-            } yield client
-          }
+        private def adminClientLayer(clusterId: String): RLayer[Blocking, HasAdminClient] = {
+          def services(blocking: Blocking.Service) = for {
+            cs     <- clustersConfigService.getCluster(clusterId).toManaged_
+            s       = AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty)
+            jAdmin <- Task(JAdminClient.create(s.driverSettings.asJava)).toManaged_
+            client <- ZManaged.makeEffect(AdminClient(jAdmin, blocking))(_ => jAdmin.close(s.closeTimeout))
+          } yield Has.allOf(client, jAdmin)
+
+          ZLayer.fromServiceManyManaged(services)
+        }
 
         private implicit class AdminClientProvider[A](eff: RIO[HasAdminClient with Blocking, A]) {
           def withAdminClient(clusterId: String): RIO[Blocking with Clock, A] = eff
-            .timeoutFail(new Exception("Timed out"))(6.seconds)
+            .timeoutFail(new Exception("Timed out after 15 second!"))(15.seconds)
             .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
         }
 
@@ -70,56 +74,50 @@ import org.apache.kafka.clients.admin.{DescribeLogDirsOptions, ReplicaInfo}
               ac.listTopics()
                 .map(_.keys.toList.filterNot(_.startsWith("_")))
                 .flatMap(ls =>
-                  ac.describeTopics(ls) <&> ac.describeConfigs(ls.map(ConfigResource(ConfigResourceType.Topic, _)))
+                  ZIO.tupledPar(
+                    ac.describeTopics(ls).flatMap(r => getTopicsSize(r).map((r, _))),
+                    ac.describeConfigs(ls.map(ConfigResource(ConfigResourceType.Topic, _)))
+                  )
                 )
-                .map { case (nameDescriptionMap, topicConfigMap) =>
+                .map { case ((nameDescriptionMap, sizes), topicConfigMap) =>
                   val configs = topicConfigMap.map { case (res, conf) => (res.name, conf) }
-                  nameDescriptionMap.map { case (name, description) =>
-                    val conf                   = configs.get(name).map(_.entries)
+                  nameDescriptionMap.map { case (topicName, description) =>
+                    val conf                   = configs.get(topicName).map(_.entries)
                     def getConfig(key: String) = conf.flatMap(_.get(key).map(_.value())).getOrElse("unknown")
                     TopicDetails(
-                      name = name,
+                      name = topicName,
                       partitions = description.partitions.size,
                       replication = description.partitions.headOption.map(_.replicas.size).getOrElse(0),
                       cleanupPolicy = getConfig(CleanupPolicyKey),
-                      retentionMs = getConfig(RetentionMsKey)
+                      retentionMs = getConfig(RetentionMsKey),
+                      size = sizes.getOrElse(topicName, 0L)
                     )
                   }.toList.sortBy(_.name)
                 }
             }
             .withAdminClient(clusterId)
 
-//        def getTopicsSize(topicDescription: Map[String, AdminClient.TopicDescription]): RIO[Blocking, Map[TopicPartition, Long]] = {
-//          for {
-//            // Get the partition info
-////            topicPartitions = topicDescription.partitions.map { partitionInfo =>
-////              TopicPartition(topic, partitionInfo.partition)
-////            }
-//            _ <- ZIO.unit
-//            // Query log directory information from each broker
-//            brokerIds = topicDescription.values.flatMap(_.partitions).map(_.leader.id).toSet
-//            logDirInfos <- ZIO.foreachPar(brokerIds)(describeLogDirs)
-//          } yield {
-//            logDirInfos.flatMap { logDirInfo =>
-//              logDirInfo.flatMap { case (tp, replicaInfo) =>
-//                if (tp.topic == topic) {
-//                  Some(tp -> replicaInfo.size)
-//                } else {
-//                  None
-//                }
-//              }
-//            }.toMap
-//          }
-//        }
-//
-//        def describeLogDirs(brokerId: Int): Task[Map[String, ReplicaInfo]] = {
-//          val asJavaFuture = AdminClient.describeLogDirs(List(brokerId)).all()
-//          AdminClient.fromKafkaFuture(asJavaFuture).map { logDirInfo =>
-//            logDirInfo.get(brokerId).asScala.flatMap {
-//              case (_, replicaInfos) => replicaInfos.asScala
-//            }.toMap
-//          }
-//        }
+        def getTopicsSize(
+          topicDescription: Map[String, AdminClient.TopicDescription]
+        ): RIO[Blocking with HasAdminClient, Map[String, Long]] = {
+          val brokerIds = topicDescription.values.flatMap(_.partitions).map(_.leader.id).toSet
+          aggregateTopicSizes(brokerIds)
+        }
+
+        def aggregateTopicSizes(brokerIds: Set[Int]): RIO[HasAdminClient with Blocking, Map[String, Long]] =
+          for {
+            jAdmin       <- ZIO.service[JAdminClient]
+            ids           = brokerIds.map(Integer.valueOf).asJavaCollection
+            asJavaFuture <- effectBlocking(jAdmin.describeLogDirs(ids).descriptions())
+            logDirInfo <- ZIO.foreachPar(asJavaFuture.asScala.toMap) { case (brokerId, kafkaFuture) =>
+                            AdminClient.fromKafkaFuture(effectBlocking(kafkaFuture)).map(brokerId -> _.asScala)
+                          }
+          } yield {
+            logDirInfo.values
+              .flatMap(_.values)
+              .flatMap(_.replicaInfos.asScala)
+              .groupMapReduce({ case (tp, _) => tp.topic })({ case (_, info) => info.size })(_ + _)
+          }
 
         def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails] =
           ZIO

@@ -16,19 +16,19 @@ object TopicsService {
     def getTopics(request: GetTopicsRequest): ZIO[Env, Status, TopicResponse] =
       KafkaExplorer
         .listTopics(request.clusterId)
-        .tapError(e => log.error(s"Get topics error: ${e.getMessage}"))
+        .tapError(e => log.throwable(s"Get topics error: ${e.getMessage}", e))
         .bimap(GRPCStatus.fromThrowable, r => TopicResponse(r))
 
     def addTopic(request: AddTopicRequest): ZIO[Env, Status, TopicDetails] =
       KafkaExplorer
         .addTopic(request)
-        .tapError(e => log.error(s"Add topic error: ${e.getMessage}"))
+        .tapError(e => log.throwable(s"Add topic error: ${e.getMessage}", e))
         .mapError(GRPCStatus.fromThrowable)
 
     def deleteTopic(request: DeleteTopicRequest): ZIO[Env with Any, Status, DeleteTopicResponse] =
       KafkaExplorer
         .deleteTopic(request)
-        .tapError(e => log.error(s"Delete topic error: ${e.getMessage}"))
+        .tapError(e => log.throwable(s"Delete topic error: ${e.getMessage}", e))
         .mapError(GRPCStatus.fromThrowable)
   }
 }

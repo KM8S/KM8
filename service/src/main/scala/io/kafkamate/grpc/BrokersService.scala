@@ -16,7 +16,7 @@ object BrokersService {
     def getBrokers(request: BrokerRequest): ZIO[Env, Status, BrokerResponse] =
       KafkaExplorer
         .listBrokers(request.clusterId)
-        .tapError(e => log.error(s"Get brokers error: ${e.getMessage}"))
+        .tapError(e => log.throwable(s"Get brokers error: ${e.getMessage}", e))
         .bimap(GRPCStatus.fromThrowable, BrokerResponse(_))
   }
 }
