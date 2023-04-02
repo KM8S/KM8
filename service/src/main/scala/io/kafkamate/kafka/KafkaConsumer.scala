@@ -71,7 +71,8 @@ import messages._
           } yield consumer
         }
 
-      private def deserializeProto(
+      private def deserializeAuto(
+        messageFormat: MessageFormat,
         cachedDeserializer: Task[Deserializer[Any, Try[Message]]],
         record: CommittableRecord[String, Array[Byte]],
         fallback: Throwable => Task[LogicMessage]
@@ -79,50 +80,73 @@ import messages._
         cachedDeserializer.flatMap {
           _.deserialize(record.record.topic, record.record.headers, record.value).flatMap {
             case Success(message) =>
-              toJson(message).map { str =>
-                LogicMessage(record.offset.offset, record.partition, record.timestamp, record.key, str)
+              toJson(message).map { jsonStr =>
+                LogicMessage(
+                  offset = record.offset.offset,
+                  partition = record.partition,
+                  timestamp = record.timestamp,
+                  key = record.key,
+                  valueFormat = messageFormat,
+                  value = jsonStr
+                )
               }
             case Failure(e) =>
               Task.fail(e)
-          }
-            .catchAll(t => fallback(t))
+          }.catchAll(t =>
+            log.throwable(s"Failed auto deserializing $messageFormat with key: '${record.key}': ${t.getMessage}", t)
+              *> fallback(t)
+          )
         }
 
       private def deserializeString(v: CommittableRecord[String, Array[Byte]]) =
         Deserializer.string.deserialize(v.record.topic, v.record.headers, v.value).map { str =>
-          LogicMessage(v.offset.offset, v.partition, v.timestamp, v.key, str)
+          LogicMessage(v.offset.offset, v.partition, v.timestamp, v.key, MessageFormat.STRING, str)
         }
 
       def consume(request: ConsumeRequest): ZStream[Env, Throwable, LogicMessage] = {
         val stream =
           for {
-            cachedDeserializer <- ZStream.fromEffect(
-                                    clustersConfigService
-                                      .getCluster(request.clusterId)
-                                      .flatMap(c =>
-                                        ZIO
-                                          .fromOption(c.protoSerdeSettings)
-                                          .orElseFail(new Exception("SchemaRegistry url was not provided!"))
-                                      )
-                                      .map(protobufDeserializer)
-                                      .cached(Duration.Infinity)
-                                  )
+            _ <- ZStream.fromEffect(log.debug(s"Consuming request: $request"))
+            cachedProtoDeserializer <- ZStream.fromEffect(
+                                         clustersConfigService
+                                           .getCluster(request.clusterId)
+                                           .flatMap(c =>
+                                             ZIO
+                                               .fromOption(c.protoSerdeSettings)
+                                               .orElseFail(new RuntimeException("SchemaRegistry url was not provided!"))
+                                           )
+                                           .map(protobufDeserializer)
+                                           .zipLeft(log.debug(s"Created proto deserializer"))
+                                           .cached(Duration.Infinity)
+                                       )
             response <- Consumer
                           .subscribeAnd(Subscription.topics(request.topicName))
                           .plainStream(Deserializer.string, Deserializer.byteArray)
                           .mapM { r =>
                             request.messageFormat match {
                               case MessageFormat.AUTO =>
-                                deserializeProto(
-                                  cachedDeserializer,
+                                deserializeAuto(
+                                  MessageFormat.PROTOBUF,
+                                  cachedProtoDeserializer,
                                   r,
                                   _ => deserializeString(r)
                                 )
                               case MessageFormat.PROTOBUF =>
-                                deserializeProto(
-                                  cachedDeserializer,
+                                deserializeAuto(
+                                  MessageFormat.PROTOBUF,
+                                  cachedProtoDeserializer,
                                   r,
-                                  e => UIO(LogicMessage(r.offset.offset, r.partition, r.timestamp, r.key, e.getMessage))
+                                  e =>
+                                    UIO(
+                                      LogicMessage(
+                                        offset = r.offset.offset,
+                                        partition = r.partition,
+                                        timestamp = r.timestamp,
+                                        key = r.key,
+                                        valueFormat = MessageFormat.PROTOBUF,
+                                        value = e.getMessage
+                                      )
+                                    )
                                 )
                               case _ =>
                                 deserializeString(r)

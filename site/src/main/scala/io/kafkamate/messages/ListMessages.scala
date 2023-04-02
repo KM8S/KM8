@@ -18,16 +18,16 @@ import common._
 @react object ListMessages {
   type Props = Unit
 
-  case class Item(offset: Long, partition: Int, timestamp: Long, key: String, value: String)
+  case class Item(offset: Long, partition: Int, timestamp: Long, key: String, valueFormat: MessageFormat, value: String)
   case object Item {
     def fromMessage(m: LogicMessage): Item =
-      Item(m.offset, m.partition, m.timestamp, m.key, m.value)
+      Item(m.offset, m.partition, m.timestamp, m.key, m.valueFormat, m.value)
   }
   case class ConsumerState(
-    isStreaming: Boolean = false,
+    isStreaming: Boolean = true,
     items: List[Item] = List.empty,
     error: Option[String] = None,
-    maxResults: Long = 20L,
+    maxResults: Long = 5,
     offsetStrategy: String = "earliest",
     filterKeyword: String = "",
     messageFormat: MessageFormat = MessageFormat.AUTO
@@ -53,6 +53,7 @@ import common._
       case SetOffsetStrategyEvent(v) => prevState.copy(offsetStrategy = v)
       case SetMessageFormat(v) =>
         prevState.copy(messageFormat = v match {
+          case MessageFormat.AUTO.name     => MessageFormat.AUTO
           case MessageFormat.PROTOBUF.name => MessageFormat.PROTOBUF
           case _                           => MessageFormat.STRING
         })
@@ -202,6 +203,7 @@ import common._
               th("Partition"),
               th("Timestamp"),
               th("Key"),
+              th("Value Format"),
               th("Value")
             )
           ),
@@ -213,6 +215,7 @@ import common._
                 td(item.partition.toString),
                 td(new Date(item.timestamp).toUTCString()),
                 td(item.key),
+                td(item.valueFormat.toString),
                 td(item.value)
               )
             }

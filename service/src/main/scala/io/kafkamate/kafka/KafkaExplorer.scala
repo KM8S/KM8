@@ -14,6 +14,7 @@ import ClustersConfig._
 import topics._
 import brokers.BrokerDetails
 import scala.jdk.CollectionConverters._
+import scala.concurrent.TimeoutException
 
 @accessible object KafkaExplorer {
 
@@ -46,7 +47,7 @@ import scala.jdk.CollectionConverters._
 
         private implicit class AdminClientProvider[A](eff: RIO[HasAdminClient with Blocking, A]) {
           def withAdminClient(clusterId: String): RIO[Blocking with Clock, A] = eff
-            .timeoutFail(new Exception("Timed out after 15 second!"))(15.seconds)
+            .timeoutFail(new TimeoutException("Timed out after 15 second!"))(15.seconds)
             .provideSomeLayer[Blocking with Clock](adminClientLayer(clusterId))
         }
 
@@ -97,14 +98,14 @@ import scala.jdk.CollectionConverters._
             }
             .withAdminClient(clusterId)
 
-        def getTopicsSize(
+        private def getTopicsSize(
           topicDescription: Map[String, AdminClient.TopicDescription]
         ): RIO[Blocking with HasAdminClient, Map[String, Long]] = {
           val brokerIds = topicDescription.values.flatMap(_.partitions).map(_.leader.id).toSet
           aggregateTopicSizes(brokerIds)
         }
 
-        def aggregateTopicSizes(brokerIds: Set[Int]): RIO[HasAdminClient with Blocking, Map[String, Long]] =
+        private def aggregateTopicSizes(brokerIds: Set[Int]): RIO[HasAdminClient with Blocking, Map[String, Long]] =
           for {
             jAdmin       <- ZIO.service[JAdminClient]
             ids           = brokerIds.map(Integer.valueOf).asJavaCollection

@@ -29,7 +29,7 @@ We need also to start the Envoy proxy to forward the browser's gRPC-Web requests
 ```bash
 ➜ docker run --rm -d --net host -v "$(pwd)"/build/envoy.yaml:/etc/envoy/envoy.yaml:ro envoyproxy/envoy:v1.15.0
 ➜ # if you're using windows, then try the next one
-➜ docker run --rm -p 61234:61234 --add-host host.docker.internal:192.168.0.109 -v %cd%\build\envoy.yaml:/etc/envoy/envoy.yaml:ro envoyproxy/envoy:v1.15.0 -c /etc/envoy/envoy.yaml -l debug
+➜ docker run --rm -d -p 61234:61234 --add-host host.docker.internal:192.168.0.110 -v %cd%\build\envoy.yaml:/etc/envoy/envoy.yaml:ro envoyproxy/envoy:v1.15.0 -c /etc/envoy/envoy.yaml -l debug
 ```
 
 ### Build docker image

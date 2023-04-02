@@ -20,28 +20,41 @@ import common._
   private val messagesGrpcClient =
     MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
+  private case class SchemaOption(id: String, text: String, url: String)
+  private val initialSchemaOptions = List(SchemaOption("add", "insert schema id", ""))
+
   val component = FunctionalComponent[Props] { _ =>
-    val (shouldMakeRequest, setRequestAction) = useState(false)
-    val (messageKey, setKey)                  = useState("")
-    val (messageValue, setValue)              = useState("")
-    val (schemas, setSchemas)                 = useState(Seq.empty[SchemaSubject])
-    val (schemaId, setSchemaId)               = useState(0)
-    val (schemaUrl, setSchemaUrl)             = useState("")
-    val (messageFormat, setMessageFormat)     = useState(MessageFormat.STRING.name)
-    val (valueDescriptor, setValueDescriptor) = useState("")
-    val (successMsgs, setSuccessMsgs)         = useState(Option.empty[String])
-    val (errorMsgs, setErrorMsgs)             = useState(Option.empty[String])
+    val (shouldMakeRequest, setRequestAction)     = useState(false)
+    val (messageKey, setKey)                      = useState("")
+    val (messageValue, setValue)                  = useState("")
+    val (schemaOptions, setSchemaOptions)         = useState(List.empty[SchemaOption])
+    val (schemaId, setSchemaId)                   = useState(0)
+    val (schemaUrl, setSchemaUrl)                 = useState("")
+    val (showSchemaIdInput, setShowSchemaIdInput) = useState(false)
+    val (messageFormat, setMessageFormat)         = useState(MessageFormat.STRING.name)
+    val (valueDescriptor, setValueDescriptor)     = useState("")
+    val (successMsgs, setSuccessMsgs)             = useState(Option.empty[String])
+    val (errorMsgs, setErrorMsgs)                 = useState(Option.empty[String])
 
     val params    = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
-    def handleMessageFormat(e: SyntheticEvent[html.Select, Event]): Unit = setMessageFormat(e.target.value)
-    def handleSchemaId(e: SyntheticEvent[html.Select, Event]): Unit = {
-      val id = e.target.value.toInt
+    def handleSchemaId(id: Int): Unit = {
       setSchemaId(id)
-      setSchemaUrl(schemas.collectFirst { case s if s.id == id => s.url }.getOrElse(""))
+      setSchemaUrl(schemaOptions.collectFirst { case s if s.id == id.toString => s.url }.getOrElse(""))
     }
+    def handleSchemaIdSelect(e: SyntheticEvent[html.Select, Event]): Unit =
+      e.target.value.toIntOption match {
+        case Some(id) =>
+          setShowSchemaIdInput(false)
+          handleSchemaId(id)
+        case _ =>
+          setShowSchemaIdInput(true)
+      }
+    def handleSchemaIdInput(e: SyntheticEvent[html.Input, Event]): Unit =
+      e.target.value.toIntOption.foreach(handleSchemaId)
+    def handleMessageFormat(e: SyntheticEvent[html.Select, Event]): Unit  = setMessageFormat(e.target.value)
     def handleKey(e: SyntheticEvent[html.Input, Event]): Unit             = setKey(e.target.value)
     def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit        = setValue(e.target.value)
     def handleValueDescriptor(e: SyntheticEvent[html.Input, Event]): Unit = setValueDescriptor(e.target.value)
@@ -112,7 +125,10 @@ import common._
             .onComplete {
               case Success(response) =>
                 Util.logMessage("Schema retrieved")
-                setSchemas(response.versions)
+                setSchemaOptions(
+                  response.versions.toList.map(s => SchemaOption(s.id.toString, s"id ${s.id}", s.url))
+                    ++ initialSchemaOptions
+                )
                 response.versions.headOption.foreach { s =>
                   setSchemaId(s.id)
                   setSchemaUrl(s.url)
@@ -121,6 +137,7 @@ import common._
 
               case Failure(e) =>
                 Util.logMessage("Error retrieving schemas: " + e)
+                setSchemaOptions(initialSchemaOptions)
                 setSuccessMsgs(None)
                 setErrorMsgs(Some(e.getMessage))
             },
@@ -152,21 +169,33 @@ import common._
                 className := "input-group mb-3",
                 div(
                   className := "input-group-prepend",
-                  span(className := "input-group-text", "schema", id := "form-schemaId-label0")
+                  span(className := "input-group-text", "schema id", id := "form-schemaId-label0")
                 ),
                 select(
                   className := "form-control",
                   id := "form-schemaId-label1",
-                  onChange := (handleSchemaId(_))
+//                  onChange := (handleSchemaIdSelect(_)),
+                  onClick := (handleSchemaIdSelect(_))
                 )(
-                  schemas.map(s => option(key := s"id-${s.id}", value := s.id.toString)(s"id ${s.id}"))
+                  schemaOptions.map(s => option(key := s"id-${s.id}", value := s.id)(s.text))
                 ),
-                a(
-                  `type` := "button",
-                  className := "btn btn-secondary",
-                  href := s"$schemaUrl",
-                  target := "_blank"
-                )("View")
+                if (showSchemaIdInput)
+                  input(
+                    `type` := "number",
+                    className := "form-control",
+                    id := "schema-id-input-id",
+                    min := "0",
+                    max := "5000000",
+                    value := schemaId.toString,
+                    onChange := (handleSchemaIdInput(_))
+                  )
+                else
+                  a(
+                    `type` := "button",
+                    className := "btn btn-secondary",
+                    href := s"$schemaUrl",
+                    target := "_blank"
+                  )("View")
               )
             )
           case _ => None
