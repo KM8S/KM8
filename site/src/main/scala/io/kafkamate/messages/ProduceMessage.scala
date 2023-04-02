@@ -3,6 +3,7 @@ package messages
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
+import scala.scalajs.js
 
 import org.scalajs.dom.{Event, html}
 import scalapb.grpc.Channels
@@ -24,17 +25,18 @@ import common._
   private val initialSchemaOptions = List(SchemaOption("add", "insert schema id", ""))
 
   val component = FunctionalComponent[Props] { _ =>
-    val (shouldMakeRequest, setRequestAction)     = useState(false)
-    val (messageKey, setKey)                      = useState("")
-    val (messageValue, setValue)                  = useState("")
-    val (schemaOptions, setSchemaOptions)         = useState(List.empty[SchemaOption])
-    val (schemaId, setSchemaId)                   = useState(0)
-    val (schemaUrl, setSchemaUrl)                 = useState("")
-    val (showSchemaIdInput, setShowSchemaIdInput) = useState(false)
-    val (messageFormat, setMessageFormat)         = useState(MessageFormat.STRING.name)
-    val (valueDescriptor, setValueDescriptor)     = useState("")
-    val (successMsgs, setSuccessMsgs)             = useState(Option.empty[String])
-    val (errorMsgs, setErrorMsgs)                 = useState(Option.empty[String])
+    val (shouldMakeRequest, setRequestAction)           = useState(false)
+    val (messageKey, setKey)                            = useState("")
+    val (messageValue, setValue)                        = useState("")
+    val (schemaOptions, setSchemaOptions)               = useState(List.empty[SchemaOption])
+    val (schemaId, setSchemaId)                         = useState(0)
+    val (schemaUrl, setSchemaUrl)                       = useState("")
+    val (showSchemaIdInput, setShowSchemaIdInput)       = useState(false)
+    val (messageFormat, setMessageFormat)               = useState(MessageFormat.STRING.name)
+    val (autoDetectDescriptor, setAutoDetectDescriptor) = useState(true)
+    val (valueDescriptor, setValueDescriptor)           = useState("")
+    val (successMsgs, setSuccessMsgs)                   = useState(Option.empty[String])
+    val (errorMsgs, setErrorMsgs)                       = useState(Option.empty[String])
 
     val params    = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
@@ -58,6 +60,8 @@ import common._
     def handleKey(e: SyntheticEvent[html.Input, Event]): Unit             = setKey(e.target.value)
     def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit        = setValue(e.target.value)
     def handleValueDescriptor(e: SyntheticEvent[html.Input, Event]): Unit = setValueDescriptor(e.target.value)
+    def handleAutoDetectDescriptor(e: SyntheticEvent[html.Input, Event]): Unit =
+      setAutoDetectDescriptor(e.target.checked)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()
@@ -144,6 +148,17 @@ import common._
       List(messageFormat)
     )
 
+    val checkboxStyle = js.Dynamic.literal(
+      "width"  -> "17px",
+      "height" -> "17px",
+      "cursor" -> "pointer"
+    )
+
+    val labelStyle = js.Dynamic.literal(
+      "fontSize"   -> "15px",
+      "marginLeft" -> "10px"
+    )
+
     def addMessageForm() =
       form(
         onSubmit := (handleSubmit(_)),
@@ -174,7 +189,6 @@ import common._
                 select(
                   className := "form-control",
                   id := "form-schemaId-label1",
-//                  onChange := (handleSchemaIdSelect(_)),
                   onClick := (handleSchemaIdSelect(_))
                 )(
                   schemaOptions.map(s => option(key := s"id-${s.id}", value := s.id)(s.text))
@@ -233,20 +247,39 @@ import common._
         ),
         messageFormat match {
           case MessageFormat.PROTOBUF.name =>
-            div(
-              className := "input-group mb-3",
+            Some(
               div(
-                className := "input-group-prepend",
-                span(className := "input-group-text", "value descriptor", id := "form-value-descriptor-label")
-              ),
-              input(
-                `type` := "text",
-                className := "form-control",
-                placeholder := "optional schema value descriptor",
-                aria - "label" := "descriptor",
-                aria - "describedby" := "form-username-label",
-                value := valueDescriptor,
-                onChange := (handleValueDescriptor(_))
+                className := "input-group mb-3",
+                style := js.Dynamic.literal("display" -> "flex", "alignItems" -> "center"),
+                input(
+                  `type` := "checkbox",
+                  checked := autoDetectDescriptor,
+                  onChange := (handleAutoDetectDescriptor(_)),
+                  style := checkboxStyle
+                ),
+                label(style := labelStyle)("Automatically detect schema value descriptor!")
+              )
+            )
+          case _ => None
+        },
+        messageFormat match {
+          case MessageFormat.PROTOBUF.name if !autoDetectDescriptor =>
+            Some(
+              div(
+                className := "input-group mb-3",
+                div(
+                  className := "input-group-prepend",
+                  span(className := "input-group-text", "schema value descriptor", id := "form-value-descriptor-label")
+                ),
+                input(
+                  `type` := "text",
+                  className := "form-control",
+                  placeholder := "optional schema value descriptor",
+                  aria - "label" := "descriptor",
+                  aria - "describedby" := "form-username-label",
+                  value := valueDescriptor,
+                  onChange := (handleValueDescriptor(_))
+                )
               )
             )
           case _ => None

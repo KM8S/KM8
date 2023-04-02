@@ -84,25 +84,55 @@ import scala.jdk.CollectionConverters._
 //          r
 //        }
 
-          def readFrom(valueString: String, valueSchema: ParsedSchema, valueDescriptor: Option[String]): Task[Message] =
+          private def parseSchema(valueString: String, schemaDescriptor: Descriptors.Descriptor): Task[Message] =
             Task {
-              val protobufSchema = valueSchema.asInstanceOf[ProtobufSchema]
-              val schemaDescriptor: Descriptors.Descriptor =
-                valueDescriptor.fold(protobufSchema.toDescriptor)(name => protobufSchema.toDescriptor(name))
               val builder = DynamicMessage.newBuilder(schemaDescriptor)
               JsonFormat.parser.merge(valueString, builder)
               builder.build
-            }.tapError(e =>
-              logging.debug(s"Error (${e.getMessage}) while reading from ($valueString) and schema ($valueSchema)")
+            }.tapBoth(
+              e =>
+                logging.throwable(
+                  s"Error while parsing schema with descriptor ${schemaDescriptor.getName}: ${e.getMessage}",
+                  e
+                ),
+              _ => logging.debug(s"Success parsing schema with descriptor: ${schemaDescriptor.getName}")
             )
+
+          private def extractDescriptors(valueDescriptor: Option[String], protobufSchema: ProtobufSchema) =
+            Task {
+              valueDescriptor match {
+                case Some(name) => List(protobufSchema.toDescriptor(name))
+                case None =>
+                  List(protobufSchema.toDescriptor) ++
+                    protobufSchema.toDynamicSchema.getMessageTypes.asScala
+                      .map(protobufSchema.toDescriptor)
+              }
+            }
+
+          def readFrom(
+            valueString: String,
+            valueSchema: ParsedSchema,
+            valueDescriptor: Option[String]
+          ): Task[Message] = {
+            val process = for {
+              protobufSchema <- Task(valueSchema.asInstanceOf[ProtobufSchema])
+              descriptors    <- extractDescriptors(valueDescriptor, protobufSchema)
+              ios             = descriptors.map(parseSchema(valueString, _))
+              r              <- ZIO.firstSuccessOf(ios.head, ios.tail)
+            } yield r
+
+            process.tapError(e =>
+              logging.throwable(s"Error while reading from ($valueString) and schema ($valueSchema)", e)
+            )
+          }
 
           def readMessage(request: ProduceProtoRequest): RIO[Has[ClusterSettings], Array[Byte]] =
             for {
-              _           <- logging.debug(s"request:\n$request")
+              _           <- logging.debug(s"request: $request")
               registry    <- getSchemaRegistryClient
               valueSchema <- getSchema(registry, request.schemaId)
               value       <- readFrom(request.value, valueSchema, request.valueDescriptor)
-              _           <- logging.debug(s"value message:\n$value")
+              _           <- logging.debug(s"value message: $value")
               serializer  <- getSerializer(registry)
               bytes <-
                 Task(serializer.serialize(request.valueSubject, request.topicName, isKey = false, value, valueSchema))
