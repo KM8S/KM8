@@ -4,11 +4,19 @@ option java_package = "io.kafkamate";
 
 package messages;
 
+enum OffsetStrategy {
+  REAL_TIME = 0;
+  FROM_BEGINNING = 1;
+  FIRST_N = 2;
+  LATEST_N = 3;
+  START_TIMESTAMP = 4;
+}
+
 message ConsumeRequest {
   string clusterId = 1;
   string topicName = 2;
   uint64 maxResults = 3;
-  string offsetStrategy = 4;
+  OffsetStrategy offsetStrategy = 4;
   string filterKeyword = 5;
   MessageFormat messageFormat = 6;
 }
