@@ -26,7 +26,7 @@ object MessagesService {
       KafkaProducer
         .produce(request)
         .tapError(e => log.throwable(s"Producer error: ${e.getMessage}", e))
-        .bimap(GRPCStatus.fromThrowable, _ => ProduceResponse("OK"))
+        .mapBoth(GRPCStatus.fromThrowable, _ => ProduceResponse("OK"))
 
     override def consumeMessages(request: ConsumeRequest): ZStream[Env, Status, LogicMessage] =
       KafkaConsumer

@@ -6,9 +6,9 @@ lazy val ProjectVersion      = "0.1.0"
 lazy val ProjectScalaVersion = "2.13.6"
 
 // make sure to align zio versions with scalajs versions from plugins.sbt
-lazy val ZIOVersion    = "1.0.9"
+lazy val ZIOVersion    = "1.0.18"
 lazy val GrpcVersion   = "1.38.1"
-lazy val SlinkyVersion = "0.6.7"
+lazy val SlinkyVersion = "0.6.8"
 
 lazy val kafkamate = project
   .in(file("."))
@@ -91,17 +91,16 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                      %% "zio-kafka"                 % "0.15.0",
-      "dev.zio"                      %% "zio-json"                  % "0.1.5",
-      "dev.zio"                      %% "zio-logging-slf4j"         % "0.5.11",
-      "io.github.kitlangton"         %% "zio-magic"                 % "0.3.2",
-      "com.lihaoyi"                  %% "os-lib"                    % "0.7.8",
-      "com.thesamet.scalapb"         %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
-      "io.confluent"                  % "kafka-protobuf-serializer" % "7.2.1",
-      //"com.fasterxml.jackson.module" %% "jackson-module-scala"      % "2.10.0",
-      "net.logstash.logback"          % "logstash-logback-encoder"  % "6.6",
-      "ch.qos.logback"                % "logback-classic"           % "1.2.3",
-      "io.github.embeddedkafka"      %% "embedded-kafka"            % "2.8.0" % Test
+      "dev.zio"                 %% "zio-kafka"                 % "0.15.0",
+      "dev.zio"                 %% "zio-json"                  % "0.1.5",
+      "dev.zio"                 %% "zio-logging-slf4j"         % "0.5.11",
+      "io.github.kitlangton"    %% "zio-magic"                 % "0.3.2",
+      "com.lihaoyi"             %% "os-lib"                    % "0.7.8",
+      "com.thesamet.scalapb"    %% "scalapb-runtime-grpc"      % scalapb.compiler.Version.scalapbVersion,
+      "io.confluent"             % "kafka-protobuf-serializer" % "7.2.1",
+      "net.logstash.logback"     % "logstash-logback-encoder"  % "6.6",
+      "ch.qos.logback"           % "logback-classic"           % "1.2.3",
+      "io.github.embeddedkafka" %% "embedded-kafka"            % "2.8.0" % Test
     ),
     dependencyOverrides ++= Seq(
       "org.apache.kafka" % "kafka-clients" % "2.8.0"
@@ -227,4 +226,4 @@ lazy val sharedSettings = Seq(
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   //,bloopExportJarClassifiers in Global := Some(Set("sources"))
-)
+) ++ addCommandAlias("fmt", "all scalafmtSbt scalafmtAll test:scalafmt")

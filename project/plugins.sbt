@@ -10,7 +10,7 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 
 addSbtPlugin("org.jmotor.sbt" % "sbt-dependency-updates" % "1.2.2")
 
-addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.4")
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.6")
 
 addSbtPlugin("se.marcuslonnberg" % "sbt-docker" % "1.8.2")
 
@@ -19,9 +19,9 @@ addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "1.0.0")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
 
 libraryDependencies ++= Seq(
-  "com.thesamet.scalapb"          %% "compilerplugin"           % "0.11.3",
-  "com.thesamet.scalapb.grpcweb"  %% "scalapb-grpcweb-code-gen" % "0.6.4",
-  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen"         % "0.5.0"
+  "com.thesamet.scalapb"          %% "compilerplugin"           % "0.11.13",
+  "com.thesamet.scalapb.grpcweb"  %% "scalapb-grpcweb-code-gen" % "0.6.6",
+  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen"         % "0.5.3"
 )
 
 // For Scala.js:

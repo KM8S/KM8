@@ -22,5 +22,4 @@ object KafkaProducerSpec extends DefaultRunnableSpec with HelperSpec {
     }
   ).provideLayerShared(???) @@ TestAspect.timeout(30.seconds)
 
-
 }

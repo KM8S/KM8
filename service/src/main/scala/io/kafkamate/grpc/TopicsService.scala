@@ -17,7 +17,7 @@ object TopicsService {
       KafkaExplorer
         .listTopics(request.clusterId)
         .tapError(e => log.throwable(s"Get topics error: ${e.getMessage}", e))
-        .bimap(GRPCStatus.fromThrowable, r => TopicResponse(r))
+        .mapBoth(GRPCStatus.fromThrowable, r => TopicResponse(r))
 
     def addTopic(request: AddTopicRequest): ZIO[Env, Status, TopicDetails] =
       KafkaExplorer

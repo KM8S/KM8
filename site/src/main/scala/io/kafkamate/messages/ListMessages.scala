@@ -28,7 +28,7 @@ import common._
     items: List[Item] = List.empty,
     error: Option[String] = None,
     maxResults: Long = 5,
-    offsetStrategy: String = "earliest",
+    offsetStrategy: OffsetStrategy = OffsetStrategy.FROM_BEGINNING,
     filterKeyword: String = "",
     messageFormat: MessageFormat = MessageFormat.AUTO
   )
@@ -49,8 +49,9 @@ import common._
           items = if (bool) List.empty else prevState.items,
           error = err
         )
-      case SetMaxResultsEvent(max)   => prevState.copy(maxResults = max)
-      case SetOffsetStrategyEvent(v) => prevState.copy(offsetStrategy = v)
+      case SetMaxResultsEvent(max) => prevState.copy(maxResults = max)
+      case SetOffsetStrategyEvent(v) =>
+        prevState.copy(offsetStrategy = OffsetStrategy.fromName(v).getOrElse(OffsetStrategy.FROM_BEGINNING))
       case SetMessageFormat(v) =>
         prevState.copy(messageFormat = v match {
           case MessageFormat.AUTO.name     => MessageFormat.AUTO

@@ -35,10 +35,10 @@ import messages._
 
   private def createService(clustersConfigService: ClustersConfig.Service): Service =
     new Service {
-      private def extractOffsetStrategy(offsetValue: String): AutoOffsetStrategy =
+      private def extractOffsetStrategy(offsetValue: OffsetStrategy): AutoOffsetStrategy =
         offsetValue match {
-          case "earliest" => AutoOffsetStrategy.Earliest
-          case _          => AutoOffsetStrategy.Latest
+          case OffsetStrategy.FROM_BEGINNING => AutoOffsetStrategy.Earliest
+          case _                             => AutoOffsetStrategy.Latest
         }
 
       private def protobufDeserializer(settings: ProtoSerdeSettings): Deserializer[Any, Try[Message]] =
@@ -48,7 +48,7 @@ import messages._
           protoDeser
         }.asTry
 
-      private def consumerSettings(config: ClusterSettings, offsetStrategy: String): Task[ConsumerSettings] =
+      private def consumerSettings(config: ClusterSettings, offsetStrategy: OffsetStrategy): Task[ConsumerSettings] =
         Task {
           val uuid = UUID.randomUUID().toString
           ConsumerSettings(config.kafkaHosts)
@@ -62,7 +62,7 @@ import messages._
       def toJson(messageOrBuilder: MessageOrBuilder): Task[String] =
         Task(JsonFormat.printer.print(messageOrBuilder))
 
-      private def makeConsumerLayer(clusterId: String, offsetStrategy: String) =
+      private def makeConsumerLayer(clusterId: String, offsetStrategy: OffsetStrategy) =
         ZLayer.fromManaged {
           for {
             cs       <- clustersConfigService.getCluster(clusterId).toManaged_
