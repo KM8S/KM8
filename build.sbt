@@ -3,7 +3,7 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 lazy val ProjectName         = "kafkamate"
 lazy val ProjectOrganization = "csofronia"
 lazy val ProjectVersion      = "0.1.0"
-lazy val ProjectScalaVersion = "2.13.6"
+lazy val ProjectScalaVersion = "2.13.11"
 
 // make sure to align zio versions with scalajs versions from plugins.sbt
 lazy val ZIOVersion    = "1.0.18"
@@ -223,7 +223,6 @@ lazy val sharedSettings = Seq(
     "dev.zio"  %%% "zio-test"      % ZIOVersion % Test,
     "dev.zio"  %%% "zio-test-sbt"  % ZIOVersion % Test
   ),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   //,bloopExportJarClassifiers in Global := Some(Set("sources"))
 ) ++ addCommandAlias("fmt", "all scalafmtSbt scalafmtAll test:scalafmt")

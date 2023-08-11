@@ -49,15 +49,12 @@ import common._
           items = if (bool) List.empty else prevState.items,
           error = err
         )
-      case SetMaxResultsEvent(max) => prevState.copy(maxResults = max)
+      case SetMaxResultsEvent(max) =>
+        prevState.copy(maxResults = max)
       case SetOffsetStrategyEvent(v) =>
         prevState.copy(offsetStrategy = OffsetStrategy.fromName(v).getOrElse(OffsetStrategy.FROM_BEGINNING))
       case SetMessageFormat(v) =>
-        prevState.copy(messageFormat = v match {
-          case MessageFormat.AUTO.name     => MessageFormat.AUTO
-          case MessageFormat.PROTOBUF.name => MessageFormat.PROTOBUF
-          case _                           => MessageFormat.STRING
-        })
+        prevState.copy(messageFormat = MessageFormat.fromName(v).getOrElse(MessageFormat.STRING))
       case SetFilterEvent(v)  => prevState.copy(filterKeyword = v)
       case AddItemEvent(item) => prevState.copy(items = prevState.items :+ item)
     }
@@ -139,8 +136,7 @@ import common._
                 id := "form-cleanupPolicy-label1",
                 onChange := (handleOffsetStrategy(_))
               )(
-                option(value := "earliest")("earliest"),
-                option(value := "latest")("latest")
+                OffsetStrategy.values.map(o => option(value := o.name)(o.name))
               )
             )
           ),
