@@ -42,7 +42,8 @@ object KafkaConsumerSpec extends DefaultRunnableSpec with HelperSpec {
           topic <- UIO("topic150")
           kvs = (1 to 5).toList.map(i => (s"key$i", s"msg$i"))
           _ <- produceMany(topic, kvs)
-          records <- KafkaConsumer.consume(ConsumeRequest("test-id", topic, 5, OffsetStrategy.LATEST)).runCollect
+          req = ConsumeRequest("test-id", topic, 5, OffsetStrategy.LATEST, "", MessageFormat.STRING)
+          records <- KafkaConsumer.consume(req).runCollect
         } yield assertTrue(records.map(v => (v.key, v.value)).toList == kvs.map(v => (v._1, v._2)))
         io
       }

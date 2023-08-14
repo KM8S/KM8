@@ -6,9 +6,11 @@ lazy val ProjectVersion = "0.1.0"
 lazy val ProjectScalaVersion = "2.13.10"
 
 // make sure to align zio versions with scalajs versions from plugins.sbt
-lazy val ZIOVersion = "1.0.18"
-lazy val GrpcVersion = "1.38.1"
-lazy val SlinkyVersion = "0.6.8"
+lazy val zioVersion = "1.0.18"
+lazy val zioKafkaVersion = "0.17.8"
+lazy val kafkaVersion = "3.1.0"
+lazy val grpcVersion = "1.38.1"
+lazy val slinkyVersion = "0.6.8"
 
 lazy val kafkamate = project
   .in(file("."))
@@ -91,7 +93,7 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                 %% "zio-kafka"                 % "0.17.8",
+      "dev.zio"                 %% "zio-kafka"                 % zioKafkaVersion,
       "dev.zio"                 %% "zio-json"                  % "0.1.5",
       "dev.zio"                 %% "zio-logging-slf4j"         % "0.5.11",
       "io.github.kitlangton"    %% "zio-magic"                 % "0.3.2",
@@ -100,10 +102,10 @@ lazy val service = project
       "io.confluent"             % "kafka-protobuf-serializer" % "7.2.1",
       "net.logstash.logback"     % "logstash-logback-encoder"  % "6.6",
       "ch.qos.logback"           % "logback-classic"           % "1.2.3",
-      "io.github.embeddedkafka" %% "embedded-kafka"            % "2.8.0" % Test
+      "io.github.embeddedkafka" %% "embedded-kafka"            % kafkaVersion % Test
     ),
     dependencyOverrides ++= Seq(
-      "org.apache.kafka" % "kafka-clients" % "3.1.0"
+      "org.apache.kafka" % "kafka-clients" % kafkaVersion
     ),
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"
@@ -140,12 +142,12 @@ lazy val site = project
     version in webpack := "4.43.0",
     version in startWebpackDevServer := "3.11.0",
     libraryDependencies ++= Seq(
-      "me.shadaj" %%% "slinky-core"                 % SlinkyVersion,
-      "me.shadaj" %%% "slinky-web"                  % SlinkyVersion,
-      "me.shadaj" %%% "slinky-native"               % SlinkyVersion,
-      "me.shadaj" %%% "slinky-hot"                  % SlinkyVersion,
-      "me.shadaj" %%% "slinky-react-router"         % SlinkyVersion,
-      "me.shadaj" %%% "slinky-scalajsreact-interop" % SlinkyVersion,
+      "me.shadaj" %%% "slinky-core"                 % slinkyVersion,
+      "me.shadaj" %%% "slinky-web"                  % slinkyVersion,
+      "me.shadaj" %%% "slinky-native"               % slinkyVersion,
+      "me.shadaj" %%% "slinky-hot"                  % slinkyVersion,
+      "me.shadaj" %%% "slinky-react-router"         % slinkyVersion,
+      "me.shadaj" %%% "slinky-scalajsreact-interop" % slinkyVersion,
       "org.scalatest" %%% "scalatest"               % "3.2.9" % Test
       // "com.github.oen9" %%% "slinky-bridge-react-konva"   % "0.1.1",
     ),
@@ -194,7 +196,7 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings(
     libraryDependencies ++= Seq(
       "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalapb.compiler.Version.scalapbVersion,
-      "io.grpc"               % "grpc-netty"           % GrpcVersion
+      "io.grpc"               % "grpc-netty"           % grpcVersion
     ),
     PB.targets in Compile := Seq(
       scalapb.gen(grpc = true) -> (sourceManaged in Compile).value,
@@ -219,11 +221,11 @@ lazy val sharedSettings = Seq(
   ),
   Global / useCoursier := false,
   libraryDependencies ++= Seq(
-    "dev.zio" %%% "zio"            % ZIOVersion,
-    "dev.zio" %%% "zio-macros"     % ZIOVersion,
+    "dev.zio" %%% "zio"            % zioVersion,
+    "dev.zio" %%% "zio-macros"     % zioVersion,
     "io.circe" %%% "circe-generic" % "0.14.1",
-    "dev.zio" %%% "zio-test"       % ZIOVersion % Test,
-    "dev.zio" %%% "zio-test-sbt"   % ZIOVersion % Test
+    "dev.zio" %%% "zio-test"       % zioVersion % Test,
+    "dev.zio" %%% "zio-test-sbt"   % zioVersion % Test
   ),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
   Global / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0",
