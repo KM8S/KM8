@@ -34,10 +34,6 @@ import scala.jdk.CollectionConverters._
     ZLayer.fromServices[ClustersConfig.Service, Logger[String], KafkaProducer.Service] {
       (clusterConfigService, logging) =>
         new Service {
-          lazy val serdeLayer: ULayer[Has[Serializer[Any, String]] with Has[Serializer[Any, Array[Byte]]]] =
-            UIO(Serde.string).toLayer[Serializer[Any, String]] ++
-              UIO(Serde.byteArray).toLayer[Serializer[Any, Array[Byte]]]
-
           lazy val providers: List[SchemaProvider] =
             List(new ProtobufSchemaProvider())
 
@@ -141,12 +137,11 @@ import scala.jdk.CollectionConverters._
 
           def producerLayer(
             clusterId: String
-          ): RLayer[Blocking, Producer[Any, String, Array[Byte]] with Has[ClusterSettings]] =
-            ZLayer.wireSome[Blocking, Producer[Any, String, Array[Byte]] with Has[ClusterSettings]](
-              serdeLayer,
+          ): RLayer[Blocking, Has[Producer] with Has[ClusterSettings]] =
+            ZLayer.wireSome[Blocking, Has[Producer] with Has[ClusterSettings]](
               custerSettingsLayer(clusterId),
               settingsLayer,
-              Producer.live[Any, String, Array[Byte]]
+              Producer.live
             )
 
           override def produce(produceRequest: ProduceRequest): RIO[Blocking, Unit] =
@@ -154,12 +149,12 @@ import scala.jdk.CollectionConverters._
               case ProduceRequest.Request.ProtoRequest(r) =>
                 readMessage(r).flatMap { bytes =>
                   Producer
-                    .produce[Any, String, Array[Byte]](r.topicName, r.key, bytes)
+                    .produce(r.topicName, r.key, bytes, Serde.string, Serde.byteArray)
                     .unit
                 }.provideSomeLayer[Blocking](producerLayer(r.clusterId))
               case ProduceRequest.Request.StringRequest(r) =>
                 Producer
-                  .produce[Any, String, Array[Byte]](r.topicName, r.key, r.value.getBytes)
+                  .produce(r.topicName, r.key, r.value.getBytes, Serde.string, Serde.byteArray)
                   .unit
                   .provideSomeLayer[Blocking](producerLayer(r.clusterId))
               case _ => ZIO.fail(new RuntimeException("Not implemented!"))

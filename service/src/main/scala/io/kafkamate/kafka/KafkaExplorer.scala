@@ -35,14 +35,15 @@ import scala.concurrent.TimeoutException
     ZLayer.fromService { clustersConfigService =>
       new Service {
         private def adminClientLayer(clusterId: String): RLayer[Blocking, HasAdminClient] = {
-          def services(blocking: Blocking.Service) = for {
+          def services = for {
             cs     <- clustersConfigService.getCluster(clusterId).toManaged_
             s       = AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty)
-            jAdmin <- Task(JAdminClient.create(s.driverSettings.asJava)).toManaged_
-            client <- ZManaged.makeEffect(AdminClient(jAdmin, blocking))(_ => jAdmin.close(s.closeTimeout))
+            managed = Task(JAdminClient.create(s.driverSettings.asJava)).toManaged(ja => UIO(ja.close(s.closeTimeout)))
+            client <- AdminClient.fromManagedJavaClient(managed)
+            jAdmin <- managed
           } yield Has.allOf(client, jAdmin)
 
-          ZLayer.fromServiceManyManaged(services)
+          ZLayer.fromManagedMany(services)
         }
 
         private implicit class AdminClientProvider[A](eff: RIO[HasAdminClient with Blocking, A]) {
@@ -56,10 +57,10 @@ import scala.concurrent.TimeoutException
             .accessM[HasAdminClient with Blocking] { env =>
               val ac = env.get[AdminClient]
               for {
-                (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.id)
+                (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.map(_.id))
                 brokers = nodes.map { n =>
                             val nodeId = n.id
-                            if (controllerId != nodeId) BrokerDetails(nodeId)
+                            if (!controllerId.contains(nodeId)) BrokerDetails(nodeId)
                             else BrokerDetails(nodeId, isController = true)
                           }
                 //resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
@@ -101,7 +102,7 @@ import scala.concurrent.TimeoutException
         private def getTopicsSize(
           topicDescription: Map[String, AdminClient.TopicDescription]
         ): RIO[Blocking with HasAdminClient, Map[String, Long]] = {
-          val brokerIds = topicDescription.values.flatMap(_.partitions).map(_.leader.id).toSet
+          val brokerIds = topicDescription.values.flatMap(_.partitions).flatMap(_.leader.map(_.id)).toSet
           aggregateTopicSizes(brokerIds)
         }
 

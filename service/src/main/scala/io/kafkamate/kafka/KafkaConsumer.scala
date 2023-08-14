@@ -2,7 +2,6 @@ package io.kafkamate
 package kafka
 
 import java.util.UUID
-import scala.jdk.CollectionConverters._
 import scala.util.{Try, Success, Failure}
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
 import com.google.protobuf.{MessageOrBuilder, Message}
@@ -41,12 +40,10 @@ import messages._
           case _                             => AutoOffsetStrategy.Latest
         }
 
-      private def protobufDeserializer(settings: ProtoSerdeSettings): Deserializer[Any, Try[Message]] =
-        Deserializer {
-          val protoDeser = new KafkaProtobufDeserializer[Message]()
-          protoDeser.configure(settings.configs.asJava, false)
-          protoDeser
-        }.asTry
+      private def protobufDeserializer(settings: ProtoSerdeSettings): Task[Deserializer[Any, Try[Message]]] =
+        Deserializer
+          .fromKafkaDeserializer(new KafkaProtobufDeserializer[Message](), settings.configs, false)
+          .map(_.asTry)
 
       private def consumerSettings(config: ClusterSettings, offsetStrategy: OffsetStrategy): Task[ConsumerSettings] =
         Task {
@@ -115,7 +112,7 @@ import messages._
                                                .fromOption(c.protoSerdeSettings)
                                                .orElseFail(new RuntimeException("SchemaRegistry url was not provided!"))
                                            )
-                                           .map(protobufDeserializer)
+                                           .flatMap(protobufDeserializer)
                                            .zipLeft(log.debug(s"Created proto deserializer"))
                                            .cached(Duration.Infinity)
                                        )

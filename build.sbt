@@ -91,7 +91,7 @@ lazy val service = project
       "-Xlog-reflective-calls"
     ),
     libraryDependencies ++= Seq(
-      "dev.zio"                 %% "zio-kafka"                 % "0.15.0",
+      "dev.zio"                 %% "zio-kafka"                 % "0.17.8",
       "dev.zio"                 %% "zio-json"                  % "0.1.5",
       "dev.zio"                 %% "zio-logging-slf4j"         % "0.5.11",
       "io.github.kitlangton"    %% "zio-magic"                 % "0.3.2",
