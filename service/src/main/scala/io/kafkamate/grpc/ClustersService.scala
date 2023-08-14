@@ -20,7 +20,8 @@ object ClustersService {
 
     def addCluster(request: ClusterDetails): ZIO[Env, Status, ClusterDetails] =
       for {
-        clusterId     <- genRandStr(6).map(str => s"${request.name.trim}-$str")
+        clusterId <- genRandStr(6)
+                       .map(str => s"${request.name.trim.replaceAll(" ", "-")}-$str")
         hosts          = request.kafkaHosts.split(",").toList
         schemaRegistry = Option.unless(request.schemaRegistryUrl.isEmpty)(request.schemaRegistryUrl)
         c <- ClustersConfig
