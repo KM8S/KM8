@@ -142,13 +142,13 @@ lazy val site = project
     version in webpack := "4.43.0",
     version in startWebpackDevServer := "3.11.0",
     libraryDependencies ++= Seq(
-      "me.shadaj" %%% "slinky-core"                 % slinkyVersion,
-      "me.shadaj" %%% "slinky-web"                  % slinkyVersion,
-      "me.shadaj" %%% "slinky-native"               % slinkyVersion,
-      "me.shadaj" %%% "slinky-hot"                  % slinkyVersion,
-      "me.shadaj" %%% "slinky-react-router"         % slinkyVersion,
-      "me.shadaj" %%% "slinky-scalajsreact-interop" % slinkyVersion,
-      "org.scalatest" %%% "scalatest"               % "3.2.9" % Test
+      "me.shadaj"     %%% "slinky-core"                 % slinkyVersion,
+      "me.shadaj"     %%% "slinky-web"                  % slinkyVersion,
+      "me.shadaj"     %%% "slinky-native"               % slinkyVersion,
+      "me.shadaj"     %%% "slinky-hot"                  % slinkyVersion,
+      "me.shadaj"     %%% "slinky-react-router"         % slinkyVersion,
+      "me.shadaj"     %%% "slinky-scalajsreact-interop" % slinkyVersion,
+      "org.scalatest" %%% "scalatest"                   % "3.2.9" % Test
       // "com.github.oen9" %%% "slinky-bridge-react-konva"   % "0.1.1",
     ),
     npmDependencies in Compile ++= Seq(
@@ -221,11 +221,11 @@ lazy val sharedSettings = Seq(
   ),
   Global / useCoursier := false,
   libraryDependencies ++= Seq(
-    "dev.zio" %%% "zio"            % zioVersion,
-    "dev.zio" %%% "zio-macros"     % zioVersion,
+    "dev.zio"  %%% "zio"           % zioVersion,
+    "dev.zio"  %%% "zio-macros"    % zioVersion,
     "io.circe" %%% "circe-generic" % "0.14.1",
-    "dev.zio" %%% "zio-test"       % zioVersion % Test,
-    "dev.zio" %%% "zio-test-sbt"   % zioVersion % Test
+    "dev.zio"  %%% "zio-test"      % zioVersion % Test,
+    "dev.zio"  %%% "zio-test-sbt"  % zioVersion % Test
   ),
   testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
   Global / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0",
