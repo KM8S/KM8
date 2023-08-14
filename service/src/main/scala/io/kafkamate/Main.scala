@@ -2,13 +2,12 @@ package io.kafkamate
 
 import io.grpc.ServerBuilder
 import io.grpc.protobuf.services.ProtoReflectionService
-import scalapb.zio_grpc.{ManagedServer, ServiceList}
-import zio._
-
 import io.kafkamate.config._
 import io.kafkamate.grpc._
 import io.kafkamate.kafka._
 import io.kafkamate.utils._
+import scalapb.zio_grpc.{ManagedServer, ServiceList}
+import zio._
 
 object Main extends App {
 

@@ -2,12 +2,11 @@ package io.kafkamate
 package config
 
 import zio._
-import zio.system
-import system.System
+import zio.system.System
 
 object ConfigPathService {
 
-  lazy val EnvKey   = "KAFKAMATE_ENV"
+  lazy val EnvKey = "KAFKAMATE_ENV"
   lazy val FileName = "kafkamate.json"
 
   case class ConfigPath(path: os.Path)

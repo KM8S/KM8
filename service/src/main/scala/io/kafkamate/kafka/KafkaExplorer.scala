@@ -1,34 +1,34 @@
 package io.kafkamate
 package kafka
 
+import scala.concurrent.TimeoutException
+import scala.jdk.CollectionConverters._
+
+import io.kafkamate.brokers.BrokerDetails
+import io.kafkamate.config.ClustersConfig._
+import io.kafkamate.topics._
+import org.apache.kafka.clients.admin.{AdminClient => JAdminClient, OffsetSpec}
+import org.apache.kafka.common.TopicPartition
 import zio._
 import zio.blocking._
 import zio.clock.Clock
 import zio.duration._
-import zio.kafka.admin._
 import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
-import org.apache.kafka.clients.admin.{OffsetSpec, AdminClient => JAdminClient}
-import org.apache.kafka.common.TopicPartition
+import zio.kafka.admin._
 import zio.macros.accessible
-import config._
-import ClustersConfig._
-import topics._
-import brokers.BrokerDetails
-
-import scala.jdk.CollectionConverters._
-import scala.concurrent.TimeoutException
 
 @accessible object KafkaExplorer {
 
   type HasKafkaExplorer = Has[Service]
-  type HasAdminClient   = Has[AdminClient] with Has[JAdminClient]
+  type HasAdminClient = Has[AdminClient] with Has[JAdminClient]
 
   private val CleanupPolicyKey = "cleanup.policy"
-  private val RetentionMsKey   = "retention.ms"
+  private val RetentionMsKey = "retention.ms"
 
   trait Service {
     def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
     def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]]
+
     def getLatestOffset(
       clusterId: String,
       tps: Set[TopicPartition]
@@ -42,8 +42,8 @@ import scala.concurrent.TimeoutException
       new Service {
         private def adminClientLayer(clusterId: String): RLayer[Blocking, HasAdminClient] = {
           def services = for {
-            cs     <- clustersConfigService.getCluster(clusterId).toManaged_
-            s       = AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty)
+            cs <- clustersConfigService.getCluster(clusterId).toManaged_
+            s = AdminClientSettings(cs.kafkaHosts, 2.seconds, Map.empty)
             managed = Task(JAdminClient.create(s.driverSettings.asJava)).toManaged(ja => UIO(ja.close(s.closeTimeout)))
             client <- AdminClient.fromManagedJavaClient(managed)
             jAdmin <- managed
@@ -65,12 +65,12 @@ import scala.concurrent.TimeoutException
               for {
                 (nodes, controllerId) <- ac.describeClusterNodes() <&> ac.describeClusterController().map(_.map(_.id))
                 brokers = nodes.map { n =>
-                            val nodeId = n.id
-                            if (!controllerId.contains(nodeId)) BrokerDetails(nodeId)
-                            else BrokerDetails(nodeId, isController = true)
-                          }
-                //resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
-                //_ <- ac.describeConfigs(resources)
+                  val nodeId = n.id
+                  if (!controllerId.contains(nodeId)) BrokerDetails(nodeId)
+                  else BrokerDetails(nodeId, isController = true)
+                }
+                // resources = nodes.map(n => new ConfigResource(ConfigResource.Type.BROKER, n.idString()))
+                // _ <- ac.describeConfigs(resources)
               } yield brokers
             }
             .withAdminClient(clusterId)
@@ -85,12 +85,11 @@ import scala.concurrent.TimeoutException
                   ZIO.tupledPar(
                     ac.describeTopics(ls).flatMap(r => getTopicsSize(r).map((r, _))),
                     ac.describeConfigs(ls.map(ConfigResource(ConfigResourceType.Topic, _)))
-                  )
-                )
+                  ))
                 .map { case ((nameDescriptionMap, sizes), topicConfigMap) =>
                   val configs = topicConfigMap.map { case (res, conf) => (res.name, conf) }
                   nameDescriptionMap.map { case (topicName, description) =>
-                    val conf                   = configs.get(topicName).map(_.entries)
+                    val conf = configs.get(topicName).map(_.entries)
                     def getConfig(key: String) = conf.flatMap(_.get(key).map(_.value())).getOrElse("unknown")
                     TopicDetails(
                       name = topicName,
@@ -114,12 +113,12 @@ import scala.concurrent.TimeoutException
 
         private def aggregateTopicSizes(brokerIds: Set[Int]): RIO[HasAdminClient with Blocking, Map[String, Long]] =
           for {
-            jAdmin       <- ZIO.service[JAdminClient]
-            ids           = brokerIds.map(Integer.valueOf).asJavaCollection
+            jAdmin <- ZIO.service[JAdminClient]
+            ids = brokerIds.map(Integer.valueOf).asJavaCollection
             asJavaFuture <- effectBlocking(jAdmin.describeLogDirs(ids).descriptions())
             logDirInfo <- ZIO.foreachPar(asJavaFuture.asScala.toMap) { case (brokerId, kafkaFuture) =>
-                            AdminClient.fromKafkaFuture(effectBlocking(kafkaFuture)).map(brokerId -> _.asScala)
-                          }
+              AdminClient.fromKafkaFuture(effectBlocking(kafkaFuture)).map(brokerId -> _.asScala)
+            }
           } yield {
             logDirInfo.values
               .flatMap(_.values)
@@ -134,7 +133,7 @@ import scala.concurrent.TimeoutException
           val topicPartitionOffsets = tps.map(tp => (tp, OffsetSpec.latest())).toMap.asJava
           for {
             result <- ZIO.service[JAdminClient].mapEffect(_.listOffsets(topicPartitionOffsets))
-            map    <- AdminClient.fromKafkaFuture(UIO(result.all())).map(_.asScala.view.mapValues(_.offset()).toMap)
+            map <- AdminClient.fromKafkaFuture(UIO(result.all())).map(_.asScala.view.mapValues(_.offset()).toMap)
           } yield map
         }.withAdminClient(clusterId)
 
@@ -150,7 +149,7 @@ import scala.concurrent.TimeoutException
                     req.replication.toShort,
                     Map(
                       CleanupPolicyKey -> req.cleanupPolicy,
-                      RetentionMsKey   -> req.retentionMs
+                      RetentionMsKey -> req.retentionMs
                     )
                   )
                 )

@@ -2,9 +2,11 @@ package io.kafkamate
 package messages
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
 import scala.scalajs.js
+import scala.util.{Failure, Success}
 
+import io.kafkamate.bridges.reactrouter.ReactRouterDOM
+import io.kafkamate.common._
 import org.scalajs.dom.{Event, html}
 import scalapb.grpc.Channels
 import slinky.core._
@@ -12,33 +14,33 @@ import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.web.html._
 
-import bridges.reactrouter.ReactRouterDOM
-import common._
-
 @react object ProduceMessage {
   type Props = Unit
 
   private val messagesGrpcClient =
     MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
-  private case class SchemaOption(id: String, text: String, url: String)
+  private case class SchemaOption(
+    id: String,
+    text: String,
+    url: String)
   private val initialSchemaOptions = List(SchemaOption("add", "insert schema id", ""))
 
   val component = FunctionalComponent[Props] { _ =>
-    val (shouldMakeRequest, setRequestAction)           = useState(false)
-    val (messageKey, setKey)                            = useState("")
-    val (messageValue, setValue)                        = useState("")
-    val (schemaOptions, setSchemaOptions)               = useState(List.empty[SchemaOption])
-    val (schemaId, setSchemaId)                         = useState(0)
-    val (schemaUrl, setSchemaUrl)                       = useState("")
-    val (showSchemaIdInput, setShowSchemaIdInput)       = useState(false)
-    val (messageFormat, setMessageFormat)               = useState(MessageFormat.STRING.name)
+    val (shouldMakeRequest, setRequestAction) = useState(false)
+    val (messageKey, setKey) = useState("")
+    val (messageValue, setValue) = useState("")
+    val (schemaOptions, setSchemaOptions) = useState(List.empty[SchemaOption])
+    val (schemaId, setSchemaId) = useState(0)
+    val (schemaUrl, setSchemaUrl) = useState("")
+    val (showSchemaIdInput, setShowSchemaIdInput) = useState(false)
+    val (messageFormat, setMessageFormat) = useState(MessageFormat.STRING.name)
     val (autoDetectDescriptor, setAutoDetectDescriptor) = useState(true)
-    val (valueDescriptor, setValueDescriptor)           = useState("")
-    val (successMsgs, setSuccessMsgs)                   = useState(Option.empty[String])
-    val (errorMsgs, setErrorMsgs)                       = useState(Option.empty[String])
+    val (valueDescriptor, setValueDescriptor) = useState("")
+    val (successMsgs, setSuccessMsgs) = useState(Option.empty[String])
+    val (errorMsgs, setErrorMsgs) = useState(Option.empty[String])
 
-    val params    = ReactRouterDOM.useParams().toMap
+    val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
@@ -56,9 +58,9 @@ import common._
       }
     def handleSchemaIdInput(e: SyntheticEvent[html.Input, Event]): Unit =
       e.target.value.toIntOption.foreach(handleSchemaId)
-    def handleMessageFormat(e: SyntheticEvent[html.Select, Event]): Unit  = setMessageFormat(e.target.value)
-    def handleKey(e: SyntheticEvent[html.Input, Event]): Unit             = setKey(e.target.value)
-    def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit        = setValue(e.target.value)
+    def handleMessageFormat(e: SyntheticEvent[html.Select, Event]): Unit = setMessageFormat(e.target.value)
+    def handleKey(e: SyntheticEvent[html.Input, Event]): Unit = setKey(e.target.value)
+    def handleValue(e: SyntheticEvent[html.TextArea, Event]): Unit = setValue(e.target.value)
     def handleValueDescriptor(e: SyntheticEvent[html.Input, Event]): Unit = setValueDescriptor(e.target.value)
     def handleAutoDetectDescriptor(e: SyntheticEvent[html.Input, Event]): Unit =
       setAutoDetectDescriptor(e.target.checked)
@@ -149,13 +151,13 @@ import common._
     )
 
     val checkboxStyle = js.Dynamic.literal(
-      "width"  -> "17px",
+      "width" -> "17px",
       "height" -> "17px",
       "cursor" -> "pointer"
     )
 
     val labelStyle = js.Dynamic.literal(
-      "fontSize"   -> "15px",
+      "fontSize" -> "15px",
       "marginLeft" -> "10px"
     )
 

@@ -4,6 +4,8 @@ package topics
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
+import io.kafkamate.bridges.reactrouter.ReactRouterDOM
+import io.kafkamate.common._
 import org.scalajs.dom.{Event, html}
 import scalapb.grpc.Channels
 import slinky.core._
@@ -12,9 +14,6 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Redirect
 import slinky.web.html._
 
-import bridges.reactrouter.ReactRouterDOM
-import common._
-
 @react object AddTopic {
   type Props = Unit
 
@@ -22,23 +21,23 @@ import common._
     TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
-    val params    = ReactRouterDOM.useParams().toMap
+    val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
-    val (shouldRedirect, setRedirect)         = useState(false)
+    val (shouldRedirect, setRedirect) = useState(false)
     val (shouldMakeRequest, setRequestAction) = useState(false)
-    val (topicName, setTopicName)             = useState("")
-    val (partitions, setPartitions)           = useState(1)
-    val (replication, setReplication)         = useState(1)
-    val (cleanupPolicy, setCleanupPolicy)     = useState("delete")
-    val (retention, setRetention)             = useState(BigDecimal("604800000"))
-    val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
+    val (topicName, setTopicName) = useState("")
+    val (partitions, setPartitions) = useState(1)
+    val (replication, setReplication) = useState(1)
+    val (cleanupPolicy, setCleanupPolicy) = useState("delete")
+    val (retention, setRetention) = useState(BigDecimal("604800000"))
+    val (errorMsgs, setErrorMsgs) = useState(List.empty[String])
 
-    def handleTopicName(e: SyntheticEvent[html.Input, Event]): Unit      = setTopicName(e.target.value)
-    def handlePartitions(e: SyntheticEvent[html.Input, Event]): Unit     = setPartitions(e.target.value.toInt)
-    def handleReplication(e: SyntheticEvent[html.Input, Event]): Unit    = setReplication(e.target.value.toInt)
+    def handleTopicName(e: SyntheticEvent[html.Input, Event]): Unit = setTopicName(e.target.value)
+    def handlePartitions(e: SyntheticEvent[html.Input, Event]): Unit = setPartitions(e.target.value.toInt)
+    def handleReplication(e: SyntheticEvent[html.Input, Event]): Unit = setReplication(e.target.value.toInt)
     def handleCleanupPolicy(e: SyntheticEvent[html.Select, Event]): Unit = setCleanupPolicy(e.target.value)
-    def handleRetention(e: SyntheticEvent[html.Input, Event]): Unit      = setRetention(BigDecimal(e.target.value))
+    def handleRetention(e: SyntheticEvent[html.Input, Event]): Unit = setRetention(BigDecimal(e.target.value))
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {
       e.preventDefault()

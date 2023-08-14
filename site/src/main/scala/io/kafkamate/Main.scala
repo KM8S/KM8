@@ -1,16 +1,13 @@
 package io.kafkamate
 
-import slinky.core._
-import slinky.web.ReactDOM
-import slinky.hot
-import org.scalajs.dom
-
-import scala.scalajs.js
 import scala.scalajs.js.annotation.{JSExportTopLevel, JSImport}
-import scala.scalajs.LinkingInfo
+import scala.scalajs.{LinkingInfo, js}
 
-import bridges.reactrouter.HashRouter
-import common.Router
+import io.kafkamate.bridges.reactrouter.HashRouter
+import io.kafkamate.common.Router
+import org.scalajs.dom
+import slinky.hot
+import slinky.web.ReactDOM
 
 @JSImport("resources/index.css", JSImport.Default)
 @js.native

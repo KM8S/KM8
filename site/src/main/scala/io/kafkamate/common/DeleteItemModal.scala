@@ -3,8 +3,8 @@ package common
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
 import scala.scalajs.js
+import scala.util.{Failure, Success}
 
 import slinky.core._
 import slinky.core.annotations.react
@@ -13,24 +13,23 @@ import slinky.core.facade.ReactElement
 import slinky.web.html._
 
 @react object DeleteItemModal {
+
   case class Props(
     idx: String,
     toDeleteItem: String,
     body: ReactElement,
     deleteCall: () => Future[_],
-    onSuccessCallback: () => Unit
-  )
+    onSuccessCallback: () => Unit)
 
   case class DeleteState(
     itemName: Option[String] = None,
     modalId: Option[String] = None,
-    error: Option[String] = None
-  )
+    error: Option[String] = None)
 
   sealed trait DeleteEvent
   case class SetToDeleteEvent(itemName: String, modalId: String) extends DeleteEvent
-  case class CancelDeleteEvent(modalId: Option[String])          extends DeleteEvent
-  case class SetDeleteErrorEvent(err: String)                    extends DeleteEvent
+  case class CancelDeleteEvent(modalId: Option[String]) extends DeleteEvent
+  case class SetDeleteErrorEvent(err: String) extends DeleteEvent
 
   private def deleteReducer(state: DeleteState, action: DeleteEvent): DeleteState =
     action match {

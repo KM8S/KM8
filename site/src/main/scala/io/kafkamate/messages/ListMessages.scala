@@ -4,25 +4,33 @@ package messages
 import scala.scalajs.js
 import scala.scalajs.js.Date
 
+import io.kafkamate.bridges.reactrouter.ReactRouterDOM
+import io.kafkamate.common._
+import io.kafkamate.messages.MessageFormat
+import org.scalajs.dom.{Event, html}
 import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.web.html._
-import org.scalajs.dom.{Event, html}
-
-import bridges.reactrouter.ReactRouterDOM
-import io.kafkamate.messages.MessageFormat
-import common._
 
 @react object ListMessages {
   type Props = Unit
 
-  case class Item(offset: Long, partition: Int, timestamp: Long, key: String, valueFormat: MessageFormat, value: String)
+  case class Item(
+    offset: Long,
+    partition: Int,
+    timestamp: Long,
+    key: String,
+    valueFormat: MessageFormat,
+    value: String)
+
   case object Item {
+
     def fromMessage(m: LogicMessage): Item =
       Item(m.offset, m.partition, m.timestamp, m.key, m.valueFormat, m.value)
   }
+
   case class ConsumerState(
     isStreaming: Boolean = true,
     items: List[Item] = List.empty,
@@ -30,16 +38,15 @@ import common._
     maxResults: Long = 10,
     offsetStrategy: OffsetStrategy = OffsetStrategy.LATEST,
     filterKeyword: String = "",
-    messageFormat: MessageFormat = MessageFormat.AUTO
-  )
+    messageFormat: MessageFormat = MessageFormat.AUTO)
 
   sealed trait ConsumerEvent
   case class SetStreamingEvent(bool: Boolean, error: Option[String] = None) extends ConsumerEvent
-  case class SetMaxResultsEvent(maxResults: Long)                           extends ConsumerEvent
-  case class SetOffsetStrategyEvent(strategy: String)                       extends ConsumerEvent
-  case class SetMessageFormat(messageFormat: String)                        extends ConsumerEvent
-  case class SetFilterEvent(word: String)                                   extends ConsumerEvent
-  case class AddItemEvent(item: Item)                                       extends ConsumerEvent
+  case class SetMaxResultsEvent(maxResults: Long) extends ConsumerEvent
+  case class SetOffsetStrategyEvent(strategy: String) extends ConsumerEvent
+  case class SetMessageFormat(messageFormat: String) extends ConsumerEvent
+  case class SetFilterEvent(word: String) extends ConsumerEvent
+  case class AddItemEvent(item: Item) extends ConsumerEvent
 
   private def consumerReducer(prevState: ConsumerState, event: ConsumerEvent): ConsumerState =
     event match {
@@ -66,7 +73,7 @@ import common._
     MessagesConsumer(messagesGrpcClient)
 
   val component = FunctionalComponent[Props] { _ =>
-    val params    = ReactRouterDOM.useParams().toMap
+    val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
@@ -121,9 +128,7 @@ import common._
                 id := "form-message-format-label1",
                 onChange := (handleMessageFormat(_))
               )(
-                option(value := MessageFormat.AUTO.name)(MessageFormat.AUTO.name),
-                option(value := MessageFormat.STRING.name)(MessageFormat.STRING.name),
-                option(value := MessageFormat.PROTOBUF.name)(MessageFormat.PROTOBUF.name)
+                MessageFormat.values.map(m => option(value := m.name)(m.name))
               )
             )
           ),

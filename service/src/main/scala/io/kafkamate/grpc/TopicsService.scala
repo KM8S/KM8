@@ -2,17 +2,17 @@ package io.kafkamate
 package grpc
 
 import io.grpc.Status
-import zio.{ZEnv, ZIO}
+import io.kafkamate.kafka.KafkaExplorer
+import io.kafkamate.topics._
+import io.kafkamate.utils._
 import zio.logging._
-
-import kafka.KafkaExplorer
-import topics._
-import utils._
+import zio.{ZEnv, ZIO}
 
 object TopicsService {
   type Env = ZEnv with KafkaExplorer.HasKafkaExplorer with Logging
 
   object GrpcService extends ZioTopics.RTopicsService[Env] {
+
     def getTopics(request: GetTopicsRequest): ZIO[Env, Status, TopicResponse] =
       KafkaExplorer
         .listTopics(request.clusterId)

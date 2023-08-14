@@ -3,8 +3,9 @@ package topics
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
-import scala.scalajs.js
 
+import io.kafkamate.bridges.reactrouter.ReactRouterDOM
+import io.kafkamate.common._
 import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
@@ -12,22 +13,18 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Link
 import slinky.web.html._
 
-import bridges.reactrouter.ReactRouterDOM
-import common._
-
 @react object ListTopics {
   type Props = Unit
 
   case class TopicsState(
     refresh: Boolean = true,
     topics: List[TopicDetails] = List.empty,
-    listingError: Option[String] = None
-  )
+    listingError: Option[String] = None)
 
   sealed trait TopicsEvent
-  case object RefreshEvent                             extends TopicsEvent
+  case object RefreshEvent extends TopicsEvent
   case class SetTopicsEvent(items: List[TopicDetails]) extends TopicsEvent
-  case class SetListingErrorEvent(err: String)         extends TopicsEvent
+  case class SetListingErrorEvent(err: String) extends TopicsEvent
 
   private def topicsReducer(state: TopicsState, action: TopicsEvent): TopicsState =
     action match {
@@ -40,7 +37,7 @@ import common._
     TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
-    val params    = ReactRouterDOM.useParams().toMap
+    val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
     val (topicsState, dispatchEvent) = useReducer(topicsReducer, TopicsState())

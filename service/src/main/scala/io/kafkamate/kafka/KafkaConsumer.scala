@@ -3,29 +3,29 @@ package kafka
 
 import java.util.UUID
 import scala.util.{Failure, Success, Try}
-import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
+
+import com.google.protobuf.util.JsonFormat
 import com.google.protobuf.{Message, MessageOrBuilder}
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
+import io.kafkamate.config.ClustersConfig._
+import io.kafkamate.config._
+import io.kafkamate.kafka.KafkaExplorer._
+import io.kafkamate.messages._
+import org.apache.kafka.common.TopicPartition
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.duration._
-import zio.logging._
-import zio.stream.ZStream
-import zio.kafka.consumer._
 import zio.kafka.consumer.Consumer._
+import zio.kafka.consumer._
 import zio.kafka.serde.Deserializer
+import zio.logging._
 import zio.macros.accessible
-import io.kafkamate.messages.MessageFormat
-import config._
-import ClustersConfig._
-import com.google.protobuf.util.JsonFormat
-import io.kafkamate.kafka.KafkaExplorer._
-import messages._
-import org.apache.kafka.common.TopicPartition
+import zio.stream.ZStream
 
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
-  type Env           = Clock with Blocking with Logging with HasKafkaExplorer
+  type Env = Clock with Blocking with Logging with HasKafkaExplorer
 
   trait Service {
     def consume(request: ConsumeRequest): ZStream[Env, Throwable, LogicMessage]
@@ -37,7 +37,7 @@ import org.apache.kafka.common.TopicPartition
   private def createService(clustersConfigService: ClustersConfig.Service): Service =
     new Service {
 
-      private def sanitizeOffset(maxResults: Long)(offset: Long): Long = {
+      private def safeOffset(maxResults: Long)(offset: Long): Long = {
         val r = offset - maxResults
         if (r < 0L) 0L else r
       }
@@ -48,15 +48,15 @@ import org.apache.kafka.common.TopicPartition
           case OffsetStrategy.FROM_BEGINNING => UIO(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))
           case OffsetStrategy.LATEST =>
             for {
-              b  <- ZIO.service[Blocking.Service]
-              c  <- ZIO.service[Clock.Service]
-              k  <- ZIO.service[KafkaExplorer.Service]
+              b <- ZIO.service[Blocking.Service]
+              c <- ZIO.service[Clock.Service]
+              k <- ZIO.service[KafkaExplorer.Service]
               dep = Has.allOf(b, c, k)
               f = (tps: Set[TopicPartition]) =>
-                    KafkaExplorer
-                      .getLatestOffset(request.clusterId, tps)
-                      .map(_.view.mapValues(sanitizeOffset(request.maxResults)).toMap)
-                      .provide(dep)
+                KafkaExplorer
+                  .getLatestOffset(request.clusterId, tps)
+                  .map(_.view.mapValues(safeOffset(request.maxResults)).toMap)
+                  .provide(dep)
               r = OffsetRetrieval.Manual(f)
             } yield r
           case v => ZIO.fail(new IllegalArgumentException(s"Unrecognized OffsetStrategy: $v"))
@@ -89,7 +89,7 @@ import org.apache.kafka.common.TopicPartition
       private def makeConsumerLayer(request: ConsumeRequest) =
         ZLayer.fromManaged {
           for {
-            cs       <- clustersConfigService.getCluster(request.clusterId).toManaged_
+            cs <- clustersConfigService.getCluster(request.clusterId).toManaged_
             settings <- consumerSettings(cs, request).toManaged_
             consumer <- Consumer.make(settings)
           } yield consumer
@@ -118,8 +118,7 @@ import org.apache.kafka.common.TopicPartition
               Task.fail(e)
           }.catchAll(t =>
             log.throwable(s"Failed auto deserializing $messageFormat with key: '${record.key}': ${t.getMessage}", t)
-              *> fallback(t)
-          )
+              *> fallback(t))
         }
 
       private def deserializeString(v: CommittableRecord[String, Array[Byte]]) =
@@ -132,50 +131,49 @@ import org.apache.kafka.common.TopicPartition
           for {
             _ <- ZStream.fromEffect(log.debug(s"Consuming request: $request"))
             cachedProtoDeserializer <- ZStream.fromEffect(
-                                         clustersConfigService
-                                           .getCluster(request.clusterId)
-                                           .flatMap(c =>
-                                             ZIO
-                                               .fromOption(c.protoSerdeSettings)
-                                               .orElseFail(new RuntimeException("SchemaRegistry url was not provided!"))
-                                           )
-                                           .flatMap(protobufDeserializer)
-                                           .zipLeft(log.debug(s"Created proto deserializer"))
-                                           .cached(Duration.Infinity)
-                                       )
+              clustersConfigService
+                .getCluster(request.clusterId)
+                .flatMap(c =>
+                  ZIO
+                    .fromOption(c.protoSerdeSettings)
+                    .orElseFail(new RuntimeException("SchemaRegistry url was not provided!")))
+                .flatMap(protobufDeserializer)
+                .zipLeft(log.debug(s"Created proto deserializer"))
+                .cached(Duration.Infinity)
+            )
             response <- Consumer
-                          .subscribeAnd(Subscription.topics(request.topicName))
-                          .plainStream(Deserializer.string, Deserializer.byteArray)
-                          .mapM { r =>
-                            request.messageFormat match {
-                              case MessageFormat.AUTO =>
-                                deserializeAuto(
-                                  MessageFormat.PROTOBUF,
-                                  cachedProtoDeserializer,
-                                  r,
-                                  _ => deserializeString(r)
-                                )
-                              case MessageFormat.PROTOBUF =>
-                                deserializeAuto(
-                                  MessageFormat.PROTOBUF,
-                                  cachedProtoDeserializer,
-                                  r,
-                                  e =>
-                                    UIO(
-                                      LogicMessage(
-                                        offset = r.offset.offset,
-                                        partition = r.partition,
-                                        timestamp = r.timestamp,
-                                        key = r.key,
-                                        valueFormat = MessageFormat.PROTOBUF,
-                                        value = e.getMessage
-                                      )
-                                    )
-                                )
-                              case _ =>
-                                deserializeString(r)
-                            }
-                          }
+              .subscribeAnd(Subscription.topics(request.topicName))
+              .plainStream(Deserializer.string, Deserializer.byteArray)
+              .mapM { r =>
+                request.messageFormat match {
+                  case MessageFormat.AUTO =>
+                    deserializeAuto(
+                      MessageFormat.PROTOBUF,
+                      cachedProtoDeserializer,
+                      r,
+                      _ => deserializeString(r)
+                    )
+                  case MessageFormat.PROTOBUF =>
+                    deserializeAuto(
+                      MessageFormat.PROTOBUF,
+                      cachedProtoDeserializer,
+                      r,
+                      e =>
+                        UIO(
+                          LogicMessage(
+                            offset = r.offset.offset,
+                            partition = r.partition,
+                            timestamp = r.timestamp,
+                            key = r.key,
+                            valueFormat = MessageFormat.PROTOBUF,
+                            value = e.getMessage
+                          )
+                        )
+                    )
+                  case _ =>
+                    deserializeString(r)
+                }
+              }
           } yield response
 
         val withFilter = {
