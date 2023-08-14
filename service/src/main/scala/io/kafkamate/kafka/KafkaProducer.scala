@@ -69,17 +69,6 @@ import zio.magic._
           def getSerializer(registry: CachedSchemaRegistryClient): Task[KM8ProtobufMessageSerializer] =
             Task(KM8ProtobufMessageSerializer(registry))
 
-//        lazy val serializer: KafkaProtobufSerializer[Message] = {
-//          val r = new KafkaProtobufSerializer[Message](/*schemaRegistryClient*/)
-//          val cfg = Map(
-////            "reference.subject.name.strategy" -> "io.confluent.kafka.serializers.subject.TopicNameStrategy",
-//            "schema.registry.url" -> "http://localhost:8081",
-//            "auto.register.schema" -> "true"
-//          )
-//          r.configure(cfg.asJava, false)
-//          r
-//        }
-
           private def parseSchema(valueString: String, schemaDescriptor: Descriptors.Descriptor): Task[Message] =
             Task {
               val builder = DynamicMessage.newBuilder(schemaDescriptor)
@@ -131,7 +120,6 @@ import zio.magic._
               serializer <- getSerializer(registry)
               bytes <-
                 Task(serializer.serialize(request.valueSubject, request.topicName, isKey = false, value, valueSchema))
-//            bytes <- Task(serializer.serialize(topic, value))
             } yield bytes
 
           def producerLayer(
