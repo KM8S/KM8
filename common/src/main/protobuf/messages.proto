@@ -5,11 +5,9 @@ option java_package = "io.kafkamate";
 package messages;
 
 enum OffsetStrategy {
-  REAL_TIME = 0;
+  LATEST = 0;
   FROM_BEGINNING = 1;
-  FIRST_N = 2;
-  LATEST_N = 3;
-  START_TIMESTAMP = 4;
+  REAL_TIME = 2;
 }
 
 message ConsumeRequest {

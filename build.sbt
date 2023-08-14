@@ -103,7 +103,7 @@ lazy val service = project
       "io.github.embeddedkafka" %% "embedded-kafka"            % "2.8.0" % Test
     ),
     dependencyOverrides ++= Seq(
-      "org.apache.kafka" % "kafka-clients" % "2.8.0"
+      "org.apache.kafka" % "kafka-clients" % "3.1.0"
     ),
     resolvers ++= Seq(
       "Confluent" at "https://packages.confluent.io/maven/"

@@ -7,12 +7,14 @@ import zio.clock.Clock
 import zio.duration._
 import zio.kafka.admin._
 import zio.kafka.admin.AdminClient.{ConfigResource, ConfigResourceType}
-import org.apache.kafka.clients.admin.{AdminClient => JAdminClient}
+import org.apache.kafka.clients.admin.{OffsetSpec, AdminClient => JAdminClient}
+import org.apache.kafka.common.TopicPartition
 import zio.macros.accessible
 import config._
 import ClustersConfig._
 import topics._
 import brokers.BrokerDetails
+
 import scala.jdk.CollectionConverters._
 import scala.concurrent.TimeoutException
 
@@ -21,12 +23,16 @@ import scala.concurrent.TimeoutException
   type HasKafkaExplorer = Has[Service]
   type HasAdminClient   = Has[AdminClient] with Has[JAdminClient]
 
-  val CleanupPolicyKey = "cleanup.policy"
-  val RetentionMsKey   = "retention.ms"
+  private val CleanupPolicyKey = "cleanup.policy"
+  private val RetentionMsKey   = "retention.ms"
 
   trait Service {
     def listBrokers(clusterId: String): RIO[Blocking with Clock, List[BrokerDetails]]
     def listTopics(clusterId: String): RIO[Blocking with Clock, List[TopicDetails]]
+    def getLatestOffset(
+      clusterId: String,
+      tps: Set[TopicPartition]
+    ): RIO[Blocking with Clock, Map[TopicPartition, Long]]
     def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails]
     def deleteTopic(req: DeleteTopicRequest): RIO[Blocking with Clock, DeleteTopicResponse]
   }
@@ -120,6 +126,17 @@ import scala.concurrent.TimeoutException
               .flatMap(_.replicaInfos.asScala)
               .groupMapReduce({ case (tp, _) => tp.topic })({ case (_, info) => info.size })(_ + _)
           }
+
+        override def getLatestOffset(
+          clusterId: String,
+          tps: Set[TopicPartition]
+        ): RIO[Blocking with Clock, Map[TopicPartition, Long]] = {
+          val topicPartitionOffsets = tps.map(tp => (tp, OffsetSpec.latest())).toMap.asJava
+          for {
+            result <- ZIO.service[JAdminClient].mapEffect(_.listOffsets(topicPartitionOffsets))
+            map    <- AdminClient.fromKafkaFuture(UIO(result.all())).map(_.asScala.view.mapValues(_.offset()).toMap)
+          } yield map
+        }.withAdminClient(clusterId)
 
         def addTopic(req: AddTopicRequest): RIO[Blocking with Clock, TopicDetails] =
           ZIO

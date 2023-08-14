@@ -2,9 +2,9 @@ package io.kafkamate
 package kafka
 
 import java.util.UUID
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success, Try}
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer
-import com.google.protobuf.{MessageOrBuilder, Message}
+import com.google.protobuf.{Message, MessageOrBuilder}
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
@@ -19,11 +19,13 @@ import io.kafkamate.messages.MessageFormat
 import config._
 import ClustersConfig._
 import com.google.protobuf.util.JsonFormat
+import io.kafkamate.kafka.KafkaExplorer._
 import messages._
+import org.apache.kafka.common.TopicPartition
 
 @accessible object KafkaConsumer {
   type KafkaConsumer = Has[Service]
-  type Env           = Clock with Blocking with Logging
+  type Env           = Clock with Blocking with Logging with HasKafkaExplorer
 
   trait Service {
     def consume(request: ConsumeRequest): ZStream[Env, Throwable, LogicMessage]
@@ -34,10 +36,30 @@ import messages._
 
   private def createService(clustersConfigService: ClustersConfig.Service): Service =
     new Service {
-      private def extractOffsetStrategy(offsetValue: OffsetStrategy): AutoOffsetStrategy =
-        offsetValue match {
-          case OffsetStrategy.FROM_BEGINNING => AutoOffsetStrategy.Earliest
-          case _                             => AutoOffsetStrategy.Latest
+
+      private def sanitizeOffset(maxResults: Long)(offset: Long): Long = {
+        val r = offset - maxResults
+        if (r < 0L) 0L else r
+      }
+
+      private def extractOffsetStrategy(request: ConsumeRequest): RIO[Env, OffsetRetrieval] =
+        request.offsetStrategy match {
+          case OffsetStrategy.REAL_TIME      => UIO(OffsetRetrieval.Auto(AutoOffsetStrategy.Latest))
+          case OffsetStrategy.FROM_BEGINNING => UIO(OffsetRetrieval.Auto(AutoOffsetStrategy.Earliest))
+          case OffsetStrategy.LATEST =>
+            for {
+              b  <- ZIO.service[Blocking.Service]
+              c  <- ZIO.service[Clock.Service]
+              k  <- ZIO.service[KafkaExplorer.Service]
+              dep = Has.allOf(b, c, k)
+              f = (tps: Set[TopicPartition]) =>
+                    KafkaExplorer
+                      .getLatestOffset(request.clusterId, tps)
+                      .map(_.view.mapValues(sanitizeOffset(request.maxResults)).toMap)
+                      .provide(dep)
+              r = OffsetRetrieval.Manual(f)
+            } yield r
+          case v => ZIO.fail(new IllegalArgumentException(s"Unrecognized OffsetStrategy: $v"))
         }
 
       private def protobufDeserializer(settings: ProtoSerdeSettings): Task[Deserializer[Any, Try[Message]]] =
@@ -45,25 +67,30 @@ import messages._
           .fromKafkaDeserializer(new KafkaProtobufDeserializer[Message](), settings.configs, false)
           .map(_.asTry)
 
-      private def consumerSettings(config: ClusterSettings, offsetStrategy: OffsetStrategy): Task[ConsumerSettings] =
-        Task {
+      private def consumerSettings(
+        config: ClusterSettings,
+        request: ConsumeRequest
+      ): RIO[Env, ConsumerSettings] =
+        for {
+          offsetRetrieval <- extractOffsetStrategy(request)
+        } yield {
           val uuid = UUID.randomUUID().toString
           ConsumerSettings(config.kafkaHosts)
             .withGroupId(s"group-kafkamate-$uuid")
             .withClientId(s"client-kafkamate-$uuid")
             .withProperties(config.protoSerdeSettings.map(_.configs).getOrElse(Map.empty))
-            .withOffsetRetrieval(OffsetRetrieval.Auto(extractOffsetStrategy(offsetStrategy)))
+            .withOffsetRetrieval(offsetRetrieval)
             .withCloseTimeout(10.seconds)
         }
 
       def toJson(messageOrBuilder: MessageOrBuilder): Task[String] =
         Task(JsonFormat.printer.print(messageOrBuilder))
 
-      private def makeConsumerLayer(clusterId: String, offsetStrategy: OffsetStrategy) =
+      private def makeConsumerLayer(request: ConsumeRequest) =
         ZLayer.fromManaged {
           for {
-            cs       <- clustersConfigService.getCluster(clusterId).toManaged_
-            settings <- consumerSettings(cs, offsetStrategy).toManaged_
+            cs       <- clustersConfigService.getCluster(request.clusterId).toManaged_
+            settings <- consumerSettings(cs, request).toManaged_
             consumer <- Consumer.make(settings)
           } yield consumer
         }
@@ -162,7 +189,7 @@ import messages._
           else withFilter.take(request.maxResults)
 
         withFilterLimit.provideSomeLayer[Env](
-          makeConsumerLayer(request.clusterId, request.offsetStrategy)
+          makeConsumerLayer(request)
         )
       }
     }

@@ -32,8 +32,8 @@ object Main extends App {
           Logger.liveLayer >+>
           ConfigPathService.liveLayer >+>
           ClustersConfig.liveLayer >+>
-          MessagesService.liveLayer >+>
-          KafkaExplorer.liveLayer
+          KafkaExplorer.liveLayer >+>
+          MessagesService.liveLayer
       )
       .useForever
       .exitCode

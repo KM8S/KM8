@@ -27,8 +27,8 @@ import common._
     isStreaming: Boolean = true,
     items: List[Item] = List.empty,
     error: Option[String] = None,
-    maxResults: Long = 5,
-    offsetStrategy: OffsetStrategy = OffsetStrategy.FROM_BEGINNING,
+    maxResults: Long = 10,
+    offsetStrategy: OffsetStrategy = OffsetStrategy.LATEST,
     filterKeyword: String = "",
     messageFormat: MessageFormat = MessageFormat.AUTO
   )
@@ -52,7 +52,7 @@ import common._
       case SetMaxResultsEvent(max) =>
         prevState.copy(maxResults = max)
       case SetOffsetStrategyEvent(v) =>
-        prevState.copy(offsetStrategy = OffsetStrategy.fromName(v).getOrElse(OffsetStrategy.FROM_BEGINNING))
+        prevState.copy(offsetStrategy = OffsetStrategy.fromName(v).getOrElse(OffsetStrategy.LATEST))
       case SetMessageFormat(v) =>
         prevState.copy(messageFormat = MessageFormat.fromName(v).getOrElse(MessageFormat.STRING))
       case SetFilterEvent(v)  => prevState.copy(filterKeyword = v)
