@@ -38,18 +38,10 @@ lazy val kafkamate = project
         runRaw(
           "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common lsb-release"
         )
-//        runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
-//        runRaw("""curl -sL 'https://deb.dl.getenvoy.io/public/gpg.8115BA8E629CC074.key' | gpg --dearmor -o /usr/share/keyrings/getenvoy-keyring.gpg""")
-//        runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
-//        runRaw("""echo a077cb587a1b622e03aa4bf2f3689de14658a9497a9af2c427bba5f4cc3c4723 /usr/share/keyrings/getenvoy-keyring.gpg | sha256sum --check """)
-//        runRaw(
-//          """add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """
-//        )
-//        runRaw("""echo "deb [arch=amd64 signed-by=/usr/share/keyrings/getenvoy-keyring.gpg] https://deb.dl.getenvoy.io/public/deb/ubuntu $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/getenvoy.list""")
-//        runRaw("""curl -1sLf 'https://deb.dl.getenvoy.io/public/setup.deb.sh' | bash""")
-//        runRaw("apt-get update")
-//        runRaw("apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
-        copy(baseDirectory(_ / "build" / "getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb").value, "/tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb")
+        copy(
+          baseDirectory(_ / "build" / "getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb").value,
+          "/tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb"
+        )
         runRaw("dpkg -i /tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb")
 
         runRaw("rm -v /etc/nginx/nginx.conf")
