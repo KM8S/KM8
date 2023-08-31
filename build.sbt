@@ -2,7 +2,7 @@ ThisBuild / resolvers += Resolver.sonatypeRepo("snapshots")
 
 lazy val ProjectName = "kafkamate"
 lazy val ProjectOrganization = "csofronia"
-lazy val ProjectVersion = "0.1.0"
+lazy val ProjectVersion = "0.2.0"
 lazy val ProjectScalaVersion = "2.13.10"
 
 // make sure to align zio versions with scalajs versions from plugins.sbt
@@ -30,21 +30,27 @@ lazy val kafkamate = project
 
       new Dockerfile {
         from("openjdk:8-jre")
-        maintainer("Ciprian Sofronia", "ciprian.sofronia@gmail.com")
+        maintainer("Ciprian Sofronia")
 
         env("KAFKAMATE_ENV", "prod")
-//        expose(8080, 61234, 61235)
-        expose(8080) // todo
+        expose(8080, 61234, 61235)
 
         runRaw(
-          "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common"
+          "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common lsb-release"
         )
-        runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
-        runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
-        runRaw(
-          """add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """
-        )
-        runRaw("apt-get update && apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
+//        runRaw("""curl -sL 'https://getenvoy.io/gpg' | apt-key add -""")
+//        runRaw("""curl -sL 'https://deb.dl.getenvoy.io/public/gpg.8115BA8E629CC074.key' | gpg --dearmor -o /usr/share/keyrings/getenvoy-keyring.gpg""")
+//        runRaw("""apt-key fingerprint 6FF974DB | grep "5270 CEAC" """)
+//        runRaw("""echo a077cb587a1b622e03aa4bf2f3689de14658a9497a9af2c427bba5f4cc3c4723 /usr/share/keyrings/getenvoy-keyring.gpg | sha256sum --check """)
+//        runRaw(
+//          """add-apt-repository "deb [arch=amd64] https://dl.bintray.com/tetrate/getenvoy-deb $(lsb_release -cs) stable" """
+//        )
+//        runRaw("""echo "deb [arch=amd64 signed-by=/usr/share/keyrings/getenvoy-keyring.gpg] https://deb.dl.getenvoy.io/public/deb/ubuntu $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/getenvoy.list""")
+//        runRaw("""curl -1sLf 'https://deb.dl.getenvoy.io/public/setup.deb.sh' | bash""")
+//        runRaw("apt-get update")
+//        runRaw("apt-get install -y getenvoy-envoy=1.15.1.p0.g670a4a6-1p69.ga5345f6")
+        copy(baseDirectory(_ / "build" / "getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb").value, "/tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb")
+        runRaw("dpkg -i /tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb")
 
         runRaw("rm -v /etc/nginx/nginx.conf")
         copy(baseDirectory(_ / "build" / "nginx").value, "/etc/nginx/")
@@ -120,6 +126,7 @@ lazy val service = project
     assemblyMergeStrategy in assembly := {
       case x if x endsWith "io.netty.versions.properties" => MergeStrategy.concat
       case x if x endsWith "module-info.class"            => MergeStrategy.discard
+      case x if x endsWith "okio.kotlin_module"           => MergeStrategy.discard
       case x if x endsWith ".proto"                       => MergeStrategy.discard
       case x =>
         val oldStrategy = (assemblyMergeStrategy in assembly).value

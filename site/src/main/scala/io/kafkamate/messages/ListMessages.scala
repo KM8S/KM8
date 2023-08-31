@@ -35,7 +35,7 @@ import slinky.web.html._
     isStreaming: Boolean = true,
     items: List[Item] = List.empty,
     error: Option[String] = None,
-    maxResults: Long = 10,
+    maxResults: Long = 20,
     offsetStrategy: OffsetStrategy = OffsetStrategy.LATEST,
     filterKeyword: String = "",
     messageFormat: MessageFormat = MessageFormat.AUTO)
