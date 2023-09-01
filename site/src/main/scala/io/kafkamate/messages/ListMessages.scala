@@ -204,8 +204,8 @@ import slinky.web.html._
               th("Offset"),
               th("Partition"),
               th("Timestamp"),
-              th("Key"),
               th("Value Format"),
+              th("Key"),
               th("Value")
             )
           ),
@@ -216,8 +216,8 @@ import slinky.web.html._
                 td(item.offset.toString),
                 td(item.partition.toString),
                 td(new Date(item.timestamp).toUTCString()),
-                td(item.key),
                 td(item.valueFormat.toString),
+                td(item.key),
                 td(item.value)
               )
             }
