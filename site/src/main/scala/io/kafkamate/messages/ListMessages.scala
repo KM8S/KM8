@@ -35,7 +35,7 @@ import slinky.web.html._
     isStreaming: Boolean = true,
     items: List[Item] = List.empty,
     error: Option[String] = None,
-    maxResults: Long = 20,
+    maxResults: Long = 100,
     offsetStrategy: OffsetStrategy = OffsetStrategy.LATEST,
     filterKeyword: String = "",
     messageFormat: MessageFormat = MessageFormat.AUTO)
@@ -63,7 +63,7 @@ import slinky.web.html._
       case SetMessageFormat(v) =>
         prevState.copy(messageFormat = MessageFormat.fromName(v).getOrElse(MessageFormat.STRING))
       case SetFilterEvent(v)  => prevState.copy(filterKeyword = v)
-      case AddItemEvent(item) => prevState.copy(items = prevState.items :+ item)
+      case AddItemEvent(item) => prevState.copy(items = (prevState.items :+ item).sortBy(-_.timestamp))
     }
 
   private val messagesGrpcClient =

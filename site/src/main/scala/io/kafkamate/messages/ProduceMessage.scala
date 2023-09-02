@@ -30,7 +30,7 @@ import slinky.web.html._
     val (shouldMakeRequest, setRequestAction) = useState(false)
     val (messageKey, setKey) = useState("")
     val (messageValue, setValue) = useState("")
-    val (schemaOptions, setSchemaOptions) = useState(List.empty[SchemaOption])
+    val (schemaOptions, setSchemaOptions) = useState(List(SchemaOption("add", "loading...", "")))
     val (schemaId, setSchemaId) = useState(0)
     val (schemaUrl, setSchemaUrl) = useState("")
     val (showSchemaIdInput, setShowSchemaIdInput) = useState(false)
@@ -131,6 +131,7 @@ import slinky.web.html._
             .onComplete {
               case Success(response) =>
                 Util.logMessage("Schema retrieved")
+                setSchemaOptions(List.empty)
                 setSchemaOptions(
                   response.versions.toList.map(s => SchemaOption(s.id.toString, s"id ${s.id}", s.url))
                     ++ initialSchemaOptions
@@ -191,7 +192,7 @@ import slinky.web.html._
                 select(
                   className := "form-control",
                   id := "form-schemaId-label1",
-                  onClick := (handleSchemaIdSelect(_))
+                  onChange := (handleSchemaIdSelect(_))
                 )(
                   schemaOptions.map(s => option(key := s"id-${s.id}", value := s.id)(s.text))
                 ),
