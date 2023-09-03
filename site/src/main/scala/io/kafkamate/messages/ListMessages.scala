@@ -23,12 +23,22 @@ import slinky.web.html._
     timestamp: Long,
     key: String,
     valueFormat: MessageFormat,
+    valueSchemaId: Option[Int],
     value: String)
 
   case object Item {
 
     def fromMessage(m: LogicMessage): Item =
-      Item(m.offset, m.partition, m.timestamp, m.key, m.valueFormat, m.value)
+      Item(
+        offset = m.offset,
+        partition = m.partition,
+        timestamp = m.timestamp,
+        key = m.key.getOrElse("<empty>"),
+        valueFormat = m.valueFormat,
+        valueSchemaId = m.valueSchemaId,
+        value = m.value.getOrElse("<empty>")
+      )
+
   }
 
   case class ConsumerState(
@@ -216,7 +226,7 @@ import slinky.web.html._
                 td(item.offset.toString),
                 td(item.partition.toString),
                 td(new Date(item.timestamp).toUTCString()),
-                td(item.valueFormat.toString),
+                td(s"${item.valueFormat.toString}${item.valueSchemaId.map(id => s" (id $id)").getOrElse("")}"),
                 td(item.key),
                 td(item.value)
               )

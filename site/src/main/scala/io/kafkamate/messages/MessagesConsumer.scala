@@ -4,7 +4,7 @@ package messages
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
 import io.kafkamate.common._
 
-case class MessagesConsumer(
+final case class MessagesConsumer(
   service: MessagesServiceGrpcWeb.MessagesService[_]) {
   private var stream: ClientCallStreamObserver[_] = _
 
@@ -16,7 +16,12 @@ case class MessagesConsumer(
     new StreamObserver[LogicMessage] {
 
       def onNext(value: LogicMessage): Unit =
-        onMessage(value)
+        try {
+          onMessage(value)
+        } catch {
+          case e: Throwable =>
+            Util.logMessage(s"Failed processing onNext: ${e.getMessage}")
+        }
 
       def onError(throwable: Throwable): Unit = {
         Util.logMessage(s"Failed consuming messages: ${throwable.getMessage}")

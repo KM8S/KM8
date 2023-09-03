@@ -1,6 +1,7 @@
 package io.kafkamate
 package kafka
 
+import java.nio.ByteBuffer
 import java.util.UUID
 import scala.util.{Failure, Success, Try}
 
@@ -13,6 +14,7 @@ import io.kafkamate.kafka.KafkaExplorer._
 import io.kafkamate.messages._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.SerializationException
 import zio._
 import zio.blocking.Blocking
 import zio.clock.Clock
@@ -83,9 +85,6 @@ import zio.stream.ZStream
             .withCloseTimeout(10.seconds)
         }
 
-      def toJson(messageOrBuilder: MessageOrBuilder): Task[String] =
-        Task(JsonFormat.printer.print(messageOrBuilder))
-
       private def makeConsumerLayer(request: ConsumeRequest) =
         ZLayer.fromManaged {
           for {
@@ -95,10 +94,43 @@ import zio.stream.ZStream
           } yield consumer
         }
 
+      private def toJson(messageOrBuilder: MessageOrBuilder): Task[String] =
+        Task(JsonFormat.printer.print(messageOrBuilder))
+
       private def protobufDeserializer(settings: ProtoSerdeSettings): Task[Deserializer[Any, Try[Message]]] =
         Deserializer
           .fromKafkaDeserializer(new KafkaProtobufDeserializer[Message](), settings.configs, false)
           .map(_.asTry)
+
+      private def getSchemaId(record: CommittableRecord[String, Array[Byte]]): URIO[Logging, Option[Int]] =
+        Task {
+          val buffer = ByteBuffer.wrap(record.value)
+          if (buffer.get != 0x0) throw new SerializationException("Unknown magic byte for schema id!")
+          buffer.getInt()
+        }.asSome.catchAll { t =>
+          log
+            .throwable(
+              s"Failed extracting schema id with key: '${record.key}'; will ignore; error message: ${t.getMessage}",
+              t
+            )
+            .as(None)
+        }
+
+      private def asLogicMessage(
+        record: CommittableRecord[String, Array[Byte]],
+        valueFormat: MessageFormat,
+        valueSchemaId: Option[Int],
+        valueStr: Option[String]
+      ) =
+        LogicMessage(
+          offset = record.offset.offset,
+          partition = record.partition,
+          timestamp = record.timestamp,
+          key = Option(record.key),
+          valueFormat = valueFormat,
+          valueSchemaId = valueSchemaId,
+          value = valueStr
+        )
 
       private def deserializeAuto(
         messageFormat: MessageFormat,
@@ -106,30 +138,29 @@ import zio.stream.ZStream
         record: CommittableRecord[String, Array[Byte]],
         fallback: Throwable => Task[LogicMessage]
       ) =
-        cachedDeserializer.flatMap {
-          _.deserialize(record.record.topic, record.record.headers, record.value).flatMap {
-            case Success(message) =>
-              toJson(message).map { jsonStr =>
-                LogicMessage(
-                  offset = record.offset.offset,
-                  partition = record.partition,
-                  timestamp = record.timestamp,
-                  key = record.key,
-                  valueFormat = messageFormat,
-                  value = jsonStr
-                )
-              }
-            case Failure(e) =>
-              Task.fail(e)
-          }.catchAll(t =>
-            log.throwable(s"Failed auto deserializing $messageFormat with key: '${record.key}': ${t.getMessage}", t)
-              *> fallback(t))
-        }
+        for {
+          d <- cachedDeserializer
+          tmp = for {
+            pair <- d.deserialize(record.record.topic, record.record.headers, record.value) <&> getSchemaId(record)
+            r <- pair match {
+              case (Success(message), schemaId) =>
+                toJson(message).map(jsonStr => asLogicMessage(record, MessageFormat.PROTOBUF, schemaId, Some(jsonStr)))
+              case (Failure(e), _) =>
+                Task.fail(e)
+            }
+          } yield r
+          r <- tmp.catchAll { t =>
+            log.throwable(
+              s"Failed auto deserializing $messageFormat with key: '${record.key}'; error message: ${t.getMessage}",
+              t) *> fallback(t)
+          }
+        } yield r
 
-      private def deserializeString(v: CommittableRecord[String, Array[Byte]]) =
-        Deserializer.string.deserialize(v.record.topic, v.record.headers, v.value).map { str =>
-          LogicMessage(v.offset.offset, v.partition, v.timestamp, v.key, MessageFormat.STRING, str)
-        }
+      private def deserializeString(record: CommittableRecord[String, Array[Byte]]) =
+        Deserializer
+          .string
+          .deserialize(record.record.topic, record.record.headers, record.value)
+          .map(str => asLogicMessage(record, MessageFormat.STRING, None, Some(str)))
 
       def consume(request: ConsumeRequest): ZStream[Env, Throwable, LogicMessage] = {
         val stream =
@@ -149,34 +180,24 @@ import zio.stream.ZStream
             response <- Consumer
               .subscribeAnd(Subscription.topics(request.topicName))
               .plainStream(Deserializer.string, Deserializer.byteArray)
-              .mapM { r =>
+              .mapM { record =>
                 request.messageFormat match {
                   case MessageFormat.AUTO =>
                     deserializeAuto(
                       MessageFormat.PROTOBUF,
                       cachedProtoDeserializer,
-                      r,
-                      _ => deserializeString(r)
+                      record,
+                      _ => deserializeString(record)
                     )
                   case MessageFormat.PROTOBUF =>
                     deserializeAuto(
                       MessageFormat.PROTOBUF,
                       cachedProtoDeserializer,
-                      r,
-                      e =>
-                        UIO(
-                          LogicMessage(
-                            offset = r.offset.offset,
-                            partition = r.partition,
-                            timestamp = r.timestamp,
-                            key = r.key,
-                            valueFormat = MessageFormat.PROTOBUF,
-                            value = e.getMessage
-                          )
-                        )
+                      record,
+                      e => UIO(asLogicMessage(record, MessageFormat.PROTOBUF, None, Option(e.getMessage)))
                     )
                   case _ =>
-                    deserializeString(r)
+                    deserializeString(record)
                 }
               }
           } yield response

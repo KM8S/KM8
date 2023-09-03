@@ -44,7 +44,7 @@ object KafkaConsumerSpec extends DefaultRunnableSpec with HelperSpec {
           _ <- produceMany(topic, kvs)
           req = ConsumeRequest("test-id", topic, 5, OffsetStrategy.LATEST, "", MessageFormat.STRING)
           records <- KafkaConsumer.consume(req).runCollect
-        } yield assertTrue(records.map(v => (v.key, v.value)).toList == kvs.map(v => (v._1, v._2)))
+        } yield assertTrue(records.map(v => (v.key.get, v.value.get)).toList == kvs.map(v => (v._1, v._2)))
         io
       }
     ).provideLayerShared(testLayer) @@ timeout(30.seconds)
