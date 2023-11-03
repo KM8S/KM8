@@ -1,14 +1,13 @@
 package io.kafkamate
 package common
 
-import slinky.core.annotations.react
+import io.kafkamate.brokers._
+import io.kafkamate.clusters._
+import io.kafkamate.messages._
+import io.kafkamate.topics._
 import slinky.core.FunctionalComponent
+import slinky.core.annotations.react
 import slinky.reactrouter._
-
-import brokers._
-import clusters._
-import topics._
-import messages._
 
 @react object Router {
   case class Props(appName: String)

@@ -4,42 +4,59 @@ package messages
 import scala.scalajs.js
 import scala.scalajs.js.Date
 
+import io.kafkamate.bridges.reactrouter.ReactRouterDOM
+import io.kafkamate.common._
+import io.kafkamate.messages.MessageFormat
+import org.scalajs.dom.{Event, html}
 import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.web.html._
-import org.scalajs.dom.{Event, html}
-
-import bridges.reactrouter.ReactRouterDOM
-import io.kafkamate.messages.MessageFormat
-import common._
 
 @react object ListMessages {
   type Props = Unit
 
-  case class Item(offset: Long, partition: Int, timestamp: Long, key: String, value: String)
+  case class Item(
+    offset: Long,
+    partition: Int,
+    timestamp: Long,
+    key: String,
+    valueFormat: MessageFormat,
+    valueSchemaId: Option[Int],
+    value: String)
+
   case object Item {
-    def fromMessage(m: Message): Item =
-      Item(m.offset, m.partition, m.timestamp, m.key, m.value)
+
+    def fromMessage(m: LogicMessage): Item =
+      Item(
+        offset = m.offset,
+        partition = m.partition,
+        timestamp = m.timestamp,
+        key = m.key.getOrElse("<empty>"),
+        valueFormat = m.valueFormat,
+        valueSchemaId = m.valueSchemaId,
+        value = m.value.getOrElse("<empty>")
+      )
+
   }
+
   case class ConsumerState(
-    isStreaming: Boolean = false,
+    isStreaming: Boolean = true,
     items: List[Item] = List.empty,
     error: Option[String] = None,
-    maxResults: Long = 0L,
-    offsetStrategy: String = "earliest",
+    maxResults: Long = 100,
+    offsetStrategy: OffsetStrategy = OffsetStrategy.LATEST,
     filterKeyword: String = "",
-    messageFormat: MessageFormat = MessageFormat.STRING
-  )
+    messageFormat: MessageFormat = MessageFormat.AUTO)
 
   sealed trait ConsumerEvent
   case class SetStreamingEvent(bool: Boolean, error: Option[String] = None) extends ConsumerEvent
-  case class SetMaxResultsEvent(maxResults: Long)                           extends ConsumerEvent
-  case class SetOffsetStrategyEvent(strategy: String)                       extends ConsumerEvent
-  case class SetMessageFormat(messageFormat: String)                        extends ConsumerEvent
-  case class SetFilterEvent(word: String)                                   extends ConsumerEvent
-  case class AddItemEvent(item: Item)                                       extends ConsumerEvent
+  case class SetMaxResultsEvent(maxResults: Long) extends ConsumerEvent
+  case class SetOffsetStrategyEvent(strategy: String) extends ConsumerEvent
+  case class SetMessageFormat(messageFormat: String) extends ConsumerEvent
+  case class SetFilterEvent(word: String) extends ConsumerEvent
+  case class AddItemEvent(item: Item) extends ConsumerEvent
 
   private def consumerReducer(prevState: ConsumerState, event: ConsumerEvent): ConsumerState =
     event match {
@@ -49,15 +66,14 @@ import common._
           items = if (bool) List.empty else prevState.items,
           error = err
         )
-      case SetMaxResultsEvent(max)   => prevState.copy(maxResults = max)
-      case SetOffsetStrategyEvent(v) => prevState.copy(offsetStrategy = v)
+      case SetMaxResultsEvent(max) =>
+        prevState.copy(maxResults = max)
+      case SetOffsetStrategyEvent(v) =>
+        prevState.copy(offsetStrategy = OffsetStrategy.fromName(v).getOrElse(OffsetStrategy.LATEST))
       case SetMessageFormat(v) =>
-        prevState.copy(messageFormat = v match {
-          case MessageFormat.PROTOBUF.name => MessageFormat.PROTOBUF
-          case _                           => MessageFormat.STRING
-        })
+        prevState.copy(messageFormat = MessageFormat.fromName(v).getOrElse(MessageFormat.STRING))
       case SetFilterEvent(v)  => prevState.copy(filterKeyword = v)
-      case AddItemEvent(item) => prevState.copy(items = prevState.items :+ item)
+      case AddItemEvent(item) => prevState.copy(items = (prevState.items :+ item).sortBy(-_.timestamp))
     }
 
   private val messagesGrpcClient =
@@ -67,7 +83,7 @@ import common._
     MessagesConsumer(messagesGrpcClient)
 
   val component = FunctionalComponent[Props] { _ =>
-    val params    = ReactRouterDOM.useParams().toMap
+    val params = ReactRouterDOM.useParams().toMap
     val clusterId = params.getOrElse(Loc.clusterIdKey, "")
     val topicName = params.getOrElse(Loc.topicNameKey, "")
 
@@ -81,9 +97,9 @@ import common._
       consumerDispatch(SetMaxResultsEvent(e.target.value.toLong))
     def handleFilter(e: SyntheticEvent[html.Input, Event]): Unit = consumerDispatch(SetFilterEvent(e.target.value))
 
-    def onMessage(v: Message): Unit = consumerDispatch(AddItemEvent(Item.fromMessage(v)))
+    def onMessage(v: LogicMessage): Unit = consumerDispatch(AddItemEvent(Item.fromMessage(v)))
     def onError(t: Throwable): Unit =
-      consumerDispatch(SetStreamingEvent(false, Some("There was an error processing this request!")))
+      consumerDispatch(SetStreamingEvent(false, Some(t.getMessage)))
     val onCompleted = () => consumerDispatch(SetStreamingEvent(false))
 
     useEffect(
@@ -122,8 +138,7 @@ import common._
                 id := "form-message-format-label1",
                 onChange := (handleMessageFormat(_))
               )(
-                option(value := MessageFormat.STRING.name)(MessageFormat.STRING.name),
-                option(value := MessageFormat.PROTOBUF.name)(MessageFormat.PROTOBUF.name)
+                MessageFormat.values.map(m => option(value := m.name)(m.name))
               )
             )
           ),
@@ -136,8 +151,7 @@ import common._
                 id := "form-cleanupPolicy-label1",
                 onChange := (handleOffsetStrategy(_))
               )(
-                option(value := "earliest")("earliest"),
-                option(value := "latest")("latest")
+                OffsetStrategy.values.map(o => option(value := o.name)(o.name))
               )
             )
           ),
@@ -184,19 +198,13 @@ import common._
                 )(" Stop")
             )
           ),
-          consumerState.messageFormat match {
-            case MessageFormat.STRING =>
-              Some(
-                a(
-                  `type` := "button",
-                  style := js.Dynamic.literal(marginTop = "29px", float = "right"),
-                  className := "btn btn-primary fa fa-plus",
-                  href := s"#${Loc.fromTopicAdd(clusterId, topicName)}",
-                  target := "_blank"
-                )(" Add new message")
-              )
-            case _ => None
-          }
+          a(
+            `type` := "button",
+            style := js.Dynamic.literal(marginTop = "29px", float = "right"),
+            className := "btn btn-primary fa fa-plus",
+            href := s"#${Loc.fromTopicAdd(clusterId, topicName)}",
+            target := "_blank"
+          )(" Add new message")
         ),
         table(
           className := "table table-hover",
@@ -206,6 +214,7 @@ import common._
               th("Offset"),
               th("Partition"),
               th("Timestamp"),
+              th("Value Format"),
               th("Key"),
               th("Value")
             )
@@ -217,6 +226,7 @@ import common._
                 td(item.offset.toString),
                 td(item.partition.toString),
                 td(new Date(item.timestamp).toUTCString()),
+                td(s"${item.valueFormat.toString}${item.valueSchemaId.map(id => s" (id $id)").getOrElse("")}"),
                 td(item.key),
                 td(item.value)
               )

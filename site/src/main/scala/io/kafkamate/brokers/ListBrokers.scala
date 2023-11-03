@@ -4,14 +4,13 @@ package brokers
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
+import io.kafkamate.bridges.reactrouter.ReactRouterDOM
+import io.kafkamate.common._
 import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
 import slinky.core.facade.Hooks._
 import slinky.web.html._
-
-import bridges.reactrouter.ReactRouterDOM
-import common._
 
 @react object ListBrokers {
   type Props = Unit
@@ -19,12 +18,11 @@ import common._
   case class BrokersState(
     refresh: Boolean = true,
     errors: Option[String] = None,
-    items: List[BrokerDetails] = List.empty
-  )
+    items: List[BrokerDetails] = List.empty)
 
   sealed trait BrokersAction
   case class SetItems(items: List[BrokerDetails] = List.empty) extends BrokersAction
-  case class SetError(e: String)                               extends BrokersAction
+  case class SetError(e: String) extends BrokersAction
 
   private def brokersReducer(state: BrokersState, action: BrokersAction): BrokersState =
     action match {
@@ -37,8 +35,8 @@ import common._
 
   val component = FunctionalComponent[Props] { _ =>
     val (listState, topicDispatch) = useReducer(brokersReducer, BrokersState())
-    val params                     = ReactRouterDOM.useParams().toMap
-    val clusterId                  = params.getOrElse(Loc.clusterIdKey, "")
+    val params = ReactRouterDOM.useParams().toMap
+    val clusterId = params.getOrElse(Loc.clusterIdKey, "")
 
     useEffect(
       () =>

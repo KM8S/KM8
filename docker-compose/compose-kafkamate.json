@@ -4,5 +4,11 @@
     "name" : "local-docker-compose",
     "kafkaHosts" : ["kafka:29092"],
     "schemaRegistryUrl" : "http://schema-registry:8081"
+    },
+    {
+      "id" : "localhost-bIqpR9",
+      "name" : "localhost",
+      "kafkaHosts" : ["localhost:9092"],
+      "schemaRegistryUrl" : "http://localhost:8081"
   }]
 }

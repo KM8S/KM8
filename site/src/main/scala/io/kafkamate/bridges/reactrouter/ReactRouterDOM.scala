@@ -7,7 +7,7 @@ import scala.scalajs.js.annotation.JSImport
 @js.native
 object ReactRouterDOM extends js.Object {
   def useParams(): js.Dictionary[String] = js.native
-  def useLocation(): Location            = js.native
+  def useLocation(): Location = js.native
 
   trait Location extends js.Object {
     val key: String

@@ -8,6 +8,7 @@ object KafkaEmbedded {
   type Kafka = Has[Kafka.Service]
 
   object Kafka {
+
     trait Service {
       def bootstrapServers: List[String]
       def stop(): UIO[Unit]
@@ -15,12 +16,12 @@ object KafkaEmbedded {
 
     case class EmbeddedKafkaService(embeddedK: EmbeddedK) extends Service {
       override def bootstrapServers: List[String] = List(s"localhost:${embeddedK.config.kafkaPort}")
-      override def stop(): UIO[Unit]              = ZIO.effectTotal(embeddedK.stop(true))
+      override def stop(): UIO[Unit] = ZIO.effectTotal(embeddedK.stop(true))
     }
 
     case object DefaultLocal extends Service {
       override def bootstrapServers: List[String] = List(s"localhost:9092")
-      override def stop(): UIO[Unit]              = UIO.unit
+      override def stop(): UIO[Unit] = UIO.unit
     }
 
     lazy val embedded: TaskLayer[Kafka] = ZLayer.fromManaged {

@@ -1,8 +1,8 @@
 package io.kafkamate
 package common
 
-import slinky.core.annotations.react
 import slinky.core.FunctionalComponent
+import slinky.core.annotations.react
 import slinky.web.html._
 
 @react object NotFound {

@@ -2,22 +2,26 @@ package io.kafkamate
 package messages
 
 import io.grpc.stub.{ClientCallStreamObserver, StreamObserver}
+import io.kafkamate.common._
 
-import common._
-
-case class MessagesConsumer(
-  service: MessagesServiceGrpcWeb.MessagesService[_]
-) {
+final case class MessagesConsumer(
+  service: MessagesServiceGrpcWeb.MessagesService[_]) {
   private var stream: ClientCallStreamObserver[_] = _
 
   private def newStreamObs(
-    onMessage: Message => Unit,
+    onMessage: LogicMessage => Unit,
     onFailure: Throwable => Unit,
     onTerminated: () => Unit
-  ): StreamObserver[Message] =
-    new StreamObserver[Message] {
-      def onNext(value: Message): Unit =
-        onMessage(value)
+  ): StreamObserver[LogicMessage] =
+    new StreamObserver[LogicMessage] {
+
+      def onNext(value: LogicMessage): Unit =
+        try {
+          onMessage(value)
+        } catch {
+          case e: Throwable =>
+            Util.logMessage(s"Failed processing onNext: ${e.getMessage}")
+        }
 
       def onError(throwable: Throwable): Unit = {
         Util.logMessage(s"Failed consuming messages: ${throwable.getMessage}")
@@ -32,8 +36,10 @@ case class MessagesConsumer(
       }
     }
 
-  def start(request: ConsumeRequest)(
-    onMessage: Message => Unit,
+  def start(
+    request: ConsumeRequest
+  )(
+    onMessage: LogicMessage => Unit,
     onError: Throwable => Unit,
     onCompleted: () => Unit
   ): Unit =

@@ -4,29 +4,30 @@ package grpc
 import scala.util.Random
 
 import io.grpc.Status
-import zio.{UIO, ZEnv, ZIO}
+import io.kafkamate.clusters._
+import io.kafkamate.config.ClustersConfig._
+import io.kafkamate.config._
+import io.kafkamate.utils._
 import zio.logging._
-
-import config._, ClustersConfig._
-import clusters._
-import utils._
+import zio.{UIO, ZEnv, ZIO}
 
 object ClustersService {
   type Env = ZEnv with ClustersConfigService with Logging
 
   object GrpcService extends ZioClusters.RClustersService[Env] {
+
     def genRandStr(length: Int): UIO[String] =
       UIO(Random.alphanumeric.take(length).mkString)
 
     def addCluster(request: ClusterDetails): ZIO[Env, Status, ClusterDetails] =
       for {
-        clusterId     <- genRandStr(6).map(str => s"${request.name.trim}-$str")
-        hosts          = request.kafkaHosts.split(",").toList
+        clusterId <- genRandStr(6).map(str => s"${request.name.trim.replaceAll(" ", "-")}-$str")
+        hosts = request.kafkaHosts.split(",").toList
         schemaRegistry = Option.unless(request.schemaRegistryUrl.isEmpty)(request.schemaRegistryUrl)
         c <- ClustersConfig
-               .writeClusters(ClusterSettings(clusterId, request.name, hosts, schemaRegistry))
-               .tapError(e => log.error(s"Add cluster error: ${e.getMessage}"))
-               .bimap(GRPCStatus.fromThrowable, _ => request)
+          .writeClusters(ClusterSettings(clusterId, request.name, hosts, schemaRegistry))
+          .tapError(e => log.throwable(s"Add cluster error: ${e.getMessage}", e))
+          .mapBoth(GRPCStatus.fromThrowable, _ => request)
       } yield c
 
     private def toClusterResponse(r: ClusterProperties) =
@@ -35,14 +36,15 @@ object ClustersService {
       )
 
     def getClusters(request: ClusterRequest): ZIO[Env, Status, ClusterResponse] =
-      ClustersConfig.readClusters
-        .tapError(e => log.error(s"Get clusters error: ${e.getMessage}"))
-        .bimap(GRPCStatus.fromThrowable, toClusterResponse)
+      log.debug("Received getClusters request") *>
+        ClustersConfig.readClusters
+          .tapError(e => log.throwable(s"Get clusters error: ${e.getMessage}", e))
+          .mapBoth(GRPCStatus.fromThrowable, toClusterResponse)
 
     def deleteCluster(request: ClusterDetails): ZIO[Env, Status, ClusterResponse] =
       ClustersConfig
         .deleteCluster(request.id)
-        .tapError(e => log.error(s"Delete cluster error: ${e.getMessage}"))
-        .bimap(GRPCStatus.fromThrowable, toClusterResponse)
+        .tapError(e => log.throwable(s"Delete cluster error: ${e.getMessage}", e))
+        .mapBoth(GRPCStatus.fromThrowable, toClusterResponse)
   }
 }

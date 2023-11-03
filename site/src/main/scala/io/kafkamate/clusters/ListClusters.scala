@@ -4,6 +4,7 @@ package clusters
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
+import io.kafkamate.common._
 import scalapb.grpc.Channels
 import slinky.core._
 import slinky.core.annotations.react
@@ -11,21 +12,18 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Link
 import slinky.web.html._
 
-import common._
-
 @react object ListClusters {
   type Props = Unit
 
   case class ClustersState(
     refresh: Boolean = true,
     clusters: List[ClusterDetails] = List.empty,
-    listingError: Option[String] = None
-  )
+    listingError: Option[String] = None)
 
   sealed trait ClustersEvent
-  case object RefreshEvent                                 extends ClustersEvent
+  case object RefreshEvent extends ClustersEvent
   case class SetClustersEvent(items: List[ClusterDetails]) extends ClustersEvent
-  case class SetListingErrorEvent(e: String)               extends ClustersEvent
+  case class SetListingErrorEvent(e: String) extends ClustersEvent
 
   private def clustersReducer(state: ClustersState, action: ClustersEvent): ClustersState =
     action match {

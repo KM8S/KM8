@@ -4,6 +4,7 @@ package clusters
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
+import io.kafkamate.common._
 import org.scalajs.dom.{Event, html}
 import scalapb.grpc.Channels
 import slinky.core._
@@ -12,8 +13,6 @@ import slinky.core.facade.Hooks._
 import slinky.reactrouter.Redirect
 import slinky.web.html._
 
-import common._
-
 @react object AddCluster {
   type Props = Unit
 
@@ -21,15 +20,15 @@ import common._
     ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
 
   val component = FunctionalComponent[Props] { _ =>
-    val (shouldRedirect, setRedirect)         = useState(false)
+    val (shouldRedirect, setRedirect) = useState(false)
     val (shouldMakeRequest, setRequestAction) = useState(false)
-    val (clusterName, setClusterName)         = useState("")
-    val (hosts, setHosts)                     = useState("")
-    val (schemaRegistry, setSchemaRegistry)   = useState("")
-    val (errorMsgs, setErrorMsgs)             = useState(List.empty[String])
+    val (clusterName, setClusterName) = useState("")
+    val (hosts, setHosts) = useState("")
+    val (schemaRegistry, setSchemaRegistry) = useState("")
+    val (errorMsgs, setErrorMsgs) = useState(List.empty[String])
 
-    def handleClusterName(e: SyntheticEvent[html.Input, Event]): Unit    = setClusterName(e.target.value)
-    def handleHosts(e: SyntheticEvent[html.Input, Event]): Unit          = setHosts(e.target.value)
+    def handleClusterName(e: SyntheticEvent[html.Input, Event]): Unit = setClusterName(e.target.value)
+    def handleHosts(e: SyntheticEvent[html.Input, Event]): Unit = setHosts(e.target.value)
     def handleSchemaRegistry(e: SyntheticEvent[html.Input, Event]): Unit = setSchemaRegistry(e.target.value)
 
     def handleSubmit(e: SyntheticEvent[html.Form, Event]) = {

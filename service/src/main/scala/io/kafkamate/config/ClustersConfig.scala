@@ -17,16 +17,22 @@ import zio.macros.accessible
       _configs ++ Map("schema.registry.url" -> schemaRegistryUrl)
   }
 
-  case class ClusterSettings(id: String, name: String, kafkaHosts: List[String], schemaRegistryUrl: Option[String]) {
-    val kafkaHosts_ : String                           = kafkaHosts.mkString(",")
+  case class ClusterSettings(
+    id: String,
+    name: String,
+    kafkaHosts: List[String],
+    schemaRegistryUrl: Option[String]) {
+    val kafkaHosts_ : String = kafkaHosts.mkString(",")
     val protoSerdeSettings: Option[ProtoSerdeSettings] = schemaRegistryUrl.map(ProtoSerdeSettings(_))
   }
+
   object ClusterSettings {
     implicit val decoder: JsonDecoder[ClusterSettings] = DeriveJsonDecoder.gen[ClusterSettings]
     implicit val encoder: JsonEncoder[ClusterSettings] = DeriveJsonEncoder.gen[ClusterSettings]
   }
 
   case class ClusterProperties(clusters: List[ClusterSettings])
+
   object ClusterProperties {
     implicit val decoder: JsonDecoder[ClusterProperties] = DeriveJsonDecoder.gen[ClusterProperties]
     implicit val encoder: JsonEncoder[ClusterProperties] = DeriveJsonEncoder.gen[ClusterProperties]
@@ -41,16 +47,16 @@ import zio.macros.accessible
       for {
         all <- readClusters
         cs <- ZIO
-                .fromOption(all.clusters.find(_.id == clusterId))
-                .orElseFail(new Exception(s"Cluster ($clusterId) doesn't exist!"))
+          .fromOption(all.clusters.find(_.id == clusterId))
+          .orElseFail(new Exception(s"Cluster ($clusterId) doesn't exist!"))
       } yield cs
   }
 
   lazy val liveLayer: URLayer[HasConfigPath with Logging, ClustersConfigService] =
     ZLayer.fromServices[ConfigPath, Logger[String], Service] { case (configPath, log) =>
       new Service {
-        private val configFilepath      = configPath.path
-        private def emptyProperties     = ClusterProperties(List.empty)
+        private val configFilepath = configPath.path
+        private def emptyProperties = ClusterProperties(List.empty)
         private def emptyPropertiesJson = emptyProperties.toJsonPretty
 
         private def writeJson(json: => String) =
@@ -62,27 +68,27 @@ import zio.macros.accessible
             _ <- writeJson(emptyPropertiesJson).unless(b)
             s <- Task(os.read(configFilepath))
             r <- ZIO
-                   .fromEither(s.fromJson[ClusterProperties])
-                   .catchAll { err =>
-                     log.warn(s"Parsing error: $err") *>
-                       writeJson(emptyPropertiesJson).as(emptyProperties)
-                   }
+              .fromEither(s.fromJson[ClusterProperties])
+              .catchAll { err =>
+                log.warn(s"Parsing error: $err") *>
+                  writeJson(emptyPropertiesJson).as(emptyProperties)
+              }
           } yield r
 
         def writeClusters(cluster: ClusterSettings): Task[Unit] =
           for {
-            c   <- readClusters
+            c <- readClusters
             json = c.copy(clusters = c.clusters :+ cluster).toJsonPretty
-            _   <- writeJson(json)
+            _ <- writeJson(json)
           } yield ()
 
         def deleteCluster(clusterId: String): Task[ClusterProperties] =
           for {
-            c   <- readClusters
-            ls  <- ZIO.filterNotPar(c.clusters)(s => Task(s.id == clusterId))
+            c <- readClusters
+            ls <- ZIO.filterNotPar(c.clusters)(s => Task(s.id == clusterId))
             json = ClusterProperties(ls).toJsonPretty
-            _   <- writeJson(json)
-            r   <- readClusters
+            _ <- writeJson(json)
+            r <- readClusters
           } yield r
       }
     }

@@ -4,41 +4,81 @@ option java_package = "io.kafkamate";
 
 package messages;
 
+enum OffsetStrategy {
+  LATEST = 0;
+  FROM_BEGINNING = 1;
+  REAL_TIME = 2;
+}
+
 message ConsumeRequest {
   string clusterId = 1;
   string topicName = 2;
   uint64 maxResults = 3;
-  string offsetStrategy = 4;
+  OffsetStrategy offsetStrategy = 4;
   string filterKeyword = 5;
   MessageFormat messageFormat = 6;
 }
 
 enum MessageFormat {
-  STRING = 0;
-  PROTOBUF = 1;
+  AUTO = 0;
+  STRING = 1;
+  PROTOBUF = 2;
 }
 
 message ProduceRequest {
+  oneof request {
+    ProduceProtoRequest protoRequest = 1;
+    ProduceStringRequest stringRequest = 2;
+  }
+}
+
+message ProduceStringRequest {
   string clusterId = 1;
   string topicName = 2;
   string key = 3;
   string value = 4;
 }
 
+message ProduceProtoRequest {
+  string clusterId = 1;
+  string topicName = 2;
+  string key = 3;
+  string value = 4;
+  int32 schemaId = 5;
+  string valueSubject = 6;
+  optional string valueDescriptor = 7;
+}
+
 message ProduceResponse {
   string status = 1;
 }
 
-message Message {
+message GetSchemaSubjectRequest {
+  string clusterId = 1;
+  string topicName = 2;
+}
+
+message SchemaSubject {
+  int32 id = 1;
+  string url = 2;
+}
+
+message SchemaSubjectResponse {
+  repeated SchemaSubject versions = 1;
+}
+
+message LogicMessage {
   uint64 offset = 1;
   int32 partition = 2;
   uint64 timestamp = 3;
-  string key = 4;
-  string value = 5;
+  optional string key = 4;
+  MessageFormat valueFormat = 5;
+  optional int32 valueSchemaId = 6;
+  optional string value = 7;
 }
 
 service MessagesService {
   rpc ProduceMessage(ProduceRequest) returns (ProduceResponse);
-
-  rpc ConsumeMessages(ConsumeRequest) returns (stream Message);
+  rpc ConsumeMessages(ConsumeRequest) returns (stream LogicMessage);
+  rpc GetSchemaSubject(GetSchemaSubjectRequest) returns (SchemaSubjectResponse);
 }
