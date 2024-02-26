@@ -33,7 +33,8 @@ lazy val kafkamate = project
         maintainer("Ciprian Sofronia")
 
         env("KAFKAMATE_ENV", "prod")
-        expose(8080, 61234, 61235)
+        env("KM8_BE_HOST", "http://localhost:61234")
+        expose(8080, 61234)
 
         runRaw(
           "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common lsb-release"
@@ -43,6 +44,7 @@ lazy val kafkamate = project
           "/tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb"
         )
         runRaw("dpkg -i /tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb")
+        runRaw("rm /tmp/getenvoy-envoy_1.15.1.p0.g670a4a6-1p69.ga5345f6_amd64.deb")
 
         runRaw("rm -v /etc/nginx/nginx.conf")
         copy(baseDirectory(_ / "build" / "nginx").value, "/etc/nginx/")
@@ -65,7 +67,7 @@ lazy val kafkamate = project
     )
   )
   .settings(
-    addCommandAlias("dockerize", ";compile;test;build;docker")
+    addCommandAlias("dockerize", "clean;fmt;compile;test;build;docker")
   )
 
 lazy val service = project

@@ -77,7 +77,7 @@ import slinky.web.html._
     }
 
   private val messagesGrpcClient =
-    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
+    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GrpcHost))
 
   private val consumer =
     MessagesConsumer(messagesGrpcClient)
