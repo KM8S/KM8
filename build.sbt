@@ -34,7 +34,7 @@ lazy val kafkamate = project
 
         env("KAFKAMATE_ENV", "prod")
         env("KM8_BE_HOST", "http://localhost:61234")
-        expose(8080, 61234, 61235) // todo: check if last can be removed
+        expose(8080, 61234)
 
         runRaw(
           "apt-get update && apt-get install -y dumb-init nginx nodejs apt-transport-https ca-certificates curl gnupg2 software-properties-common lsb-release"
