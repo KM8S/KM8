@@ -6,12 +6,13 @@ Currently supports reading messages in STRING and PROTOBUF formats.
 
 ### Run kafkamate
 ```bash
-➜  docker run -d --net host -v /your/path/to/kafkamate.json:/kafkamate.json csofronia/kafkamate:latest
+➜  docker run -d --net host -v /your/path/to/kafkamate.json:/tmp/kafkamate.json csofronia/kafkamate:latest
 ```
 Now go to your browser and access http://localhost:8080. That's it! :rocket:
 
-This mount `-v /your/path/to/kafkamate.json:/kafkamate.json` is needed if you want to persist your kafka cluster configuration.
-If this is skipped then it will start with no configuration. 
+This mount `-v /your/path/to/kafkamate.json:/tmp/kafkamate.json` is needed if you want to persist your kafka cluster configuration.
+If this is skipped then it will start with no configuration. It can also take `KM8_BE_HOST` env var in order to specify a
+different host/port for the backend service.
 
 ### Run locally
 Start the site with (make sure to have already installed `npm` and add env `export NODE_OPTIONS=--openssl-legacy-provider` if errors pop up):
