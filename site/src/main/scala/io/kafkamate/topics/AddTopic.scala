@@ -18,7 +18,7 @@ import slinky.web.html._
   type Props = Unit
 
   private val topicsGrpcClient =
-    TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
+    TopicsServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GrpcHost))
 
   val component = FunctionalComponent[Props] { _ =>
     val params = ReactRouterDOM.useParams().toMap

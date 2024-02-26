@@ -1,0 +1,1 @@
+window.KM8Config = { BE_HOST: "http://localhost:61230" };

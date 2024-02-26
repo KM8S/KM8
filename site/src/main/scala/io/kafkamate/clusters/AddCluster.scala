@@ -17,7 +17,7 @@ import slinky.web.html._
   type Props = Unit
 
   private val clustersGrpcClient =
-    ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
+    ClustersServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GrpcHost))
 
   val component = FunctionalComponent[Props] { _ =>
     val (shouldRedirect, setRedirect) = useState(false)

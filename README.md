@@ -43,7 +43,7 @@ Steps to build on MacBook (M2) multi-architecture images using QEMU:
   - `docker buildx version`
   - `docker buildx create --use`
   - `docker buildx inspect --bootstrap`
-  - `docker buildx build --platform linux/amd64 -t csofronia/kafkamate:latest -f Dockerfile . --load` (cd to target/docker)
+  - `docker buildx build --platform linux/amd64 -t csofronia/kafkamate:latest -f Dockerfile . --load --no-cache` (cd to target/docker)
 
 
 ### KAFKA TRADEMARK DISCLAIMER

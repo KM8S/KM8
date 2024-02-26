@@ -1,12 +1,12 @@
 package io.kafkamate
 package common
 
-import scala.scalajs.LinkingInfo
+//import scala.scalajs.LinkingInfo
 
 object Util {
 
   def logMessage(message: String): Unit =
-    if (LinkingInfo.developmentMode)
-      println(message)
+    // if (LinkingInfo.developmentMode)
+    println(message)
 
 }

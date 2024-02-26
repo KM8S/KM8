@@ -18,7 +18,7 @@ import slinky.web.html._
   type Props = Unit
 
   private val messagesGrpcClient =
-    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GRPCHost))
+    MessagesServiceGrpcWeb.stub(Channels.grpcwebChannel(Config.GrpcHost))
 
   private case class SchemaOption(
     id: String,
