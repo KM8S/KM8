@@ -2,7 +2,7 @@ version: "2"
 
 services:
   kafkamate:
-    image: csofronia/kafkamate:tmp10
+    image: csofronia/kafkamate:latest
     hostname: kafkamate
     ports:
       - "8090:8080"
