@@ -17,7 +17,7 @@ object ConfigPathService {
     system
       .env(EnvKey)
       .map {
-        case Some("prod") => ConfigPath(os.root / FileName)
+        case Some("prod") => ConfigPath(os.root / "tmp" / FileName)
         case _            => ConfigPath(os.pwd / FileName)
       }
       .toLayer

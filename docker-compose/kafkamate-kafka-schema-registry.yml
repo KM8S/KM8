@@ -10,7 +10,7 @@ services:
     environment:
       KM8_BE_HOST: "http://localhost:61239"
     volumes:
-      - ${PWD}/compose-kafkamate.json:/kafkamate.json
+      - ${PWD}/compose-kafkamate.json:/tmp/kafkamate.json
     depends_on:
       - kafka
       - schema-registry
