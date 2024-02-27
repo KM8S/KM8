@@ -34,6 +34,7 @@ lazy val kafkamate = project
 
         env("KAFKAMATE_ENV", "prod")
         env("KM8_BE_HOST", "http://localhost:61234")
+        env("ROOT_FS", "/usr/share")
         expose(8080, 61234)
 
         runRaw(

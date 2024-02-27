@@ -3,7 +3,7 @@
 set -m
 
 # Set FE configuration
-echo 'window.KM8Config = { BE_HOST: "'${KM8_BE_HOST}'" };' > /usr/share/nginx/html/config.js
+echo 'window.KM8Config = { BE_HOST: "'${KM8_BE_HOST}'" };' > "${ROOT_FS}/nginx/html/config.js"
 
 # Start nginx for site
 service nginx start
