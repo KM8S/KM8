@@ -34,7 +34,6 @@ lazy val kafkamate = project
 
         env("KAFKAMATE_ENV", "prod")
         env("KM8_BE_HOST", "http://localhost:61234")
-        env("ROOT_FS", "/usr/share")
         expose(8080, 61234)
 
         runRaw(
@@ -53,7 +52,7 @@ lazy val kafkamate = project
         copy(baseDirectory(_ / "build" / "start.sh").value, "start.sh")
 
         add(artifact, artifactTargetPath)
-        copy(baseDirectory(_ / "site" / "build").value, "/usr/share/nginx/html/")
+        copy(baseDirectory(_ / "site" / "build").value, "/tmp/nginx/html/")
 
         entryPoint("/usr/bin/dumb-init", "--")
         cmd("./start.sh", artifactTargetPath)
